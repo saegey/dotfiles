@@ -1,1 +1,7 @@
-/Users/asaegebarth/Library/Mobile Documents/com~apple~CloudDocs/Mackup/.tool-versions
+kubectl 1.15.5
+nodejs 18.7.0
+python 3.11.4
+ruby 2.7.0
+maven 3.6.3
+java adopt-openjdk-8u242-b08
+yarn 1.22.4
