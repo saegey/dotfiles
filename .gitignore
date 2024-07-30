@@ -1,0 +1,6 @@
+.fig/fig.history
+.fig/history
+.fig/bin/*
+.fig/logs/*
+.fig/tools/uninstaller.scpt
+.fig/tools/iterm-api-credentials

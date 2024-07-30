@@ -6,9 +6,6 @@
 
 . "$HOME/.asdf/asdf.sh"
 
-# Fig post block. Keep at the bottom of this file.
-[[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"
-
 eval "$(starship init zsh)"
 
 # bit
@@ -17,3 +14,6 @@ case ":$PATH:" in
   *) export PATH="$PATH:/Users/asaegebarth/bin" ;;
 esac
 # bit end
+
+# Fig post block. Keep at the bottom of this file.
+[[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"
