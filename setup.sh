@@ -70,6 +70,7 @@ setup_zsh_on_debian() {
   if [ "$SHELL" != "/usr/bin/zsh" ]; then
     echo "Changing default shell to zsh..."
     chsh -s /usr/bin/zsh
+    zsh
   else
     echo "Default shell is already zsh."
   fi
