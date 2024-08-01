@@ -15,7 +15,7 @@ To set up your environment with these dotfiles, follow these steps:
 1. **Clone the Repository**:
 
    ```sh
-   git clone https://github.com/your-username/dotfiles.git ~/.dotfiles
+   git clone https://github.com/saegey/dotfiles.git ~/.dotfiles
 
 2. **Run the Setup Script**:
    ```sh
