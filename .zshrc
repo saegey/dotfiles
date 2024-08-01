@@ -10,8 +10,8 @@ eval "$(starship init zsh)"
 
 # bit
 case ":$PATH:" in
-  *":/Users/asaegebarth/bin:"*) ;;
-  *) export PATH="$PATH:/Users/asaegebarth/bin" ;;
+  *":$HOME/bin:"*) ;;
+  *) export PATH="$PATH:$HOME/bin" ;;
 esac
 # bit end
 
