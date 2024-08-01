@@ -31,7 +31,17 @@ install_macos_tools() {
   ln -sf ~/.dotfiles/hammerspoon/init.lua ~/.hammerspoon/init.lua
   ln -sf ~/.dotfiles/hammerspoon/grid.lua ~/.hammerspoon/grid.lua
 
-  # Add any other macOS-specific installation commands here
+  # Install Starship
+  if ! command -v starship &> /dev/null; then
+    echo "Installing Starship..."
+    brew install starship
+  fi
+
+  # Add Starship initialization to .zshrc
+  if ! grep -q 'eval "$(starship init zsh)"' ~/.zshrc; then
+    echo 'eval "$(starship init zsh)"' >> ~/.zshrc
+  fi
+
   echo "macOS-specific tools installed."
 }
 
@@ -58,6 +68,17 @@ setup_zsh_on_debian() {
     chsh -s /usr/bin/zsh
   else
     echo "Default shell is already zsh."
+  fi
+
+  # Install Starship
+  if ! command -v starship &> /dev/null; then
+    echo "Installing Starship..."
+    curl -fsSL https://starship.rs/install.sh | sh
+  fi
+
+  # Add Starship initialization to .zshrc
+  if ! grep -q 'eval "$(starship init zsh)"' ~/.zshrc; then
+    echo 'eval "$(starship init zsh)"' >> ~/.zshrc
   fi
 
   echo "Zsh setup completed."
@@ -91,7 +112,7 @@ if is_macos; then
   install_macos_tools
 fi
 
-# Set up Zsh if on Debian
+# Set up Zsh and install Starship if on Debian
 if is_debian; then
   setup_zsh_on_debian
 fi
