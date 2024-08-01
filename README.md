@@ -11,6 +11,13 @@ This repository contains my personal configuration files for various tools and a
 
 ## Installation
 
+```sh
+cd; mkdir dotfiles; cd dotfiles; \
+curl -#L https://github.com/saegey/dotfiles/tarball/main | \
+tar -xzv --strip-components 1; \
+./setup.sh
+```
+
 To set up your environment with these dotfiles, follow these steps:
 
 1. **Clone the Repository**:

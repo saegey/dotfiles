@@ -5,6 +5,11 @@ is_macos() {
   [[ "$(uname)" == "Darwin" ]]
 }
 
+# Function to check if the operating system is Debian
+is_debian() {
+  grep -q "Debian" /etc/os-release
+}
+
 # Function to install macOS-specific tools
 install_macos_tools() {
   echo "Installing macOS-specific tools..."
@@ -28,6 +33,34 @@ install_macos_tools() {
 
   # Add any other macOS-specific installation commands here
   echo "macOS-specific tools installed."
+}
+
+# Function to set up Zsh on Debian
+setup_zsh_on_debian() {
+  echo "Setting up Zsh on Debian..."
+
+  # Install zsh if not already installed
+  if ! command -v zsh &> /dev/null; then
+    echo "Installing zsh..."
+    sudo apt update
+    sudo apt install -y zsh
+  fi
+
+  # Verify zsh is listed in /etc/shells
+  if ! grep -q "/usr/bin/zsh" /etc/shells; then
+    echo "/usr/bin/zsh is not listed in /etc/shells. Adding it..."
+    echo "/usr/bin/zsh" | sudo tee -a /etc/shells
+  fi
+
+  # Change default shell to zsh
+  if [ "$SHELL" != "/usr/bin/zsh" ]; then
+    echo "Changing default shell to zsh..."
+    chsh -s /usr/bin/zsh
+  else
+    echo "Default shell is already zsh."
+  fi
+
+  echo "Zsh setup completed."
 }
 
 # Main script execution
@@ -56,8 +89,11 @@ ln -sf ~/.dotfiles/.aws/config ~/.aws/config
 # Install macOS-specific tools if on macOS
 if is_macos; then
   install_macos_tools
-else
-  echo "Not running on macOS. Skipping macOS-specific installations."
+fi
+
+# Set up Zsh if on Debian
+if is_debian; then
+  setup_zsh_on_debian
 fi
 
 echo "Dotfiles setup completed!"
