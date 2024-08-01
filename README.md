@@ -7,6 +7,7 @@ This repository contains my personal configuration files for various tools and a
 - **Zsh Configuration**: `.zshrc`
 - **Starship Prompt Configuration**: `.config/starship.toml`
 - **asdf Version Manager Configuration**: `.tool-versions`
+- **Hammerspoon Configuration**: `hammerspoon/init.lua`
 
 ## Installation
 
@@ -24,6 +25,36 @@ To set up your environment with these dotfiles, follow these steps:
    ./setup.sh
 
 This will create the necessary symlinks for the configuration files in your home directory.
+
+3. **Set Up Hammerspoon:**
+
+To use the Hammerspoon configuration:
+
+Install Hammerspoon from the [official website](https://www.hammerspoon.org/).
+
+Here's the directory structure of this repository:
+
+```
+├── .aws
+│   └── config
+├── .config
+│   └── starship.toml
+├── .gitconfig
+├── .gitignore
+├── .npmrc
+├── .ssh
+│   └── config
+├── .tool-versions
+├── .zshrc
+├── Brewfile
+├── Brewfile.lock.json
+├── LICENSE
+├── README.md
+├── hammerspoon
+│   ├── grid.lua
+│   └── init.lua
+└── setup.sh
+```
 
 ## Customization
 
