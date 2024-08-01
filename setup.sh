@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Create symlinks for Zsh configuration
-ln -sf ~/.dotfiles/.zshrc ~/.zshrc
-
 # Function to check if the operating system is macOS
 is_macos() {
   [[ "$(uname)" == "Darwin" ]]
@@ -40,7 +37,11 @@ install_macos_tools() {
     brew install starship
   fi
 
-  # Add Starship initialization to .zshrc
+  # Ensure .zshrc exists and add Starship initialization
+  if [ ! -f ~/.zshrc ]; then
+    touch ~/.zshrc
+  fi
+
   if ! grep -q 'eval "$(starship init zsh)"' ~/.zshrc; then
     echo 'eval "$(starship init zsh)"' >> ~/.zshrc
   fi
@@ -79,7 +80,21 @@ setup_zsh_on_debian() {
     curl -fsSL https://starship.rs/install.sh | sh
   fi
 
-  # Add Starship initialization to .zshrc
+  # Install asdf
+  if [ ! -d "$HOME/.asdf" ]; then
+    echo "Installing asdf..."
+    git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.0
+  fi
+
+  # Ensure .zshrc exists and add asdf and Starship initialization
+  if [ ! -f ~/.zshrc ]; then
+    touch ~/.zshrc
+  fi
+
+  if ! grep -q 'source $HOME/.asdf/asdf.sh' ~/.zshrc; then
+    echo 'source $HOME/.asdf/asdf.sh' >> ~/.zshrc
+  fi
+
   if ! grep -q 'eval "$(starship init zsh)"' ~/.zshrc; then
     echo 'eval "$(starship init zsh)"' >> ~/.zshrc
   fi
@@ -92,7 +107,11 @@ echo "Starting setup script..."
 
 # Install general tools and configurations
 echo "Setting up general tools and configurations..."
-
+# Create symlinks for Zsh configuration
+if [ -f ~/.dotfiles/.zshrc ]; then
+  rm -f ~/.zshrc
+  ln -sf ~/.dotfiles/.zshrc ~/.zshrc
+fi
 
 # Create symlinks for Starship configuration
 mkdir -p ~/.config
