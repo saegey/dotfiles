@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Create symlinks for Zsh configuration
+ln -sf ~/.dotfiles/.zshrc ~/.zshrc
+
 # Function to check if the operating system is macOS
 is_macos() {
   [[ "$(uname)" == "Darwin" ]]
@@ -89,8 +92,7 @@ echo "Starting setup script..."
 
 # Install general tools and configurations
 echo "Setting up general tools and configurations..."
-# Create symlinks for Zsh configuration
-ln -sf ~/.dotfiles/.zshrc ~/.zshrc
+
 
 # Create symlinks for Starship configuration
 mkdir -p ~/.config
@@ -118,3 +120,5 @@ if is_debian; then
 fi
 
 echo "Dotfiles setup completed!"
+
+source ~/.zshrc
