@@ -17,8 +17,8 @@ sudo apt install -y $(cat $SCRIPTDIR/bootstrap.packages/debian.txt)
 sudo apt autoremove -y
 
 if ! command -v starship &>/dev/null; then
-	echo "Installing Starship..."
-	curl -fsSL https://starship.rs/install.sh | sh
+  echo "Installing Starship..."
+  curl -fsSL https://starship.rs/install.sh | sh
 fi
 
 # install lsd

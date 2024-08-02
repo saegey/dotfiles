@@ -26,25 +26,25 @@ eval "$(direnv hook zsh)"
 
 # Function to set the terminal title
 function set_title() {
-	local title="$1"
-	echo -ne "\033]0;$title\007"
+  local title="$1"
+  echo -ne "\033]0;$title\007"
 }
 
 # Set the title based on whether the session is local or SSH
 precmd() {
-	if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
-		local title="${USER}@${HOST} ${PWD/#$HOME/~}"
-	else
-		local title="${PWD/#$HOME/~}"
-	fi
-	set_title "$title"
+  if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+    local title="${USER}@${HOST} ${PWD/#$HOME/~}"
+  else
+    local title="${PWD/#$HOME/~}"
+  fi
+  set_title "$title"
 }
 
 # Update the title while running commands
 preexec() {
-	if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
-		set_title "$(basename "$1")"
-	else
-		set_title "${PWD/#$HOME/~}"
-	fi
+  if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+    set_title "$(basename "$1")"
+  else
+    set_title "${PWD/#$HOME/~}"
+  fi
 }
