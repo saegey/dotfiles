@@ -1,4 +1,5 @@
 #!/bin/bash
+export BOOTSTRAP_OS=$(uname | tr '[[:upper:]]' '[[:lower:]]')
 
 # Function to check if the operating system is macOS
 is_macos() {
@@ -15,7 +16,7 @@ install_macos_tools() {
   echo "Installing macOS-specific tools..."
 
   # Install Homebrew if not already installed
-  if ! command -v brew &> /dev/null; then
+  if ! command -v brew &>/dev/null; then
     echo "Homebrew not found. Installing Homebrew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
@@ -32,18 +33,9 @@ install_macos_tools() {
   ln -sf ~/.dotfiles/hammerspoon/grid.lua ~/.hammerspoon/grid.lua
 
   # Install Starship
-  if ! command -v starship &> /dev/null; then
+  if ! command -v starship &>/dev/null; then
     echo "Installing Starship..."
     brew install starship
-  fi
-
-  # Ensure .zshrc exists and add Starship initialization
-  if [ ! -f ~/.zshrc ]; then
-    touch ~/.zshrc
-  fi
-
-  if ! grep -q 'eval "$(starship init zsh)"' ~/.zshrc; then
-    echo 'eval "$(starship init zsh)"' >> ~/.zshrc
   fi
 
   echo "macOS-specific tools installed."
@@ -54,7 +46,7 @@ setup_zsh_on_debian() {
   echo "Setting up Zsh on Debian..."
 
   # Install zsh if not already installed
-  if ! command -v zsh &> /dev/null; then
+  if ! command -v zsh &>/dev/null; then
     echo "Installing zsh..."
     sudo apt update
     sudo apt install -y zsh
@@ -66,17 +58,17 @@ setup_zsh_on_debian() {
     echo "/usr/bin/zsh" | sudo tee -a /etc/shells
   fi
 
-  # Change default shell to zsh
-  if [ "$SHELL" != "/usr/bin/zsh" ]; then
-    echo "Changing default shell to zsh..."
-    chsh -s /usr/bin/zsh
-    zsh
-  else
-    echo "Default shell is already zsh."
-  fi
+  # # Change default shell to zsh
+  # if [ "$SHELL" != "/usr/bin/zsh" ]; then
+  #   echo "Changing default shell to zsh..."
+  #   chsh -s /usr/bin/zsh
+  #   zsh
+  # else
+  #   echo "Default shell is already zsh."
+  # fi
 
   # Install Starship
-  if ! command -v starship &> /dev/null; then
+  if ! command -v starship &>/dev/null; then
     echo "Installing Starship..."
     curl -fsSL https://starship.rs/install.sh | sh
   fi
@@ -93,11 +85,11 @@ setup_zsh_on_debian() {
   fi
 
   if ! grep -q 'source $HOME/.asdf/asdf.sh' ~/.zshrc; then
-    echo 'source $HOME/.asdf/asdf.sh' >> ~/.zshrc
+    echo 'source $HOME/.asdf/asdf.sh' >>~/.zshrc
   fi
 
   if ! grep -q 'eval "$(starship init zsh)"' ~/.zshrc; then
-    echo 'eval "$(starship init zsh)"' >> ~/.zshrc
+    echo 'eval "$(starship init zsh)"' >>~/.zshrc
   fi
 
   echo "Zsh setup completed."
@@ -112,6 +104,13 @@ echo "Setting up general tools and configurations..."
 if [ -f ~/.dotfiles/.zshrc ]; then
   rm -f ~/.zshrc
   ln -sf ~/.dotfiles/.zshrc ~/.zshrc
+  ln -sf ~/.dotfiles/zshrc.${BOOTSTRAP_OS} ~/.zshrc.${BOOTSTRAP_OS}
+fi
+
+if [ -f ~/.dotfiles/.bashrc ]; then
+  rm -f ~/.bashrc
+  ln -sf ~/.dotfiles/.bashrc ~/.bashrc
+  ln -sf ~/.dotfiles/bashrc.${BOOTSTRAP_OS} ~/.bashrc.${BOOTSTRAP_OS}
 fi
 
 # Create symlinks for Starship configuration
