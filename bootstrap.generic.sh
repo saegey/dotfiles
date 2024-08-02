@@ -33,7 +33,7 @@ cd ~
 [[ ! -L .git-global-ignore ]] && ln -s ${SCRIPTDIR}/git-global-ignore .git-global-ignore
 # [[ ! -L .p10k.zsh ]] && ln -s ${SCRIPTDIR}/p10k.${BOOTSTRAP_OS}.zsh .p10k.zsh
 # [[ ! -L .zpreztorc ]] && ln -s ${SCRIPTDIR}/zpreztorc .zpreztorc
-[[ ! -L .zshrc ]] && ln -s ${SCRIPTDIR}/zshrc .zshrc
+[[ ! -L .zshrc ]] && ln -s ${SCRIPTDIR}/.zshrc .zshrc
 [[ ! -L ".zshrc.${BOOTSTRAP_OS}" ]] && ln -s ${SCRIPTDIR}/zshrc.${BOOTSTRAP_OS} .zshrc.${BOOTSTRAP_OS}
 [[ -f "${SCRIPTDIR}/zshrc.${LINUX_DISTRO}" && ! -L ".zshrc.${LINUX_DISTRO}" ]] && ln -s ${SCRIPTDIR}/zshrc.${LINUX_DISTRO} .zshrc.${LINUX_DISTRO}
 mkdir -p .config

@@ -5,7 +5,7 @@ set -eo pipefail
 CURRDIR=$(pwd)
 SCRIPTDIR=$(cd $(dirname $0) && pwd)
 
-. ./config.sh
+. ${SCRIPTDIR}/config.sh
 
 # apt packages
 echo
