@@ -1,7 +1,6 @@
 curl
 htop
 wget
-zsh
 zoxide
 sudo
 lsd

@@ -2,8 +2,8 @@
 
 # Check if script is run as root
 if [ "$EUID" -ne 0 ]; then
-	echo "Please run as root"
-	exit 1
+  echo "Please run as root"
+  exit 1
 fi
 
 # Define the new username
@@ -21,9 +21,9 @@ usermod -aG sudo "$NEW_USER"
 
 # Verify that the user was added to the sudo group
 if groups "$NEW_USER" | grep -q "\bsudo\b"; then
-	echo "User $NEW_USER added to sudo group successfully."
+  echo "User $NEW_USER added to sudo group successfully."
 else
-	echo "Failed to add user $NEW_USER to sudo group."
+  echo "Failed to add user $NEW_USER to sudo group."
 fi
 
 # Adding user to sudoers file for password-less sudo (optional)

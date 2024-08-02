@@ -16,9 +16,9 @@ export NORDIC_THEME_SUBTYPE=bluish-accent
 mkdir -p ${TWEAKS_DIR}
 
 get_latest_release() {
-	curl --silent "https://api.github.com/repos/$1/releases/latest" | # Get latest release from GitHub api
-		grep '"tag_name":' |                                             # Get tag line
-		sed -E 's/.*"([^"]+)".*/\1/'                                     # Pluck JSON value
+  curl --silent "https://api.github.com/repos/$1/releases/latest" | # Get latest release from GitHub api
+    grep '"tag_name":' |                                            # Get tag line
+    sed -E 's/.*"([^"]+)".*/\1/'                                    # Pluck JSON value
 }
 
 # assume we've run ./reblur.sh and this exists
@@ -29,7 +29,7 @@ export DESKTOP_BACKGROUND_BLURRED="${db_blurred}.blurred.${db_blurred_ext}"
 
 # set up theme-related vars
 if [[ ! -z "${NORDIC_THEME_SUBTYPE}" ]]; then
-	export NORDIC_THEME_SUBTYPE="-${NORDIC_THEME_SUBTYPE}"
+  export NORDIC_THEME_SUBTYPE="-${NORDIC_THEME_SUBTYPE}"
 fi
 export NORDIC_THEME="Nordic${NORDIC_THEME_SUBTYPE}-standard-buttons"
 export NORDIC_VERSION=$(get_latest_release EliverLara/Nordic)
@@ -37,19 +37,19 @@ export NORDIC_VERSION=$(get_latest_release EliverLara/Nordic)
 # set up os indentification vars
 export BOOTSTRAP_OS=$(uname | tr '[[:upper:]]' '[[:lower:]]')
 if [[ "${BOOTSTRAP_OS}" = "linux" ]]; then
-	if [[ -f /etc/os-release ]]; then
-		export LINUX_DISTRO=$(cat /etc/os-release | grep -E '^ID' | sed -e 's/^ID=//g')
-	else
-		echo "you're running on some non-systemd linux distribution dude: no /etc/os-release" >&2
-		exit 1
-	fi
+  if [[ -f /etc/os-release ]]; then
+    export LINUX_DISTRO=$(cat /etc/os-release | grep -E '^ID' | sed -e 's/^ID=//g')
+  else
+    echo "you're running on some non-systemd linux distribution dude: no /etc/os-release" >&2
+    exit 1
+  fi
 elif [[ "${BOOTSTRAP_OS}" = "darwin" ]]; then
-	export LINUX_DISTRO=na
+  export LINUX_DISTRO=na
 else
-	echo "you're running on some bullshit os dude: ${BOOTSTRAP_OS}" >&2
-	exit 1
+  echo "you're running on some bullshit os dude: ${BOOTSTRAP_OS}" >&2
+  exit 1
 fi
 
 if [[ -n "${NOCONFIRM}" ]]; then
-	export NOCONFIRM=--noconfirm
+  export NOCONFIRM=--noconfirm
 fi
