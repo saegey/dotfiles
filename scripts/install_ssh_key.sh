@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the array of hostnames
-HOSTNAMES=("dietpi.local") # Replace with your actual hostnames
+HOSTNAMES=("dietpi1.local", "dietpi2.local", "bignas.local", "pve.local", "docker.local") # Replace with your actual hostnames
 
 # Your SSH user
 SSH_USER="saegey"
