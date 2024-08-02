@@ -1,17 +1,25 @@
 eval "$(starship init bash)"
 
-# # Amazon Q pre block. Keep at the top of this file.
-# [[ -f "${HOME}/Library/Application Support/amazon-q/shell/bashrc.pre.bash" ]] && builtin source "${HOME}/Library/Application Support/amazon-q/shell/bashrc.pre.bash"
-# [ -n "$PS1" ] && source ~/.bash_profile;
+# Function to set the terminal title
+function set_title() {
+	local title="$1"
+	echo -ne "\033]0;$title\007"
+}
 
-# export NVM_DIR="$HOME/.nvm"
-# [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-# [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# Function to update the title based on whether the session is SSH or local
+function update_title() {
+	if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+		set_title "${USER}@${HOSTNAME}"
+	else
+		set_title "${PWD##*/}"
+	fi
+}
 
-# export LDFLAGS="-L/usr/local/opt/zlib/lib"
-# export CPPFLAGS="-I/usr/local/opt/zlib/include"
+# Update the title before each command prompt
+PROMPT_COMMAND='update_title'
 
-# [[ -f "$HOME/fig-export/dotfiles/dotfile.bash" ]] && source "$HOME/fig-export/dotfiles/dotfile.bash"
+# Update the title when a command is executed
+trap 'update_title' DEBUG
 
-# # Amazon Q post block. Keep at the bottom of this file.
-# [[ -f "${HOME}/Library/Application Support/amazon-q/shell/bashrc.post.bash" ]] && builtin source "${HOME}/Library/Application Support/amazon-q/shell/bashrc.post.bash"
+# Initial title update
+update_title
