@@ -15,7 +15,7 @@ This repository contains my personal configuration files for various tools and a
 cd; mkdir .dotfiles; cd .dotfiles; \
 curl -#L https://github.com/saegey/dotfiles/tarball/main | \
 tar -xzv --strip-components 1; \
-./setup.sh
+./bootstrap.sh
 ```
 
 To set up your environment with these dotfiles, follow these steps:
@@ -25,11 +25,14 @@ To set up your environment with these dotfiles, follow these steps:
    ```sh
    git clone https://github.com/saegey/dotfiles.git ~/.dotfiles
 
+   ```
+
 2. **Run the Setup Script**:
    ```sh
    cd ~/.dotfiles
    chmod +x setup.sh
    ./setup.sh
+   ```
 
 This will create the necessary symlinks for the configuration files in your home directory.
 

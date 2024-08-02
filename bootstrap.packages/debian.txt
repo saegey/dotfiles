@@ -4,3 +4,4 @@ wget
 zsh
 zoxide
 sudo
+lsd
