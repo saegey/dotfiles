@@ -60,9 +60,9 @@ ln -sf ~/.dotfiles/.ssh/config ~/.ssh/config
 #   done
 # fi
 if [[ ! -z ${LINUX_DISTRO} && -d ${SCRIPTDIR}/bin/linux/${LINUX_DISTRO} ]]; then
-	for f in $(find ${SCRIPTDIR}/bin/linux/${LINUX_DISTRO} -type f); do
-		[[ ! -L $(basename ${f}) ]] && ln -s ${f}
-	done
+  for f in $(find ${SCRIPTDIR}/bin/linux/${LINUX_DISTRO} -type f); do
+    [[ ! -L $(basename ${f}) ]] && ln -s ${f}
+  done
 fi
 
 # run os-specific shit
@@ -74,8 +74,8 @@ cd $CURRDIR
 
 TMP_TODO="none"
 if [[ -f ${HOME}/tmp/bootstrap_TODO ]]; then
-	TMP_TODO=$(cat ${HOME}/tmp/bootstrap_TODO)
-	rm -f ${HOME}/tmp/bootstrap_TODO
+  TMP_TODO=$(cat ${HOME}/tmp/bootstrap_TODO)
+  rm -f ${HOME}/tmp/bootstrap_TODO
 fi
 
 echo
