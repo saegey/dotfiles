@@ -36,6 +36,15 @@ cd ~
 [[ ! -L .zshrc ]] && ln -s ${SCRIPTDIR}/.zshrc .zshrc
 [[ ! -L ".zshrc.${BOOTSTRAP_OS}" ]] && ln -s ${SCRIPTDIR}/zshrc.${BOOTSTRAP_OS} .zshrc.${BOOTSTRAP_OS}
 [[ -f "${SCRIPTDIR}/zshrc.${LINUX_DISTRO}" && ! -L ".zshrc.${LINUX_DISTRO}" ]] && ln -s ${SCRIPTDIR}/zshrc.${LINUX_DISTRO} .zshrc.${LINUX_DISTRO}
+
+[[ ! -L .bashrc ]] && ln -s ${SCRIPTDIR}/.bashrc .bashrc
+[[ ! -L ".bashrc.${BOOTSTRAP_OS}" ]] && ln -s ${SCRIPTDIR}/.bashrc.${BOOTSTRAP_OS} .bashrc.${BOOTSTRAP_OS}
+
+# Conditionally create a symlink for .bash_profile if BOOTSTRAP_OS is darwin
+if [ "${BOOTSTRAP_OS}" = "darwin" ]; then
+	[[ ! -L .bash_profile ]] && ln -s ${SCRIPTDIR}/.bash_profile .bash_profile
+fi
+
 mkdir -p .config
 cd .config
 
@@ -60,9 +69,9 @@ ln -sf ~/.dotfiles/.ssh/config ~/.ssh/config
 #   done
 # fi
 if [[ ! -z ${LINUX_DISTRO} && -d ${SCRIPTDIR}/bin/linux/${LINUX_DISTRO} ]]; then
-  for f in $(find ${SCRIPTDIR}/bin/linux/${LINUX_DISTRO} -type f); do
-    [[ ! -L $(basename ${f}) ]] && ln -s ${f}
-  done
+	for f in $(find ${SCRIPTDIR}/bin/linux/${LINUX_DISTRO} -type f); do
+		[[ ! -L $(basename ${f}) ]] && ln -s ${f}
+	done
 fi
 
 # run os-specific shit
@@ -74,8 +83,8 @@ cd $CURRDIR
 
 TMP_TODO="none"
 if [[ -f ${HOME}/tmp/bootstrap_TODO ]]; then
-  TMP_TODO=$(cat ${HOME}/tmp/bootstrap_TODO)
-  rm -f ${HOME}/tmp/bootstrap_TODO
+	TMP_TODO=$(cat ${HOME}/tmp/bootstrap_TODO)
+	rm -f ${HOME}/tmp/bootstrap_TODO
 fi
 
 echo
