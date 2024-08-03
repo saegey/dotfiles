@@ -16,6 +16,7 @@ alias lt='ls -alrth'
 eval "$(zoxide init zsh)"
 
 export UNAME_S=$(uname | tr '[[:upper:]]' '[[:lower:]]')
+echo $UNAME_S
 [[ -s "${HOME}/.zshrc.${UNAME_S}" ]] && source "${HOME}/.zshrc.${UNAME_S}"
 [[ -s "${HOME}/.zshrc.local" ]] && source "${HOME}/.zshrc.local"
 
@@ -48,3 +49,10 @@ preexec() {
     set_title "${PWD/#$HOME/~}"
   fi
 }
+
+# source os/airbnb/local stuff
+export UNAME_S=$(uname | tr '[[:upper:]]' '[[:lower:]]')
+
+echo "${UNAME}"
+
+[[ -s "${HOME}/.zshrc.${UNAME_S}" ]] && source "${HOME}/.zshrc.${UNAME_S}"
