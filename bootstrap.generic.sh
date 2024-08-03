@@ -34,8 +34,8 @@ cd ~
 # [[ ! -L .p10k.zsh ]] && ln -s ${SCRIPTDIR}/p10k.${BOOTSTRAP_OS}.zsh .p10k.zsh
 # [[ ! -L .zpreztorc ]] && ln -s ${SCRIPTDIR}/zpreztorc .zpreztorc
 [[ ! -L .zshrc ]] && ln -s ${SCRIPTDIR}/.zshrc .zshrc
-[[ ! -L ".zshrc.${BOOTSTRAP_OS}" ]] && ln -s ${SCRIPTDIR}/zshrc.${BOOTSTRAP_OS} .zshrc.${BOOTSTRAP_OS}
-[[ -f "${SCRIPTDIR}/zshrc.${LINUX_DISTRO}" && ! -L ".zshrc.${LINUX_DISTRO}" ]] && ln -s ${SCRIPTDIR}/zshrc.${LINUX_DISTRO} .zshrc.${LINUX_DISTRO}
+[[ ! -L ".zshrc.${BOOTSTRAP_OS}" ]] && ln -s ${SCRIPTDIR}/.zshrc.${BOOTSTRAP_OS} .zshrc.${BOOTSTRAP_OS}
+[[ -f "${SCRIPTDIR}/.zshrc.${LINUX_DISTRO}" && ! -L ".zshrc.${LINUX_DISTRO}" ]] && ln -s ${SCRIPTDIR}/.zshrc.${LINUX_DISTRO} .zshrc.${LINUX_DISTRO}
 
 [[ ! -L .bashrc ]] && ln -s ${SCRIPTDIR}/.bashrc .bashrc
 [[ ! -L ".bashrc.${BOOTSTRAP_OS}" ]] && ln -s ${SCRIPTDIR}/.bashrc.${BOOTSTRAP_OS} .bashrc.${BOOTSTRAP_OS}
