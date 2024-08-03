@@ -1,16 +1,16 @@
 # Function to set the terminal title
 function set_title() {
-	local title="$1"
-	echo -ne "\033]0;$title\007"
+  local title="$1"
+  echo -ne "\033]0;$title\007"
 }
 
 # Function to update the title based on whether the session is SSH or local
 function update_title() {
-	if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
-		set_title "${USER}@${HOSTNAME}"
-	else
-		set_title "${PWD##*/}"
-	fi
+  if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+    set_title "${USER}@${HOSTNAME}"
+  else
+    set_title "${PWD##*/}"
+  fi
 }
 
 # Update the title before each command prompt
@@ -23,9 +23,11 @@ trap 'update_title' DEBUG
 update_title
 
 # helpful aliases
-alias ls='/usr/local/bin/lsd'
+alias ls='lsd'
 alias l='ls -alh'
 alias la='ls -alh'
 alias lt='ls -alrth'
 
 echo "bash rc"
+
+# eval "$(starship init bash)"
