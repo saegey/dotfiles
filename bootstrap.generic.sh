@@ -50,6 +50,8 @@ if [ "${BOOTSTRAP_OS}" = "darwin" ]; then
   [[ ! -L .bash_profile ]] && ln -s ${SCRIPTDIR}/.bash_profile .bash_profile
 fi
 
+[[ -f "${SCRIPTDIR}/.bashrc.${LINUX_DISTRO}" && ! -L ".bashrc.${LINUX_DISTRO}" ]] && ln -s ${SCRIPTDIR}/.bashrc.${LINUX_DISTRO} .bashrc.${LINUX_DISTRO}
+
 mkdir -p .config
 cd .config
 

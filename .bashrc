@@ -28,6 +28,8 @@ alias l='ls -alh'
 alias la='ls -alh'
 alias lt='ls -alrth'
 
-echo "bash rc"
+echo "${UNAME_S}"
 
 # eval "$(starship init bash)"
+
+[[ -s "${HOME}/.bashrc.${UNAME_S}" ]] && source "${HOME}/.bashrc.${UNAME_S}"
