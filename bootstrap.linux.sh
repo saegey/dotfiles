@@ -19,7 +19,7 @@ cd ~/.config
 
 # distro-specific boostrap
 echo
-LINUX_DISTRO=$(echo "${LINUX_DISTRO}" | sed -n '1p')
+# LINUX_DISTRO=$(echo "${LINUX_DISTRO}" | sed -n '1p')
 
 if [[ -f ${SCRIPTDIR}/bootstrap.${LINUX_DISTRO}.sh ]]; then
 	echo "bootstrapping ${LINUX_DISTRO}"

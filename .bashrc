@@ -28,8 +28,8 @@ alias l='ls -alh'
 alias la='ls -alh'
 alias lt='ls -alrth'
 
-echo "${UNAME_S}"
+export LINUX_DISTRO=$(cat /etc/os-release | grep -E '^ID' | sed -e 's/^ID=//g')
 
-# eval "$(starship init bash)"
+echo "LINUX DISTRO: ${LINUX_DISTRO}"
 
-[[ -s "${HOME}/.bashrc.${UNAME_S}" ]] && source "${HOME}/.bashrc.${UNAME_S}"
+[[ -s "${HOME}/.bashrc.${LINUX_DISTRO}" ]] && source "${HOME}/.bashrc.${LINUX_DISTRO}"
