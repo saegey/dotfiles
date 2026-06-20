@@ -1,3 +1,1 @@
-echo "this is raspbian"
-
 eval "$(starship init bash)"
