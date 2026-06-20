@@ -1,0 +1,39 @@
+{
+  "preferredNotifChannel": "ghostty",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true",
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-warp": {
+      "source": {
+        "source": "github",
+        "repo": "warpdotdev/claude-code-warp"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "mcpServers": {
+    "fusion360": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "fusion360-mcp-bridge"
+      ],
+      "type": "stdio"
+    }
+  },
+  "enabledPlugins": {
+    "warp@claude-code-warp": true
+  }
+}

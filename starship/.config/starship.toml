@@ -1,0 +1,30 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+add_newline = true
+
+[character]
+success_symbol = '[➜](bold green)'
+
+[package]
+disabled = true
+
+[username]
+show_always = true
+style_user = 'bold blue'
+format = '[$user]($style)'
+
+[hostname]
+ssh_only = false
+style = 'bold blue'
+format = '[@$hostname]($style) '
+
+[git_branch]
+style = 'bold purple'
+
+[custom.worktree]
+description = 'Show git worktree name when in a linked worktree'
+command = 'basename $(git rev-parse --git-dir)'
+when = "git rev-parse --git-dir 2>/dev/null | grep -q 'worktrees'"
+symbol = '⑂ '
+style = 'bold yellow'
+format = '[$symbol$output]($style) '

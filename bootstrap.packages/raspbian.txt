@@ -1,0 +1,7 @@
+curl
+htop
+wget
+zoxide
+sudo
+lsd
+direnv

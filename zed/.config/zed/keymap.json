@@ -1,0 +1,20 @@
+// Sublime Text-style keybindings on top of the VSCode base keymap
+[
+  {
+    "bindings": {
+      // Goto Anything (file search) — Sublime's cmd-t, VSCode maps this to cmd-p
+      "cmd-t": "file_finder::Toggle",
+      // Goto Symbol in project — Sublime's cmd-shift-r
+      "cmd-shift-r": "project_symbols::Toggle",
+      // Goto Line — Sublime's ctrl-g
+      "ctrl-g": "go_to_line::Toggle"
+    }
+  },
+  {
+    "context": "Editor",
+    "bindings": {
+      // Goto Symbol in file — Sublime's cmd-r
+      "cmd-r": "outline::Toggle"
+    }
+  }
+]

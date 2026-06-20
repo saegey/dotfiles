@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Vim
+*.swp
+*.swo
+
+# Editors
+.idea/
+*.orig
+
+# Brewfile lock — regenerated on install
+Brewfile.lock.json
