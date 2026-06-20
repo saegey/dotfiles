@@ -1,75 +1,43 @@
-# My Dotfiles
+# dotfiles
 
-This repository contains my personal configuration files for various tools and applications.
+Personal configuration files managed with [GNU Stow](https://www.gnu.org/software/stow/).
 
-## Contents
+## What's included
 
-- **Zsh Configuration**: `.zshrc`
-- **Starship Prompt Configuration**: `.config/starship.toml`
-- **asdf Version Manager Configuration**: `.tool-versions`
-- **Hammerspoon Configuration**: `hammerspoon/init.lua`
+| Directory | Target | Description |
+|-----------|--------|-------------|
+| `zsh/` | `~/.zshrc`, `~/.zshrc.darwin`, etc. | Zsh config with starship, zoxide, direnv, mise |
+| `git/` | `~/.gitconfig`, `~/.gitignore` | Git config with 1Password SSH signing |
+| `starship/` | `~/.config/starship.toml` | Starship prompt |
+| `ghostty/` | `~/.config/ghostty/config` | Ghostty terminal |
+| `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
+| `ssh/` | `~/.ssh/config` | SSH config with 1Password agent |
+| `tools/` | `~/.config/mise/config.toml`, `~/.tool-versions` | mise version manager |
+| `npm/` | `~/.npmrc` | npm config |
+| `bash/` | `~/.bash_profile`, `~/.bashrc`, etc. | Bash config |
+| `claude/` | `~/.claude/settings.json` | Claude Code settings |
 
 ## Installation
 
 ```sh
-cd; mkdir .dotfiles; cd .dotfiles; \
-curl -#L https://github.com/saegey/dotfiles/tarball/main | \
-tar -xzv --strip-components 1; \
+git clone https://github.com/saegey/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
 ./bootstrap.sh
 ```
 
-To set up your environment with these dotfiles, follow these steps:
+`bootstrap.sh` uses `stow` to symlink everything into `$HOME`, then runs the OS-specific setup script (`bootstrap.darwin.sh` on macOS).
 
-1. **Clone the Repository**:
+## Local overrides
 
-   ```sh
-   git clone https://github.com/saegey/dotfiles.git ~/.dotfiles
+Machine-specific config that shouldn't be committed goes in:
+- `~/.zshrc.local` — sourced at the end of `.zshrc`
+- `~/.gitconfig.local` — included at the end of `.gitconfig`
 
-   ```
+## Notes
 
-2. **Run the Setup Script**:
-   ```sh
-   cd ~/.dotfiles
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-
-This will create the necessary symlinks for the configuration files in your home directory.
-
-3. **Set Up Hammerspoon:**
-
-To use the Hammerspoon configuration:
-
-Install Hammerspoon from the [official website](https://www.hammerspoon.org/).
-
-Here's the directory structure of this repository:
-
-```
-├── .aws
-│   └── config
-├── .config
-│   └── starship.toml
-├── .gitconfig
-├── .gitignore
-├── .npmrc
-├── .ssh
-│   └── config
-├── .tool-versions
-├── .zshrc
-├── Brewfile
-├── Brewfile.lock.json
-├── LICENSE
-├── README.md
-├── hammerspoon
-│   ├── grid.lua
-│   └── init.lua
-└── setup.sh
-```
-
-## Customization
-
-Feel free to customize the configuration files to suit your needs.
+- Git commits are signed via SSH using 1Password. Set `user.signingkey` in `~/.gitconfig.local`.
+- `~/.zshrc.local` is a good place for machine-specific PATH entries (gcloud, postgresql, etc.).
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
