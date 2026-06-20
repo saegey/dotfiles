@@ -120,8 +120,15 @@
 [commit]
 	gpgsign = true
 
+[fetch]
+	prune = true
+
+[pull]
+	rebase = true
+
 [diff]
 	renames = copies
+	colorMoved = default
 
 [diff "bin"]
 	textconv = hexdump -v -C

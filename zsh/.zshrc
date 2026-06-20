@@ -15,8 +15,8 @@ eval "$(starship init zsh)"
 
 setopt prompt_sp
 
-export VISUAL=code
-export EDITOR=$VISUAL
+export VISUAL=zed
+export EDITOR=vim
 
 [ -x "$(which lsd)" ] && alias ls='lsd'
 alias l='ls -alh'
@@ -28,6 +28,12 @@ eval "$(zoxide init zsh)"
 export UNAME_S=$(uname | tr '[[:upper:]]' '[[:lower:]]')
 [[ -s "${HOME}/.zshrc.${UNAME_S}" ]] && source "${HOME}/.zshrc.${UNAME_S}"
 [[ -s "${HOME}/.zshrc.local" ]] && source "${HOME}/.zshrc.local"
+
+export FZF_DEFAULT_OPTS=" \
+--color=bg+:#414559,bg:#303446,spinner:#f4b8e4,hl:#8caaee \
+--color=fg:#c6d0f5,header:#8caaee,info:#ca9ee6,pointer:#f4b8e4 \
+--color=marker:#a6d189,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#8caaee \
+--color=border:#414559"
 
 [[ -f "${HOME}/.fzf.zsh" ]] && source ~/.fzf.zsh
 
