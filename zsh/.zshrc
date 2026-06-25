@@ -11,6 +11,11 @@ setopt HIST_IGNORE_SPACE
 
 bindkey "^R" history-incremental-search-backward
 
+# completion (native)
+autoload -Uz compinit
+compinit
+zstyle ':completion:*:*:make:*' tag-order 'targets'
+
 eval "$(starship init zsh)"
 
 setopt prompt_sp
@@ -22,6 +27,7 @@ export EDITOR=vim
 alias l='ls -alh'
 alias la='ls -alh'
 alias lt='ls -alrth'
+alias ll='ls -la'
 
 eval "$(zoxide init zsh)"
 
