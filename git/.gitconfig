@@ -1,6 +1,6 @@
 [user]
 	name = Adam Saegebarth
-	email = adam.saegebarth@gmail.com
+	# email is set per-machine in ~/.gitconfig.local
 
 [init]
 	defaultBranch = main
@@ -142,6 +142,9 @@
 [push]
 	default = simple
 	followTags = true
+
+[submodule]
+	recurse = true
 
 [url "git@github.com:"]
 	insteadOf = "gh:"

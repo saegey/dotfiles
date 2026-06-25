@@ -1,6 +1,35 @@
-.fig/fig.history
-.fig/history
-.fig/bin/*
-.fig/logs/*
-.fig/tools/uninstaller.scpt
-.fig/tools/iterm-api-credentials
+# Global gitignore (core.excludesfile). Cruft that should never be
+# committed to ANY repo. Project/language-specific ignores belong in a
+# repo-local .gitignore instead.
+
+# ───────── macOS ─────────
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+Icon?
+
+# ───────── Editors ─────────
+*.swp
+*.swo
+*~
+.netrwhist
+*.bak
+*.tmp
+*.orig
+
+# ───────── Tooling ─────────
+.direnv/

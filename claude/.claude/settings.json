@@ -23,6 +23,7 @@
     }
   },
   "effortLevel": "high",
+  "tui": "fullscreen",
   "mcpServers": {
     "fusion360": {
       "command": "npx",

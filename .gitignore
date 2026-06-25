@@ -13,3 +13,8 @@
 
 # Brewfile lock — regenerated on install
 Brewfile.lock.json
+
+# Node — this is a dotfiles repo, not a JS project
+node_modules/
+package.json
+package-lock.json

@@ -7,44 +7,82 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "cli_default_open_behavior": "new_window",
+  "edit_predictions": {
+    "open_ai_compatible_api": {
+      "model": ""
+    }
+  },
   "project_panel": {
     "dock": "left"
   },
   "git_panel": {
     "dock": "left"
   },
-  "agent_servers": {
-    "claude-acp": {
-      "type": "registry"
+  "git": {
+    "inline_blame": {
+      "enabled": true
     }
   },
+  "proxy": "",
   "ui_font_weight": 400.0,
   "ui_font_family": "JetBrains Mono",
-  "buffer_font_family": "JetBrains Mono",
-  "cli_default_open_behavior": "existing_window",
+  "icon_theme": {
+    "mode": "dark",
+    "light": "Zed (Default)",
+    "dark": "Catppuccin Mocha",
+  },
+  "session": {
+    "trust_all_worktrees": true,
+  },
+  "agent_servers": {
+    "claude-acp": {
+      "type": "registry",
+    },
+    "codex-acp": {
+      "type": "registry",
+    },
+  },
   "terminal": {
-    "font_size": 13.0
+    "toolbar": {
+      "breadcrumbs": false
+    },
+    "minimum_contrast": 47.0,
+    "shell": "system",
+    "font_size": 13.0,
+    "font_family": "JetBrains Mono",
+    "font_fallbacks": ["Fira Code", "monospace"],
+    "line_height": {
+      "custom": 1.2,
+    },
+    "cursor_shape": "bar",
+    "blinking": "on",
+    "option_as_meta": true,
   },
   "minimap": {
-    "show": "never"
+    "show": "never",
   },
+  "cursor_shape": "bar",
+  "cursor_blink": false,
+  "buffer_font_fallbacks": ["SF Mono", "Menlo", "monospace"],
+  "buffer_font_family": "JetBrains Mono",
+  "colorize_brackets": true,
+  "show_whitespaces": "all",
+  "semantic_tokens": "full",
+  "ensure_final_newline_on_save": true,
+  "wrap_guides": [80],
   "base_keymap": "VSCode",
-  "ui_font_size": 14.0,
+  "ui_font_size": 15.0,
   "buffer_font_size": 13.0,
   "theme": {
-    "mode": "system",
-    "light": "One Light",
-    "dark": "One Dark",
+    "mode": "dark",
+    "light": "Catppuccin Latte",
+    "dark": "Catppuccin Mocha"
   },
   "autosave": "on_focus_change",
   "restore_on_startup": "last_session",
   "seed_search_query_from_cursor": "always",
   "indent_guides": {
-    "enabled": "always"
-  },
-  "git": {
-    "inline_blame": {
-      "enabled": true
-    }
+    "enabled": true
   },
 }
