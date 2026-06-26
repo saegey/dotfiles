@@ -20,7 +20,6 @@ macos-titlebar-style = tabs
 quit-after-last-window-closed = true
 
 # Notifications
-notify-on-command-complete-timeout = 10
 
 # Shell
 command = /bin/zsh
