@@ -1,0 +1,5 @@
+# Override stow's built-in ignore-list for this package.
+# Stow's default list excludes ".gitignore", which would otherwise
+# prevent this package's global gitignore from being stowed.
+# Only the patterns below are ignored here.
+\.DS_Store
