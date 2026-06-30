@@ -43,6 +43,11 @@
       "type": "registry",
     },
   },
+  "languages": {
+    "Python": {
+      "language_servers": ["pyright", "!basedpyright", "..."]
+    }
+  },
   "terminal": {
     "toolbar": {
       "breadcrumbs": false

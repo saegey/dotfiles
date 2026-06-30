@@ -1,0 +1,9 @@
+# Hunk currently accepts a single configured theme, so this uses the same
+# dark Catppuccin flavor as Ghostty's primary theme.
+mode = "auto"
+theme = "catppuccin-frappe"
+line_numbers = true
+wrap_lines = false
+hunk_headers = true
+agent_notes = false
+transparent_background = true

@@ -43,8 +43,6 @@ export FZF_DEFAULT_OPTS=" \
 
 [[ -f "${HOME}/.fzf.zsh" ]] && source ~/.fzf.zsh
 
-eval "$(direnv hook zsh)"
-
 function set_title() {
   local title="$1"
   echo -ne "\033]0;$title\007"
