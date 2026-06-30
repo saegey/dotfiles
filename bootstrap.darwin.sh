@@ -9,6 +9,7 @@ cd ~/bin
 
 # set up brew & pip
 ${SCRIPTDIR}/bootstrap.brew.sh
+${SCRIPTDIR}/bootstrap.gh.sh
 
 # bootstrap fzf (install completions, etc)
 # ${SCRIPTDIR}/bootstrap.fzf.sh
@@ -18,4 +19,3 @@ ${SCRIPTDIR}/bootstrap.brew.sh
 
 # installing fonts
 # $SCRIPTDIR/bootstrap.darwin.fonts.sh
-

@@ -1,0 +1,2 @@
+# GitHub CLI extensions
+dlvhdr/gh-dash
