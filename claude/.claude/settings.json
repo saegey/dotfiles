@@ -125,5 +125,7 @@
       "command": "npx",
       "type": "stdio"
     }
-  }
+  },
+  "agentPushNotifEnabled": true,
+  "inputNeededNotifEnabled": true
 }
