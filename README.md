@@ -10,6 +10,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `git/` | `~/.gitconfig`, `~/.gitignore` | Git config with 1Password SSH signing |
 | `starship/` | `~/.config/starship.toml` | Starship prompt |
 | `ghostty/` | `~/.config/ghostty/config` | Ghostty terminal |
+| `gh-dash/` | `~/.config/gh-dash/config.yml` | gh-dash config |
 | `hunk/` | `~/.config/hunk/config.toml` | Hunk diff viewer |
 | `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
 | `ssh/` | `~/.ssh/config` | SSH config with 1Password agent |
