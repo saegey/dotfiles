@@ -35,6 +35,16 @@ Machine-specific config that shouldn't be committed goes in:
 - `~/.zshrc.local` — sourced at the end of `.zshrc`
 - `~/.gitconfig.local` — included at the end of `.gitconfig`
 
+## Docker runtimes
+
+- OrbStack remains the default Docker context when it is already selected.
+- Colima is installed, but it does not start automatically.
+- Use `colima-start` to start Colima and switch Docker to the `colima` context.
+- `colima-start` defaults to `--cpu 4 --memory 8 --disk 100` unless you pass your own values.
+- Override the defaults with `COLIMA_CPU`, `COLIMA_MEMORY`, or `COLIMA_DISK` in `~/.zshrc.local`.
+- Use `colima-stop` to stop Colima and switch Docker back to `orbstack` when that context exists.
+- Use `docker-orbstack`, `docker-colima`, or `docker-use <context>` for manual context switching.
+
 ## Notes
 
 - Git commits are signed via SSH using 1Password. Set `user.signingkey` in `~/.gitconfig.local`.
