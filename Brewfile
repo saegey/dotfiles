@@ -35,6 +35,8 @@ brew 'bat'
 brew 'fx'
 brew 'lsd'
 brew 'cloudflared'
+brew 'colima'
+brew 'docker'
 brew 'modem-dev/tap/hunk'
 
 # additional CLI tools
