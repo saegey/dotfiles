@@ -18,6 +18,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `npm/` | `~/.npmrc` | npm config |
 | `bash/` | `~/.bash_profile`, `~/.bashrc`, etc. | Bash config |
 | `claude/` | `~/.claude/settings.json` | Claude Code settings |
+| `supacode/` | `~/.supacode/settings.json` | Supacode global settings |
 
 ## Installation
 
@@ -34,6 +35,8 @@ cd ~/.dotfiles
 Machine-specific config that shouldn't be committed goes in:
 - `~/.zshrc.local` — sourced at the end of `.zshrc`
 - `~/.gitconfig.local` — included at the end of `.gitconfig`
+
+Supacode keeps both durable preferences and local workspace state under `~/.supacode/`. This repo only tracks `settings.json`; files like `repos/`, `sidebar.json`, and `layouts.json` are intentionally left unmanaged because they contain machine-specific repository paths and transient session state.
 
 ## Docker runtimes
 
