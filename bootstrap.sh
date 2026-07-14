@@ -16,7 +16,7 @@ SCRIPTDIR=$(cd $(dirname $0) && pwd)
 
 echo
 echo 'running bootstrap'
-$SCRIPTDIR/bootstrap.generic.sh $1
+"$SCRIPTDIR/bootstrap.generic.sh" "$@"
 
 cd $CURRDIR
 echo

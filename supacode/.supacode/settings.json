@@ -1,34 +1,156 @@
 {
-  "global": {
-    "agentPresenceBadgesEnabled": true,
-    "analyticsEnabled": true,
-    "appearanceMode": "dark",
-    "autoUpdateAgentIntegrationsEnabled": true,
-    "automatedActionPolicy": "cliOnly",
-    "confirmQuitMode": "always",
-    "copyIgnoredOnWorktreeCreate": false,
-    "copyUntrackedOnWorktreeCreate": false,
-    "crashReportsEnabled": true,
-    "defaultEditorID": "zed",
-    "deleteBranchOnDeleteWorktree": true,
-    "fetchOriginBeforeWorktreeCreation": true,
-    "githubIntegrationEnabled": true,
-    "globalScripts": [],
-    "hideSingleTabBar": false,
-    "inAppNotificationsEnabled": true,
-    "moveNotifiedWorktreeToTop": true,
-    "notificationSoundEnabled": true,
-    "promptForWorktreeCreation": true,
-    "pullRequestMergeStrategy": "merge",
-    "richAgentNotificationsEnabled": true,
-    "shortcutOverrides": {},
-    "systemNotificationsEnabled": true,
-    "terminalThemeSyncEnabled": false,
-    "terminateSessionsOnQuit": false,
-    "updateChannel": "stable",
-    "updatesAutomaticallyCheckForUpdates": true,
-    "updatesAutomaticallyDownloadUpdates": false
+  "global" : {
+    "agentPresenceBadgesEnabled" : true,
+    "analyticsEnabled" : true,
+    "appearanceMode" : "dark",
+    "autoUpdateAgentIntegrationsEnabled" : true,
+    "automatedActionPolicy" : "cliOnly",
+    "confirmQuitMode" : "always",
+    "copyIgnoredOnWorktreeCreate" : false,
+    "copyUntrackedOnWorktreeCreate" : false,
+    "crashReportsEnabled" : true,
+    "defaultEditorID" : "zed",
+    "deleteBranchOnDeleteWorktree" : true,
+    "fetchOriginBeforeWorktreeCreation" : true,
+    "githubIntegrationEnabled" : true,
+    "globalScripts" : [
+
+    ],
+    "hideSingleTabBar" : false,
+    "inAppNotificationsEnabled" : true,
+    "moveNotifiedWorktreeToTop" : true,
+    "muteNotificationsForActiveSurface" : true,
+    "notificationSound" : "hero",
+    "promptForWorktreeCreation" : true,
+    "pullRequestMergeStrategy" : "merge",
+    "richAgentNotificationsEnabled" : true,
+    "shortcutOverrides" : {
+
+    },
+    "systemNotificationsEnabled" : true,
+    "terminalThemeSyncEnabled" : false,
+    "terminateSessionsOnQuit" : false,
+    "updateChannel" : "stable",
+    "updatesAutomaticallyCheckForUpdates" : true,
+    "updatesAutomaticallyDownloadUpdates" : false
   },
-  "pinnedWorktreeIDs": [],
-  "remoteRepositoryRoots": []
+  "pinnedWorktreeIDs" : [
+
+  ],
+  "remoteRepositoryRoots" : [
+
+  ],
+  "repositories" : {
+    "\/Users\/adamsaegebarth\/.dotfiles\/" : {
+      "archiveScript" : "",
+      "deleteScript" : "",
+      "openActionID" : "auto",
+      "runScript" : "",
+      "scripts" : [
+
+      ],
+      "setupScript" : ""
+    },
+    "\/Users\/adamsaegebarth\/Projects\/djisim\/" : {
+      "archiveScript" : "",
+      "deleteScript" : "",
+      "openActionID" : "auto",
+      "runScript" : "",
+      "scripts" : [
+
+      ],
+      "setupScript" : ""
+    },
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-brinc-integration\/" : {
+      "archiveScript" : "",
+      "deleteScript" : "",
+      "openActionID" : "auto",
+      "runScript" : "",
+      "scripts" : [
+
+      ],
+      "setupScript" : ""
+    },
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-cloud\/" : {
+      "archiveScript" : "",
+      "copyIgnoredOnWorktreeCreate" : false,
+      "deleteScript" : ".\/scripts\/worktree-rm.sh --force \"$SUPACODE_WORKTREE_ID\"",
+      "openActionID" : "zed",
+      "runScript" : "make dev",
+      "scripts" : [
+        {
+          "command" : "make dev",
+          "id" : "226D91CF-8C1F-4728-B884-4FD3DCBE6C26",
+          "kind" : "run",
+          "name" : "Run"
+        },
+        {
+          "command" : "make shell\n",
+          "id" : "4C5ACB61-3D6D-4800-AA3E-C29BB5B413BE",
+          "kind" : "custom",
+          "name" : "shell"
+        },
+        {
+          "command" : "make deploy",
+          "id" : "134E671A-B843-47B4-86E6-4BE48B8DE5D2",
+          "kind" : "deploy",
+          "name" : "Deploy"
+        },
+        {
+          "command" : "make lint",
+          "id" : "2D015286-CC54-4812-A2AD-E538887203C4",
+          "kind" : "lint",
+          "name" : "Lint"
+        },
+        {
+          "command" : "make format",
+          "id" : "1A9E9008-9F10-4453-9AF6-4863CF39CE31",
+          "kind" : "format",
+          "name" : "Format"
+        },
+        {
+          "command" : "make test_fast",
+          "id" : "DEDECA96-C360-4F07-AF1C-E1A13CBC9A02",
+          "kind" : "test",
+          "name" : "Test"
+        },
+        {
+          "command" : "make seed_from_golden",
+          "id" : "8A4FC9CC-B32A-4393-B922-81EEA9C9ED01",
+          "kind" : "custom",
+          "name" : "seed-from-golden",
+          "tintColor" : "green"
+        }
+      ],
+      "setupScript" : "mise run setup"
+    },
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-coverage-planner\/" : {
+      "archiveScript" : "",
+      "deleteScript" : "",
+      "openActionID" : "auto",
+      "runScript" : "",
+      "scripts" : [
+
+      ],
+      "setupScript" : ""
+    },
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-msi-integration\/" : {
+      "archiveScript" : "",
+      "deleteScript" : "",
+      "openActionID" : "auto",
+      "runScript" : "",
+      "scripts" : [
+
+      ],
+      "setupScript" : ""
+    }
+  },
+  "repositoryRoots" : [
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-cloud\/",
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-msi-integration\/",
+    "\/Users\/adamsaegebarth\/.dotfiles\/",
+    "\/Users\/adamsaegebarth\/Projects\/djisim\/",
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-brinc-integration\/",
+    "\/Users\/adamsaegebarth\/Projects\/skysafe-coverage-planner\/"
+  ]
 }

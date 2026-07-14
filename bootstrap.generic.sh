@@ -13,7 +13,7 @@ echo 'symlinking dotfiles with stow'
 mkdir -p ~/.config ~/.ssh
 
 cd ${SCRIPTDIR}
-stow --target="${HOME}" zsh bash git npm starship ghostty hunk gh-dash zed tools ssh claude supacode
+stow "$@" --target="${HOME}" zsh bash git npm starship ghostty hunk gh-dash zed tools ssh claude supacode
 
 # run os-specific setup
 echo

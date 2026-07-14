@@ -8,8 +8,8 @@ cd ~/bin
 # [[ ! -L rebrew ]] && ln -s ${SCRIPTDIR}/bin/rebrew
 
 # set up brew & pip
-${SCRIPTDIR}/bootstrap.brew.sh
-${SCRIPTDIR}/bootstrap.gh.sh
+bash "${SCRIPTDIR}/bootstrap.brew.sh"
+bash "${SCRIPTDIR}/bootstrap.gh.sh"
 
 # bootstrap fzf (install completions, etc)
 # ${SCRIPTDIR}/bootstrap.fzf.sh
