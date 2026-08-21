@@ -18,7 +18,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `npm/` | `~/.npmrc` | npm config |
 | `bash/` | `~/.bash_profile`, `~/.bashrc`, etc. | Bash config |
 | `claude/` | `~/.claude/settings.json` | Claude Code settings |
-| `supacode/` | `~/.supacode/settings.json` | Supacode global settings |
+| `supacode/settings.shared.json` | applied to `~/.supacode/settings.json` | Shared Supacode global preferences |
 
 ## Installation
 
@@ -36,7 +36,19 @@ Machine-specific config that shouldn't be committed goes in:
 - `~/.zshrc.local` — sourced at the end of `.zshrc`
 - `~/.gitconfig.local` — included at the end of `.gitconfig`
 
-Supacode keeps both durable preferences and local workspace state under `~/.supacode/`. This repo only tracks `settings.json`; files like `repos/`, `sidebar.json`, and `layouts.json` are intentionally left unmanaged because they contain machine-specific repository paths and transient session state.
+Supacode's live settings file (`~/.supacode/settings.json`) is deliberately local and is never symlinked or committed. It stores repository roots, per-repository scripts, pinned worktrees, and other machine-specific state.
+
+`supacode/settings.shared.json` is the explicitly allowlisted set of shared global preferences. Apply it after installing Supacode (or after cloning these dotfiles):
+
+```sh
+./scripts/sync_supacode_settings.sh apply
+```
+
+To update the committed preferences from this machine, run the following and review the diff before committing. The script exports only keys already present in the shared template, so newly introduced local fields cannot be committed accidentally.
+
+```sh
+./scripts/sync_supacode_settings.sh export
+```
 
 ## Docker runtimes
 

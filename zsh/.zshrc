@@ -135,4 +135,56 @@ preexec() {
   fi
 }
 
+workon() {
+  local ticket="${1:?usage: workon <TICKET-ID>}"
+
+  local prefix="${BRANCH_PREFIX:-adam}"
+  local branch="${prefix}/${ticket}"
+
+  local wt_id
+  wt_id=$(supacode repo worktree-new --branch "$branch" --pin) || {
+    echo "error: failed to create worktree" >&2
+    return 1
+  }
+
+  supacode worktree focus -w "$wt_id"
+
+  supacode tab new -w "$wt_id" -i "claude \"Lets work on ticket ${ticket} and come up with a plan to implement. Lets discuss.\""
+}
+
+review() {
+  local ticket="${1:?usage: review <TICKET-ID>}"
+
+  local pr_info
+  pr_info=$(gh pr list --search "$ticket" --json number,headRefName --jq '.[0]') || {
+    echo "error: could not find PR for $ticket" >&2
+    return 1
+  }
+
+  local pr_number=$(echo "$pr_info" | jq -r '.number')
+  local branch=$(echo "$pr_info" | jq -r '.headRefName')
+
+  if [[ -z "$pr_number" || "$pr_number" == "null" ]]; then
+    echo "error: no PR found for $ticket" >&2
+    return 1
+  fi
+
+  git fetch origin "$branch" || {
+    echo "error: could not fetch branch $branch" >&2
+    return 1
+  }
+
+  local wt_id
+  wt_id=$(supacode repo worktree-new --branch "$branch" --base "origin/${branch}" --upstream "origin/${branch}" --pin) || {
+    echo "error: failed to create worktree" >&2
+    return 1
+  }
+
+  supacode worktree focus -w "$wt_id"
+
+  supacode tab new -w "$wt_id" -i "claude --model opus \"/pr-review ${pr_number}\""
+}
+
 eval "$(mise activate zsh)"
+
+fpath+=~/.zfunc; autoload -Uz compinit; compinit
