@@ -125,6 +125,5 @@
       "command": "npx",
       "type": "stdio"
     }
-  },
-  "model": "sonnet"
+  }
 }
