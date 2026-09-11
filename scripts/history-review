@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# Export recent Atuin history in chronological order for offline review.
+set -euo pipefail
+
+usage() {
+  printf 'Usage: %s [limit] [output-path]\n' "${0##*/}" >&2
+  printf 'Writes TSV to standard output unless output-path is provided.\n' >&2
+}
+
+limit="${1:-500}"
+output_path="${2:--}"
+
+if (( $# > 2 )) || ! [[ "$limit" =~ ^[1-9][0-9]*$ ]]; then
+  usage
+  exit 2
+fi
+
+command -v atuin >/dev/null || {
+  printf 'Atuin is required; run the repository bootstrap first.\n' >&2
+  exit 1
+}
+
+format='{time}\t{exit}\t{duration}\t{host}\t{directory}\t{command}'
+arguments=(history list --limit "$limit" --reverse --format "$format")
+
+if [[ "$output_path" == '-' ]]; then
+  exec atuin "${arguments[@]}"
+fi
+
+umask 077
+atuin "${arguments[@]}" >"$output_path"
+chmod 600 "$output_path"
+printf 'Wrote chronological Atuin history to %s\n' "$output_path" >&2

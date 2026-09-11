@@ -1,12 +1,12 @@
-HISTFILE=~/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
+HISTFILE="${ZDOTDIR:-$HOME}/.zsh_history"
+HISTSIZE=100000
+SAVEHIST=100000
 
-setopt APPEND_HISTORY
+# SHARE_HISTORY is the single writer/reader mode for the native history file.
+# Do not combine it with APPEND_HISTORY or INC_APPEND_HISTORY.
 setopt SHARE_HISTORY
-setopt INC_APPEND_HISTORY
-setopt HIST_IGNORE_DUPS
-setopt HIST_FIND_NO_DUPS
+setopt HIST_EXPIRE_DUPS_FIRST
+setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_SAVE_NO_DUPS
 setopt HIST_REDUCE_BLANKS
 setopt HIST_IGNORE_SPACE
@@ -15,8 +15,6 @@ setopt EXTENDED_HISTORY
 setopt AUTO_CD
 setopt INTERACTIVE_COMMENTS
 setopt NO_BEEP
-
-bindkey "^R" history-incremental-search-backward
 
 # completion (native)
 autoload -Uz compinit
@@ -188,3 +186,7 @@ review() {
 eval "$(mise activate zsh)"
 
 fpath+=~/.zfunc; autoload -Uz compinit; compinit
+
+if (( $+commands[atuin] )); then
+  eval "$(atuin init zsh)"
+fi
