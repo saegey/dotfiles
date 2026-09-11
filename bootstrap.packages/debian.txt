@@ -6,3 +6,4 @@ zoxide
 sudo
 lsd
 direnv
+atuin

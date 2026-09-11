@@ -6,7 +6,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 
 | Directory | Target | Description |
 |-----------|--------|-------------|
-| `zsh/` | `~/.zshrc`, `~/.zshrc.darwin`, etc. | Zsh config with starship, zoxide, direnv, mise |
+| `zsh/` | `~/.zshrc`, `~/.zshrc.darwin`, etc. | Zsh config with starship, zoxide, direnv, mise, Atuin |
 | `git/` | `~/.gitconfig`, `~/.gitignore` | Git config with 1Password SSH signing |
 | `starship/` | `~/.config/starship.toml` | Starship prompt |
 | `ghostty/` | `~/.config/ghostty/config` | Ghostty terminal |
@@ -29,6 +29,31 @@ cd ~/.dotfiles
 ```
 
 `bootstrap.sh` uses `stow` to symlink everything into `$HOME`, then runs the OS-specific setup script (`bootstrap.darwin.sh` on macOS).
+
+## Shell history
+
+Zsh keeps a shared, extended history file at `~/.zsh_history`; Atuin also records
+commands with their timestamp, directory, host, exit status, and duration. The
+bootstrap installs Atuin and `.zshrc` initializes it when available. On a new
+machine, import the existing Zsh history once:
+
+```sh
+atuin import zsh
+```
+
+To share encrypted Atuin history across machines, complete Atuin's optional account
+setup with `atuin account login` (or `atuin account register`) and run `atuin sync`.
+
+`scripts/history-review` writes a chronological, tab-separated export suitable for
+reviewing repeated commands and command sequences. It writes to standard output by
+default, so choose an appropriately protected destination:
+
+```sh
+./scripts/history-review 500 > recent-atuin-history.tsv
+```
+
+The columns are timestamp, exit status, duration, host, directory, and command. Pass
+an output path as the second argument to have the script create a mode-0600 file.
 
 ## Local overrides
 
