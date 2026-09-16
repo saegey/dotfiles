@@ -45,7 +45,86 @@ alias grep='grep --color=auto'
 alias c='codex'
 alias m='mise'
 alias g='git'
+alias gc='git commit'
+alias gp='git push'
+alias gco='git checkout'
+alias gf='git fetch'
+alias gpl='git pull'
 alias v='zed .'
+
+# A curated, discoverable reminder for shell aliases and helper functions.
+shortcuts() {
+  print -r -- 'Shell shortcuts:'
+  print -r -- '  c             codex'
+  print -r -- '  m             mise'
+  print -r -- '  v             zed .'
+  print -r -- '  g             git'
+  print -r -- '  gc/gp         git commit / push'
+  print -r -- '  gco           git checkout <branch>'
+  print -r -- '  gf/gpl        git fetch / pull'
+  print -r -- ''
+  print -r -- 'Helpers:'
+  print -r -- '  tfplan [args] page a Terraform plan with color and retained output'
+  print -r -- '  gmove <name>  move the last unpushed main commit to a new branch'
+  print -r -- ''
+  print -r -- 'Also: git aliases lists Git-config aliases; alias lists shell aliases.'
+}
+
+# Page Terraform plans with color intact. -X keeps the output visible after
+# quitting the pager; all Terraform plan flags can be passed to this function.
+tfplan() {
+  setopt localoptions pipefail
+  command terraform plan "$@" | command less -R -X
+}
+
+# Move the last unpushed commit from main onto a new branch. This intentionally
+# refuses dirty worktrees and commits already present on main's upstream.
+gmove() {
+  local new_branch="$1"
+  local current_branch
+
+  if (( $# != 1 )) || [[ -z "$new_branch" ]]; then
+    echo "usage: gmove <new-branch>" >&2
+    return 2
+  fi
+
+  current_branch="$(command git branch --show-current)" || return
+  if [[ "$current_branch" != "main" ]]; then
+    echo "gmove must be run from main (currently on ${current_branch:-detached HEAD})" >&2
+    return 1
+  fi
+
+  if [[ -n "$(command git status --porcelain)" ]]; then
+    echo "gmove requires a clean worktree" >&2
+    return 1
+  fi
+
+  command git check-ref-format --branch "$new_branch" >/dev/null || {
+    echo "invalid branch name: $new_branch" >&2
+    return 2
+  }
+  if command git show-ref --verify --quiet "refs/heads/$new_branch"; then
+    echo "branch already exists: $new_branch" >&2
+    return 1
+  fi
+
+  command git rev-parse --verify --quiet HEAD^ >/dev/null || {
+    echo "main has no commit to move" >&2
+    return 1
+  }
+  if command git rev-parse --verify --quiet '@{upstream}' >/dev/null &&
+    command git merge-base --is-ancestor HEAD '@{upstream}'; then
+    echo "HEAD is already pushed to main's upstream; revert it on main instead" >&2
+    return 1
+  fi
+
+  command git branch -- "$new_branch" HEAD || return
+  if ! command git reset --keep HEAD^; then
+    echo "created $new_branch but left main unchanged" >&2
+    return 1
+  fi
+  command git switch "$new_branch"
+}
 
 docker-use() {
   local context="$1"
