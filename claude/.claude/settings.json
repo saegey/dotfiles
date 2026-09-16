@@ -138,4 +138,6 @@
   "preferredNotifChannel": "ghostty",
   "tui": "fullscreen",
   "model": "sonnet"
+  "agentPushNotifEnabled": true,
+  "inputNeededNotifEnabled": true
 }
