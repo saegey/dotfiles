@@ -52,6 +52,24 @@ alias gf='git fetch'
 alias gpl='git pull'
 alias v='zed .'
 
+# A curated, discoverable reminder for shell aliases and helper functions.
+shortcuts() {
+  print -r -- 'Shell shortcuts:'
+  print -r -- '  c             codex'
+  print -r -- '  m             mise'
+  print -r -- '  v             zed .'
+  print -r -- '  g             git'
+  print -r -- '  gc/gp         git commit / push'
+  print -r -- '  gco           git checkout <branch>'
+  print -r -- '  gf/gpl        git fetch / pull'
+  print -r -- ''
+  print -r -- 'Helpers:'
+  print -r -- '  tfplan [args] page a Terraform plan with color and retained output'
+  print -r -- '  gmove <name>  move the last unpushed main commit to a new branch'
+  print -r -- ''
+  print -r -- 'Also: git aliases lists Git-config aliases; alias lists shell aliases.'
+}
+
 # Page Terraform plans with color intact. -X keeps the output visible after
 # quitting the pager; all Terraform plan flags can be passed to this function.
 tfplan() {

@@ -141,6 +141,7 @@
 
 [push]
 	default = simple
+	autoSetupRemote = true
 	followTags = true
 
 [submodule]
