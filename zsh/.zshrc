@@ -23,7 +23,9 @@ zstyle ':completion:*:*:make:*' tag-order 'targets'
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 
-eval "$(starship init zsh)"
+if (( $+commands[starship] )); then
+  eval "$(starship init zsh)"
+fi
 
 setopt prompt_sp
 
@@ -175,7 +177,9 @@ alias docker-colima='docker-use colima'
 [ -x "$(which bat)" ] && alias cat='bat'
 [ -x "$(which lsd)" ] && alias tree='lsd --tree'
 
-eval "$(zoxide init zsh)"
+if (( $+commands[zoxide] )); then
+  eval "$(zoxide init zsh)"
+fi
 
 export UNAME_S=$(uname | tr '[[:upper:]]' '[[:lower:]]')
 [[ -s "${HOME}/.zshrc.${UNAME_S}" ]] && source "${HOME}/.zshrc.${UNAME_S}"
@@ -262,9 +266,9 @@ review() {
   supacode tab new -w "$wt_id" -i "claude --model opus \"/pr-review ${pr_number}\""
 }
 
-eval "$(mise activate zsh)"
-
-fpath+=~/.zfunc; autoload -Uz compinit; compinit
+if (( $+commands[mise] )); then
+  eval "$(mise activate zsh)"
+fi
 
 if (( $+commands[atuin] )); then
   eval "$(atuin init zsh)"

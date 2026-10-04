@@ -118,8 +118,8 @@
 	changed = green
 	untracked = cyan
 
-[commit]
-	gpgsign = true
+# Signing is configured per machine in ~/.gitconfig.local.
+# Linux and macOS use different 1Password signer paths.
 
 [fetch]
 	prune = true
@@ -172,9 +172,6 @@
 
 [gpg]
 	format = ssh
-
-[gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 
 [include]
 	path = ~/.gitconfig.local

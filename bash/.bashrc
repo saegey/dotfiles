@@ -13,8 +13,10 @@ function update_title() {
 }
 
 PROMPT_COMMAND='update_title'
-trap 'update_title' DEBUG
-update_title
+if [[ $- == *i* ]]; then
+  trap 'update_title' DEBUG
+  update_title
+fi
 
 [ -x "$(which lsd)" ] && alias ls='lsd'
 alias l='ls -alh'
@@ -67,5 +69,11 @@ colima-stop() {
 alias docker-orbstack='docker-use orbstack'
 alias docker-colima='docker-use colima'
 
-export LINUX_DISTRO=$(cat /etc/os-release | grep -E '^ID' | sed -e 's/^ID=//g' | sed -n '1p')
+if [[ -r /etc/os-release ]]; then
+  export LINUX_DISTRO=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+fi
 [[ -s "${HOME}/.bashrc.${LINUX_DISTRO}" ]] && source "${HOME}/.bashrc.${LINUX_DISTRO}"
+[[ -s "${HOME}/.bashrc.local" ]] && source "${HOME}/.bashrc.local"
+if [[ $- == *i* ]] && command -v atuin >/dev/null 2>&1; then
+  eval "$(atuin init bash)"
+fi

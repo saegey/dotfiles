@@ -3,4 +3,6 @@ if [ -f ~/.bashrc ]; then
   . ~/.bashrc
 fi
 
-eval "$(starship init bash)"
+if command -v starship >/dev/null 2>&1; then
+  eval "$(starship init bash)"
+fi
