@@ -1,0 +1,94 @@
+#!/bin/bash
+
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: orbstack-cleanup [--if-below GB] [--volumes]
+
+Prune unused OrbStack Docker images and build cache.
+
+Options:
+  --if-below GB  Run only when the startup disk has less than GB available.
+  --volumes      Also prune unused named and anonymous volumes after confirmation.
+  -h, --help     Show this help.
+
+Examples:
+  ~/.dotfiles/scripts/orbstack-cleanup
+  ~/.dotfiles/scripts/orbstack-cleanup --if-below 20
+  ~/.dotfiles/scripts/orbstack-cleanup --if-below 20 --volumes
+USAGE
+}
+
+threshold_gb=""
+include_volumes=0
+
+while (($#)); do
+  case "$1" in
+    --if-below)
+      if (($# < 2)) || [[ ! "$2" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+        echo "error: --if-below requires a positive number of GB" >&2
+        exit 2
+      fi
+      threshold_gb="$2"
+      shift 2
+      ;;
+    --volumes)
+      include_volumes=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "error: docker CLI not found" >&2
+  exit 1
+fi
+
+if ! docker context inspect orbstack >/dev/null 2>&1; then
+  echo "error: Docker context 'orbstack' not found" >&2
+  exit 1
+fi
+
+disk_available_kb=$(df -Pk / | awk 'NR == 2 {print $4}')
+if [[ ! "$disk_available_kb" =~ ^[0-9]+$ ]]; then
+  echo "error: couldn't determine available space on /" >&2
+  exit 1
+fi
+available_gb=$(awk -v kb="$disk_available_kb" 'BEGIN {printf "%.1f", kb / 1024 / 1024}')
+echo "Available on /: ${available_gb} GB"
+
+if [[ -n "$threshold_gb" ]] && ! awk -v available="$available_gb" -v limit="$threshold_gb" 'BEGIN {exit !(available < limit)}'; then
+  echo "Above threshold (${threshold_gb} GB); nothing to clean."
+  exit 0
+fi
+
+# Explicit context prevents cleanup from affecting Colima or another Docker runtime.
+docker --context orbstack system df
+
+echo "Pruning unused OrbStack images, stopped containers, networks, and build cache..."
+docker --context orbstack system prune --all --force
+
+if ((include_volumes)); then
+  echo
+  echo "Unused volumes may contain persistent application or database data."
+  read -r -p "Prune unused named and anonymous OrbStack volumes? Type 'yes' to continue: " answer
+  if [[ "$answer" == "yes" ]]; then
+    docker --context orbstack volume prune --all --force
+  else
+    echo "Skipping volume cleanup."
+  fi
+fi
+
+echo
+docker --context orbstack system df
+echo "Available on / after cleanup: $(df -h / | awk 'NR == 2 {print $4}')"

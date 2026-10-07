@@ -273,3 +273,4 @@ fi
 if (( $+commands[atuin] )); then
   eval "$(atuin init zsh)"
 fi
+export PATH="$HOME/development/flutter/bin:$PATH"
