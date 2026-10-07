@@ -28,14 +28,23 @@ cd ~/.dotfiles
 ./bootstrap.sh
 ```
 
-`bootstrap.sh` uses `stow` to symlink everything into `$HOME`, then runs the OS-specific setup script (`bootstrap.darwin.sh` on macOS).
+`./bootstrap.sh` previews the safe starter set (`zsh`, `npm`, `hunk`, `gh-dash`) without changing anything. `./bootstrap.sh --apply` links only those packages. GNU Stow must already be installed; any conflicting existing file aborts the entire operation. Bootstrap does **not** install software, change your login shell, or run the macOS/Homebrew or Linux package scripts.
+
+Select additional packages explicitly after reviewing their configs and existing files:
+
+```sh
+./bootstrap.sh --packages git ssh         # preview
+./bootstrap.sh --apply --packages git ssh # link only if conflict-free
+```
+
+On Omarchy, keep its `~/.bashrc`, Ghostty config, and other existing configurations unless you intentionally migrate them. In particular, do **not** Stow `bash` or `ghostty` over Omarchy's files. If staying on Bash, integrate `atuin init bash` into the existing `~/.bashrc` rather than replacing it. For Zsh, install it separately, link the `zsh` package, test with `zsh`, then optionally change the login shell. Git and SSH packages require review of local credentials and agents before opting in.
 
 ## Shell history
 
 Zsh keeps a shared, extended history file at `~/.zsh_history`; Atuin also records
-commands with their timestamp, directory, host, exit status, and duration. The
-bootstrap installs Atuin and `.zshrc` initializes it when available. On a new
-machine, import the existing Zsh history once:
+commands with their timestamp, directory, host, exit status, and duration.
+`.zshrc` initializes Atuin when it is installed. Install Atuin separately. On a
+new machine, import the existing Zsh history once (if there is any):
 
 ```sh
 atuin import zsh
@@ -59,7 +68,9 @@ an output path as the second argument to have the script create a mode-0600 file
 
 Machine-specific config that shouldn't be committed goes in:
 - `~/.zshrc.local` — sourced at the end of `.zshrc`
-- `~/.gitconfig.local` — included at the end of `.gitconfig`
+- `~/.gitconfig.local` — included at the end of `.gitconfig`; set `commit.gpgsign = true` and `gpg.ssh.program` to the OS-specific signer only where available
+- `~/.ssh/config.local` — included first in `.ssh/config`; put OS-specific `IdentityAgent` and optional OrbStack/Colima includes there
+- `~/.bashrc.local` — sourced by the shared Bash config
 
 Supacode's live settings file (`~/.supacode/settings.json`) is deliberately local and is never symlinked or committed. It stores repository roots, per-repository scripts, pinned worktrees, and other machine-specific state.
 
@@ -87,7 +98,7 @@ To update the committed preferences from this machine, run the following and rev
 
 ## Notes
 
-- Git commits are signed via SSH using 1Password. Set `user.signingkey` in `~/.gitconfig.local`.
+- Git SSH signing is opt-in per machine: set `user.signingkey`, `commit.gpgsign` and the OS-specific `gpg.ssh.program` in `~/.gitconfig.local`. On macOS the signer is `/Applications/1Password.app/Contents/MacOS/op-ssh-sign`; Linux installations must use their own installed path.
 - `~/.zshrc.local` is a good place for machine-specific PATH entries (gcloud, postgresql, etc.).
 
 ## License
