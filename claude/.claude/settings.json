@@ -78,6 +78,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "^(startup|resume|clear|compact|fork)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/saegey/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "Stop": [
@@ -113,6 +123,10 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/saegey/.claude/statusline-command.sh"
+  },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
     "warp@claude-code-warp": true
@@ -125,6 +139,10 @@
       }
     }
   },
+  "tui": "fullscreen",
+  "preferredNotifChannel": "ghostty",
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
   "mcpServers": {
     "fusion360": {
       "args": [
@@ -135,9 +153,39 @@
       "type": "stdio"
     }
   },
-  "preferredNotifChannel": "ghostty",
-  "tui": "fullscreen",
+  "autoMode": {
+    "environment": [
+      "### Org-wide",
+      "**Organization**: Public-Vinyl-Radio (GitHub org hosting this repo's remote)",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: PUBLIC \u2014 Public-Vinyl-Radio/groovenet (github.com:Public-Vinyl-Radio/groovenet.git) is a public repository; any push there is publishing",
+      "**Internal sharing / snippet hosting**: None configured \u2014 treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: 1Password CLI (`op`) used in shell history; CI secrets referenced by name only: CODECOV_TOKEN, GITHUB_TOKEN, RELEASE_PLEASE_TOKEN",
+      "**Default / protected branches**: main (default); rulesets active: `protect main`, `protect semver tags`, `tag ruleset` \u2014 treat main and semver tags as protected even though no classic branch-protection rule is listed",
+      "**CI/CD deploy targets**: ghcr.io/public-vinyl-radio/* (docker-publish.yml); deploy via `just deploy vX.Y.Z` / `just deploy-rc`; deploy scripts present at my-collection-search/scripts/deploy-prod.sh and deploy-prod-localbuild.sh",
+      "**Network posture**: None configured",
+      "**Host containment**: None configured \u2014 assume Claude Code runs on an ordinary developer machine with open internet",
+      "**Source control**: The trusted repo (Public-Vinyl-Radio/groovenet) and its origin remote only (no additional orgs configured)",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured \u2014 public npm registry and ghcr.io/public-vinyl-radio/* are the only package/image destinations seen",
+      "**Sensitive data locations & audiences**: .env, .env.*, .envrc and similar gitignored files (DB credentials, OPENAI_API_KEY, APPLE_MUSIC_PRIVATE_KEY, DISCOGS_USER_TOKEN, YOUTUBE_API_KEY, RESTIC_PASSWORD, B2_ACCOUNT_KEY, POSTHOG_KEY); AuthKey* files; CI secrets CODECOV_TOKEN/GITHUB_TOKEN/RELEASE_PLEASE_TOKEN; share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace/host/container with `prod` or `production` as a whole word/segment \u2014 includes my-collection-search/scripts/deploy-prod.sh, deploy-prod-localbuild.sh, docker-compose.prod.yml, and `just deploy` production targets",
+      "**Protected deployment namespaces / environments**: production deploys via `just deploy` / docker-compose.prod.yml; None further configured \u2014 fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (GrooveNet vinyl collection manager \u2014 Next.js/Postgres app plus Python services)",
+      "**Trusted repo**: Public-Vinyl-Radio/groovenet (this working directory, worktree at /Users/saegey/.herdr/worktrees/dj-playlist/bug-459-database-backup-fix) and its origin remote \u2014 PUBLIC, so only this repo's own work belongs there; confidential/secret material is never cleared into it regardless of visibility",
+      "**Org-specific CLIs**: `groovenet` CLI (talks to user's collection over HTTP, reads config from ~/.groovenet/config.json \u2014 no credentials belong in commands); `just` as the command surface (prefer over raw `docker compose`); `gh` for GitHub issue/PR work in this repo",
+      "routine under my-collection-search/, download-worker/, essentia-api/, ga-service/, fingerprint-service/, mcp-server/, packages/groovenet-client/, packages/groovenet-cli/ prefixes (per-service CLAUDE.md docs apply)"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(groovenet albums download:*) in this repo \u2014 queues real background downloads, confirm before running in bulk",
+      "Bash(just deploy:*) and Bash(just deploy-rc:*) \u2014 triggers real production/release-candidate deploys"
+    ]
+  },
   "model": "sonnet"
-  "agentPushNotifEnabled": true,
-  "inputNeededNotifEnabled": true
 }

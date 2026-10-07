@@ -51,6 +51,9 @@ else
   # Opt in to Bash, SSH, Git, tools, and Ghostty only after reviewing
   # each machine's existing config. In particular, keep Omarchy's defaults.
   packages=(zsh npm hunk gh-dash)
+  if [[ $(uname -s) == Darwin ]]; then
+    packages+=(aerospace hammerspoon)
+  fi
 fi
 
 for package in "${packages[@]}"; do
