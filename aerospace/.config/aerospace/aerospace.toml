@@ -1,0 +1,97 @@
+# AeroSpace: Option is the window manager modifier, leaving Command to apps.
+# Use one native macOS Desktop; switch AeroSpace workspaces with Option+1..9.
+# Reference: https://nikitabobko.github.io/AeroSpace/guide
+config-version = 2
+start-at-login = true
+auto-reload-config = true
+
+default-root-container-layout = 'tiles'
+default-root-container-orientation = 'auto'
+on-focused-monitor-changed = []
+
+gaps.inner.horizontal = 10
+gaps.inner.vertical = 10
+gaps.outer.left = 10
+gaps.outer.bottom = 10
+gaps.outer.top = 10
+gaps.outer.right = 10
+
+[mode.main.binding]
+alt-h = 'focus left'
+alt-j = 'focus down'
+alt-k = 'focus up'
+alt-l = 'focus right'
+
+alt-shift-h = 'move left'
+alt-shift-j = 'move down'
+alt-shift-k = 'move up'
+alt-shift-l = 'move right'
+
+alt-1 = 'workspace 1'
+alt-2 = 'workspace 2'
+alt-3 = 'workspace 3'
+alt-4 = 'workspace 4'
+alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
+alt-7 = 'workspace 7'
+alt-8 = 'workspace 8'
+alt-9 = 'workspace 9'
+alt-keypad1 = 'workspace 1'
+alt-keypad2 = 'workspace 2'
+alt-keypad3 = 'workspace 3'
+alt-keypad4 = 'workspace 4'
+alt-keypad5 = 'workspace 5'
+alt-keypad6 = 'workspace 6'
+alt-keypad7 = 'workspace 7'
+alt-keypad8 = 'workspace 8'
+alt-keypad9 = 'workspace 9'
+
+alt-shift-1 = 'move-node-to-workspace 1'
+alt-shift-2 = 'move-node-to-workspace 2'
+alt-shift-3 = 'move-node-to-workspace 3'
+alt-shift-4 = 'move-node-to-workspace 4'
+alt-shift-5 = 'move-node-to-workspace 5'
+alt-shift-6 = 'move-node-to-workspace 6'
+alt-shift-7 = 'move-node-to-workspace 7'
+alt-shift-8 = 'move-node-to-workspace 8'
+alt-shift-9 = 'move-node-to-workspace 9'
+alt-shift-keypad1 = 'move-node-to-workspace 1'
+alt-shift-keypad2 = 'move-node-to-workspace 2'
+alt-shift-keypad3 = 'move-node-to-workspace 3'
+alt-shift-keypad4 = 'move-node-to-workspace 4'
+alt-shift-keypad5 = 'move-node-to-workspace 5'
+alt-shift-keypad6 = 'move-node-to-workspace 6'
+alt-shift-keypad7 = 'move-node-to-workspace 7'
+alt-shift-keypad8 = 'move-node-to-workspace 8'
+alt-shift-keypad9 = 'move-node-to-workspace 9'
+
+# Command (Super) + Option: move the focused window and follow it.
+cmd-alt-1 = 'move-node-to-workspace --focus-follows-window 1'
+cmd-alt-2 = 'move-node-to-workspace --focus-follows-window 2'
+cmd-alt-3 = 'move-node-to-workspace --focus-follows-window 3'
+cmd-alt-4 = 'move-node-to-workspace --focus-follows-window 4'
+cmd-alt-5 = 'move-node-to-workspace --focus-follows-window 5'
+cmd-alt-6 = 'move-node-to-workspace --focus-follows-window 6'
+cmd-alt-7 = 'move-node-to-workspace --focus-follows-window 7'
+cmd-alt-8 = 'move-node-to-workspace --focus-follows-window 8'
+cmd-alt-9 = 'move-node-to-workspace --focus-follows-window 9'
+cmd-alt-keypad1 = 'move-node-to-workspace --focus-follows-window 1'
+cmd-alt-keypad2 = 'move-node-to-workspace --focus-follows-window 2'
+cmd-alt-keypad3 = 'move-node-to-workspace --focus-follows-window 3'
+cmd-alt-keypad4 = 'move-node-to-workspace --focus-follows-window 4'
+cmd-alt-keypad5 = 'move-node-to-workspace --focus-follows-window 5'
+cmd-alt-keypad6 = 'move-node-to-workspace --focus-follows-window 6'
+cmd-alt-keypad7 = 'move-node-to-workspace --focus-follows-window 7'
+cmd-alt-keypad8 = 'move-node-to-workspace --focus-follows-window 8'
+cmd-alt-keypad9 = 'move-node-to-workspace --focus-follows-window 9'
+
+alt-tab = 'workspace-back-and-forth'
+alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
+alt-slash = 'layout tiles horizontal vertical'
+alt-comma = 'layout accordion horizontal vertical'
+alt-f = 'fullscreen'
+alt-shift-space = 'layout floating tiling'
+alt-minus = 'resize smart -50'
+alt-equal = 'resize smart +50'
+alt-shift-b = 'balance-sizes'
+alt-shift-r = 'reload-config'

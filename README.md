@@ -10,6 +10,8 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `git/` | `~/.gitconfig`, `~/.gitignore` | Git config with 1Password SSH signing |
 | `starship/` | `~/.config/starship.toml` | Starship prompt |
 | `ghostty/` | `~/.config/ghostty/config` | Ghostty terminal |
+| `aerospace/` | `~/.config/aerospace/aerospace.toml` | Keyboard-driven tiling on macOS |
+| `hammerspoon/` | `~/.hammerspoon/init.lua` | Center a lone AeroSpace window |
 | `gh-dash/` | `~/.config/gh-dash/config.yml` | gh-dash config |
 | `hunk/` | `~/.config/hunk/config.toml` | Hunk diff viewer |
 | `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
@@ -35,6 +37,7 @@ Select additional packages explicitly after reviewing their configs and existing
 ```sh
 ./bootstrap.sh --packages git ssh         # preview
 ./bootstrap.sh --apply --packages git ssh # link only if conflict-free
+./bootstrap.sh --apply --packages aerospace hammerspoon # macOS only
 ```
 
 On Omarchy, keep its `~/.bashrc`, Ghostty config, and other existing configurations unless you intentionally migrate them. In particular, do **not** Stow `bash` or `ghostty` over Omarchy's files. If staying on Bash, integrate `atuin init bash` into the existing `~/.bashrc` rather than replacing it. For Zsh, install it separately, link the `zsh` package, test with `zsh`, then optionally change the login shell. Git and SSH packages require review of local credentials and agents before opting in.

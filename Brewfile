@@ -4,6 +4,7 @@ cask_args appdir: '/Applications'
 # taps
 tap 'cloudflare/cloudflare', trusted: true
 tap 'modem-dev/tap', trusted: true
+tap 'nikitabobko/tap', trusted: true
 tap 'schpet/tap', trusted: true
 
 # install packages
@@ -70,6 +71,7 @@ brew 'zsh'
 # cask 'google-chrome'
 # cask '1password'
 cask '1password-cli'
+cask 'nikitabobko/tap/aerospace'
 cask 'basictex'
 cask 'codex'
 cask 'ghostty'
