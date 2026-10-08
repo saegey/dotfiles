@@ -1,5 +1,6 @@
--- AeroSpace fills a workspace with its only tiled window. Keep that window
--- square and centered, then return it to normal tiling when another opens.
+-- Center a lone tiled window, then return it to normal tiling when another
+-- opens. Leave Ghostty to AeroSpace because Hammerspoon frame changes can
+-- make its separate windows overlap.
 local aerospace = '/opt/homebrew/bin/aerospace'
 local settingsKey = 'aerospaceCenteredWindowIds'
 local centered = hs.settings.get(settingsKey) or {}
@@ -7,6 +8,74 @@ require('hs.ipc')
 
 hs.window.animationDuration = 0
 hs.autoLaunch(true)
+
+hs.loadSpoon('RoundedCorners')
+spoon.RoundedCorners.allScreens = true
+spoon.RoundedCorners.radius = 18
+spoon.RoundedCorners:start()
+
+local aerospaceShortcuts = [[
+AEROSPACE SHORTCUTS
+
+Focus windows
+⌥ H / J / K / L     left / down / up / right
+
+Move windows
+⌥ ⇧ H / J / K / L   move left / down / up / right
+
+Arrange windows
+⌥ /                 cycle tile orientation
+⌥ ,                 cycle accordion orientation
+⌥ V                 stack focused window with the one to its right
+⌥ ⇧ Space           toggle floating / tiling
+⌥ ⇧ B               balance window sizes
+
+Window controls
+⌥ F                 AeroSpace fullscreen (keeps outer gaps)
+⌘ ⌥ F               fullscreen
+⌥ - / =             resize smaller / larger
+
+Workspaces
+⌥ 1–9               switch workspace
+⌥ ⇧ 1–9             move window to workspace
+⌥ Tab               previous workspace
+
+Press Escape or ⌘ ⌥ / to dismiss]]
+
+local shortcutsAlert
+local shortcutsEscapeHotkey
+local shortcutsStyle = {
+  fillColor = { red = 30 / 255, green = 30 / 255, blue = 46 / 255, alpha = 0.98 }, -- Catppuccin Mocha Base
+  strokeColor = { red = 203 / 255, green = 166 / 255, blue = 247 / 255, alpha = 1 }, -- Mauve
+  strokeWidth = 2,
+  textColor = { red = 205 / 255, green = 214 / 255, blue = 244 / 255, alpha = 1 }, -- Text
+  textFont = 'JetBrains Mono',
+  textSize = 17,
+  radius = 18,
+  padding = 24,
+  fadeInDuration = 0.12,
+  fadeOutDuration = 0.12,
+}
+
+local function dismissShortcuts()
+  if shortcutsAlert then
+    hs.alert.closeSpecific(shortcutsAlert)
+    shortcutsAlert = nil
+  end
+  if shortcutsEscapeHotkey then
+    shortcutsEscapeHotkey:delete()
+    shortcutsEscapeHotkey = nil
+  end
+end
+
+hs.hotkey.bind({'cmd', 'alt'}, '/', function()
+  if shortcutsAlert then
+    dismissShortcuts()
+  else
+    shortcutsAlert = hs.alert.show(aerospaceShortcuts, shortcutsStyle, nil, '')
+    shortcutsEscapeHotkey = hs.hotkey.bind({}, 'escape', dismissShortcuts)
+  end
+end)
 
 local function run(command)
   local output, ok = hs.execute(aerospace .. ' ' .. command, false)
@@ -67,6 +136,12 @@ local function centerWindow(id)
   end
 end
 
+local function isGhostty(id)
+  local window = hs.window.get(tonumber(id))
+  local app = window and window:application()
+  return app and app:bundleID() == 'com.mitchellh.ghostty'
+end
+
 local function updateLayout()
   if not hs.accessibilityState() then return end
   local visible = visibleWorkspaces()
@@ -81,7 +156,12 @@ local function updateLayout()
     if #windows == 1 and visible[workspace] then
       local only = windows[1]
       if not only.fullscreen then
-        if centered[only.id] then
+        if isGhostty(only.id) then
+          if centered[only.id] then
+            run('layout tiling --window-id ' .. only.id)
+            centered[only.id] = nil
+          end
+        elseif centered[only.id] then
           centerWindow(only.id)
         elseif only.layout ~= 'floating' and hs.window.get(tonumber(only.id)) then
           if run('layout floating --window-id ' .. only.id) then

@@ -11,7 +11,9 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `starship/` | `~/.config/starship.toml` | Starship prompt |
 | `ghostty/` | `~/.config/ghostty/config` | Ghostty terminal |
 | `aerospace/` | `~/.config/aerospace/aerospace.toml` | Keyboard-driven tiling on macOS |
-| `hammerspoon/` | `~/.hammerspoon/init.lua` | Center a lone AeroSpace window |
+| `hammerspoon/` | `~/.hammerspoon/` | AeroSpace helpers, shortcut popup, and rounded screen corners |
+| `smb-archive/` | macOS LaunchAgent and `~/.local/bin/townhaus-archive-mount` | Reconnect the Townhaus SMB archive when Beelink is reachable |
+| `ghzinga/` | `~/.config/ghzinga/config.toml` | Ghzinga UI with Catppuccin theme |
 | `gh-dash/` | `~/.config/gh-dash/config.yml` | gh-dash config |
 | `hunk/` | `~/.config/hunk/config.toml` | Hunk diff viewer |
 | `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
@@ -20,6 +22,8 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `npm/` | `~/.npmrc` | npm config |
 | `bash/` | `~/.bash_profile`, `~/.bashrc`, etc. | Bash config |
 | `claude/` | `~/.claude/settings.json` | Claude Code settings |
+| `ttt/` | `~/.config/ttt/themes/catppuccin-mocha.json` | Catppuccin Mocha theme for TTT Editor |
+| `btop/` | `~/.config/btop/themes/catppuccin_mocha.theme` | Catppuccin Mocha theme for btop |
 | `supacode/settings.shared.json` | applied to `~/.supacode/settings.json` | Shared Supacode global preferences |
 
 ## Installation
@@ -38,7 +42,42 @@ Select additional packages explicitly after reviewing their configs and existing
 ./bootstrap.sh --packages git ssh         # preview
 ./bootstrap.sh --apply --packages git ssh # link only if conflict-free
 ./bootstrap.sh --apply --packages aerospace hammerspoon # macOS only
+./bootstrap.sh --apply --packages smb-archive       # optional macOS SMB auto-mount
+./bootstrap.sh --apply --packages ttt                # TTT theme
+./bootstrap.sh --apply --packages btop               # btop theme
+./bootstrap.sh --apply --packages ghzinga            # Ghzinga theme
 ```
+
+The TTT package links the Catppuccin Mocha theme without replacing your
+`settings.json`. Select `catppuccin-mocha` in **View → Switch Theme**, or set
+`"theme": "catppuccin-mocha"` in `~/.config/ttt/settings.json` to make it the
+default.
+
+The btop package links only the theme file, preserving your existing
+`btop.conf`. In btop, press `Esc`, choose **Options**, then select
+`catppuccin_mocha` as the color theme.
+
+## Townhaus archive mount (macOS)
+
+The optional `smb-archive` Stow package checks Beelink's LAN address
+`192.168.2.151`, then its Tailscale address `100.117.118.15`, on SMB port 445
+at login and every two minutes. It mounts the first reachable address as the
+`archive` share. Connect once in Finder and choose to save the `saegey` SMB
+password in Keychain; the LaunchAgent can then reconnect without storing a
+password in dotfiles. The first mount may prompt for credentials.
+
+Install and load it with:
+
+```sh
+./bootstrap.sh --apply --packages smb-archive
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.saegey.townhaus-archive.plist"
+```
+
+The agent is reloaded automatically at the next login. To stop it, run
+`launchctl bootout "gui/$(id -u)/com.saegey.townhaus-archive"`. iOS Files does not
+automatically mount SMB shares from dotfiles; connect to
+`smb://192.168.2.151/archive` at home or `smb://100.117.118.15/archive` over
+Tailscale from **Browse → … → Connect to Server**, then save the server in Files.
 
 On Omarchy, keep its `~/.bashrc`, Ghostty config, and other existing configurations unless you intentionally migrate them. In particular, do **not** Stow `bash` or `ghostty` over Omarchy's files. If staying on Bash, integrate `atuin init bash` into the existing `~/.bashrc` rather than replacing it. For Zsh, install it separately, link the `zsh` package, test with `zsh`, then optionally change the login shell. Git and SSH packages require review of local credentials and agents before opting in.
 
