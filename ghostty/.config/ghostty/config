@@ -14,10 +14,10 @@ background-blur-radius = 20
 # Window
 window-padding-x = 12
 window-padding-y = 10
-# macOS native tabs appear as separate windows to AeroSpace; disabling
-# decorations also disables tabs in Ghostty on macOS.
-window-decoration = none
+# Hide the titlebar while keeping macOS window borders and rounded corners.
+window-decoration = true
 window-inherit-working-directory = true
+macos-titlebar-style = hidden
 macos-dock-drop-behavior = new-window
 quit-after-last-window-closed = true
 

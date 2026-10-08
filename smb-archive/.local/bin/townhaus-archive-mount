@@ -1,0 +1,39 @@
+#!/bin/bash
+set -euo pipefail
+
+servers=(
+  "${TOWNHAUS_ARCHIVE_LAN_SERVER:-192.168.2.151}"
+  "${TOWNHAUS_ARCHIVE_TAILSCALE_IP:-100.117.118.15}"
+)
+mountpoint="/Volumes/archive"
+log() {
+  printf '%s %s\n' "$(/bin/date '+%Y-%m-%d %H:%M:%S')" "$*" >&2
+}
+
+server=""
+for candidate in "${servers[@]}"; do
+  if /usr/bin/nc -z -w 2 "$candidate" 445 >/dev/null 2>&1; then
+    server="$candidate"
+    break
+  fi
+done
+
+# Don't trigger an interactive SMB credential prompt until Beelink is reachable.
+if [[ -z "$server" ]]; then
+  log "Waiting: neither ${servers[0]} nor ${servers[1]} is reachable on SMB port 445."
+  exit 0
+fi
+
+if /sbin/mount | /usr/bin/grep -Fq " on ${mountpoint} (smbfs,"; then
+  log "Already mounted at ${mountpoint}."
+  exit 0
+fi
+
+share_url="smb://${server}/archive"
+log "Mounting ${share_url}. macOS may prompt for credentials if they are not saved in Keychain."
+if /usr/bin/osascript -e "mount volume \"${share_url}\"" >/dev/null; then
+  log "Mount request completed."
+else
+  log "Mount request failed; check the server name, SMB credentials, and share permissions."
+  exit 1
+fi

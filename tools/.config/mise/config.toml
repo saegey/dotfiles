@@ -5,3 +5,4 @@ terraform = "1.6.6"
 uv = "latest"
 "npm:@anthropic-ai/claude-code" = { version = "latest", allow_builds = true }
 "npm:@openai/codex" = "latest"
+rust = "latest"

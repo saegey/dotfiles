@@ -58,8 +58,8 @@ fi
 
 for package in "${packages[@]}"; do
   case "$package" in
-    zsh|bash|git|npm|starship|ghostty|hunk|gh-dash|zed|tools|ssh|claude) ;;
-    aerospace|hammerspoon)
+    zsh|bash|git|npm|starship|ghostty|hunk|gh-dash|zed|tools|ssh|claude|ttt|btop|ghzinga) ;;
+    aerospace|hammerspoon|smb-archive)
       if [[ $(uname -s) != Darwin ]]; then
         echo "$package is only available on macOS" >&2
         exit 2
