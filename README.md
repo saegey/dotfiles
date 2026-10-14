@@ -81,14 +81,14 @@ Tailscale from **Browse → … → Connect to Server**, then save the server in
 
 On Omarchy, keep its `~/.bashrc`, Ghostty config, and other existing configurations unless you intentionally migrate them. In particular, do **not** Stow `bash` or `ghostty` over Omarchy's files. If staying on Bash, integrate `atuin init bash` into the existing `~/.bashrc` rather than replacing it. For Zsh, install it separately, link the `zsh` package, test with `zsh`, then optionally change the login shell. Git and SSH packages require review of local credentials and agents before opting in.
 
-The shared SSH config pins Home Assistant (`homeassistant` / `192.168.2.91`) to the local machine's `~/.1password/agent.sock`, so base terminals and local or remote HerdR sessions use the agent on the machine where the command runs. Linux 1Password uses this socket path directly. On macOS, create the standard-path symlink once after enabling the 1Password SSH Agent:
+The shared SSH config uses `~/.1password/agent.sock` for Home Assistant (`homeassistant` / `192.168.2.91`) when no forwarded agent is active. `~/.ssh/config.local` is included at top level before the shared hosts, so its conditional forwarded-agent rule can select an active forwarded agent for remote sessions. Linux 1Password uses this socket path directly. On macOS, create the standard-path symlink once after enabling the 1Password SSH Agent:
 
 ```sh
 mkdir -p ~/.1password
 ln -s "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ~/.1password/agent.sock
 ```
 
-If `~/.1password/agent.sock` already exists, check it with `ls -l` before creating or changing it. The 1Password agent may ask you to authorize SSH clients on the machine running the command; its authorization settings control how often it asks. Keep forwarded-agent rules for other hosts if needed, but exclude Home Assistant from them.
+If `~/.1password/agent.sock` already exists, check it with `ls -l` before creating or changing it. The 1Password agent may ask you to authorize SSH clients on the machine running the command; its authorization settings control how often it asks. Forward the agent only to trusted hosts. The machine-local config can prefer a live forwarded agent for Home Assistant while retaining the local socket as a fallback.
 
 ## Shell history
 
@@ -120,7 +120,7 @@ an output path as the second argument to have the script create a mode-0600 file
 Machine-specific config that shouldn't be committed goes in:
 - `~/.zshrc.local` — sourced at the end of `.zshrc`
 - `~/.gitconfig.local` — included at the end of `.gitconfig`; set `commit.gpgsign = true` and `gpg.ssh.program` to the OS-specific signer only where available
-- `~/.ssh/config.local` — included after the shared Home Assistant agent selection; put other machine-specific SSH settings and optional OrbStack/Colima includes there. Do not route `homeassistant` or `192.168.2.91` through a forwarded agent.
+- `~/.ssh/config.local` — included before shared host entries; put machine-specific SSH settings and optional OrbStack/Colima includes there. Conditional `Match` rules can select a forwarded agent when one is available.
 - `~/.bashrc.local` — sourced by the shared Bash config
 
 Supacode's live settings file (`~/.supacode/settings.json`) is deliberately local and is never symlinked or committed. It stores repository roots, per-repository scripts, pinned worktrees, and other machine-specific state.
