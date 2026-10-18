@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# Repo-scoped task picker for Herdr. Bound to a key via [[keys.command]]
+# (see ~/.config/herdr/config.toml). Looks up the focused pane's repo in
+# ~/.config/herdr/repo-scripts.json (keyed by the *main* checkout root, so the
+# same entry applies across all its worktrees), falls back to auto-discovering
+# Makefile/package.json targets when nothing is configured, lets you pick one
+# with fzf, and runs it in the repo root.
+set -euo pipefail
+
+CONFIG_FILE="${HERDR_REPO_SCRIPTS_CONFIG:-$HOME/.config/herdr/repo-scripts.json}"
+cwd="${HERDR_ACTIVE_PANE_CWD:-$PWD}"
+
+die() {
+  echo "$1"
+  read -r -p "press enter to close" _
+  exit 1
+}
+
+command -v jq >/dev/null 2>&1 || die "herdr-repo-tasks needs jq (brew install jq)"
+command -v fzf >/dev/null 2>&1 || die "herdr-repo-tasks needs fzf (brew install fzf)"
+
+# Prints target names (one per line) defined directly in $1, then recurses into
+# any `include`/`-include`/`sinclude` files it names (relative to $1's own
+# directory), so a thin root Makefile that just includes mk/*.mk still yields
+# its real targets. No cycle map (bash 3.2 on macOS has no associative
+# arrays) — the depth cap bounds recursion, and the caller's `sort -u` dedupes
+# anything pulled in twice.
+collect_makefile_targets() {
+  local file="$1" depth="${2:-0}"
+  [[ "$depth" -le 6 ]] || return 0
+  [[ -f "$file" ]] || return 0
+
+  local base_dir
+  base_dir="$(cd "$(dirname "$file")" 2>/dev/null && pwd)" || return 0
+
+  grep -E '^[a-zA-Z0-9][a-zA-Z0-9_-]*:([^=]|$)' "$file" 2>/dev/null | cut -d: -f1 || true
+
+  local include_lines
+  include_lines="$(grep -E '^[[:space:]]*-?s?include[[:space:]]+' "$file" 2>/dev/null)" || true
+  [[ -z "$include_lines" ]] && return 0
+
+  local line rest pattern expanded
+  while IFS= read -r line; do
+    rest="${line#*include}"
+    for pattern in $rest; do
+      for expanded in "$base_dir"/$pattern; do
+        [[ -f "$expanded" ]] && collect_makefile_targets "$expanded" "$((depth + 1))"
+      done
+    done
+  done <<<"$include_lines"
+}
+
+repo_root=""
+if git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  common_dir="$(git -C "$cwd" rev-parse --git-common-dir)"
+  case "$common_dir" in
+    /*) ;;
+    *) common_dir="$cwd/$common_dir" ;;
+  esac
+  repo_root="$(cd "$(dirname "$common_dir")" && pwd)"
+fi
+
+label="${repo_root:-$cwd}"
+
+commands_json="[]"
+if [[ -n "$repo_root" && -f "$CONFIG_FILE" ]]; then
+  commands_json="$(jq --arg root "$repo_root" '.[$root] // []' "$CONFIG_FILE")"
+fi
+
+if [[ -n "$repo_root" && "$(jq 'length' <<<"$commands_json")" -eq 0 ]]; then
+  tsv=""
+
+  if [[ -f "$repo_root/Makefile" ]]; then
+    makefile_targets="$(collect_makefile_targets "$repo_root/Makefile" | sort -u)" || true
+    if [[ -n "$makefile_targets" ]]; then
+      tsv+="$(awk '{printf "make %s\tmake %s\n", $0, $0}' <<<"$makefile_targets")"$'\n'
+    fi
+  fi
+
+  if [[ -f "$repo_root/package.json" ]]; then
+    npm_scripts="$(
+      jq -r '(.scripts // {}) | keys[]' "$repo_root/package.json" 2>/dev/null
+    )" || true
+    if [[ -n "$npm_scripts" ]]; then
+      tsv+="$(awk '{printf "npm run %s\tnpm run %s\n", $0, $0}' <<<"$npm_scripts")"$'\n'
+    fi
+  fi
+
+  if [[ -n "${tsv// /}" ]]; then
+    commands_json="$(jq -R -s '
+      split("\n") | map(select(length > 0) | split("\t") | {name: .[0], command: .[1]})
+    ' <<<"$tsv")"
+  fi
+fi
+
+if [[ "$(jq 'length' <<<"$commands_json")" -eq 0 ]]; then
+  die "No scripts configured or discoverable for: $label"
+fi
+
+selected_name="$(jq -r '.[].name' <<<"$commands_json" | fzf --prompt="${label} > " --height=~40% --layout=reverse --preview-window=hidden --preview='')"
+[[ -z "$selected_name" ]] && exit 0
+
+selected_cmd="$(jq -r --arg name "$selected_name" 'map(select(.name == $name)) | .[0].command' <<<"$commands_json")"
+
+echo "\$ $selected_cmd"
+echo "---"
+( cd "$label" && eval "$selected_cmd" )
+status=$?
+echo "---"
+echo "[exit $status] press enter to close"
+read -r _

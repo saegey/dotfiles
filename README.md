@@ -15,6 +15,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `smb-archive/` | macOS LaunchAgent and `~/.local/bin/townhaus-archive-mount` | Reconnect the Townhaus SMB archive when Beelink is reachable |
 | `ghzinga/` | `~/.config/ghzinga/config.toml` | Ghzinga UI with Catppuccin theme |
 | `gh-dash/` | `~/.config/gh-dash/config.yml` | gh-dash config |
+| `herdr/` | `~/.config/herdr/config.toml`, `~/.local/bin/herdr-repo-tasks` | Herdr config and repository task picker |
 | `hunk/` | `~/.config/hunk/config.toml` | Hunk diff viewer |
 | `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
 | `ssh/` | `~/.ssh/config` | SSH config with per-machine 1Password agent selection for Home Assistant |
@@ -114,6 +115,29 @@ default, so choose an appropriately protected destination:
 
 The columns are timestamp, exit status, duration, host, directory, and command. Pass
 an output path as the second argument to have the script create a mode-0600 file.
+
+## Herdr
+
+After installing Herdr, link its configuration and task picker explicitly:
+
+```sh
+./bootstrap.sh --apply --packages herdr
+```
+
+Herdr's `prefix+alt+p` shortcut opens `herdr-repo-tasks`, which uses jq and fzf
+to select repository tasks. Machine-specific task definitions live in
+`~/.config/herdr/repo-scripts.json`; otherwise it discovers Makefile targets and
+npm scripts.
+
+Install the Herdr command palette plugin after installing Herdr and the Brewfile
+dependencies (Rust/Cargo is required to build it):
+
+```sh
+herdr plugin install ramarivera/herdr-palette
+```
+
+`prefix+space` opens the palette. Update it with
+`herdr plugin update ramarivera.palette`.
 
 ## Local overrides
 
