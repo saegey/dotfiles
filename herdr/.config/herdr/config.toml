@@ -1,0 +1,33 @@
+onboarding = false
+
+[ui.toast]
+delivery = "terminal"
+
+[ui.sound]
+enabled = true
+
+[ui]
+status_indicators = "symbols"
+
+[theme]
+name = "catppuccin"
+auto_switch = false
+
+[keys]
+# Direct (no-prefix) chords, matching Ghostty/Safari-style muscle memory.
+# Requires Ghostty to stop intercepting cmd+t/cmd+1..9 itself first
+# (see ~/.config/ghostty/config).
+new_tab = "cmd+t"
+switch_tab = "cmd+1..9"
+
+[[keys.command]]
+key = "prefix+alt+p"
+type = "pane"
+description = "Repo tasks"
+command = "herdr-repo-tasks"
+
+[[keys.command]]
+key = "prefix+space"
+type = "plugin_action"
+description = "Herdr palette"
+command = "ramarivera.palette.open"
