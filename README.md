@@ -58,6 +58,21 @@ The btop package links only the theme file, preserving your existing
 `btop.conf`. In btop, press `Esc`, choose **Options**, then select
 `catppuccin_mocha` as the color theme.
 
+## Coding CLIs
+
+Codex and Claude Code use native binaries managed by the global mise config
+in `tools/.config/mise/config.toml`. After linking the `tools` package, install
+and update them with:
+
+```sh
+mise install codex claude
+mise upgrade codex claude
+```
+
+Claude's background updater is disabled in `claude/.claude/settings.json` so
+mise owns its version. Use mise for updates and avoid additional npm, pnpm,
+Homebrew, or standalone installations of these CLIs.
+
 ## Townhaus archive mount (macOS)
 
 The optional `smb-archive` Stow package checks Beelink's LAN address
