@@ -11,6 +11,8 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `starship/` | `~/.config/starship.toml` | Starship prompt |
 | `ghostty/` | `~/.config/ghostty/config` | Ghostty terminal |
 | `aerospace/` | `~/.config/aerospace/aerospace.toml` | Keyboard-driven tiling on macOS |
+| `dinky/` | `~/.config/dinky/dinky.toml` | Optional Dinky trial with native macOS Spaces |
+| `sketchybar/` | `~/.config/sketchybar/` | Catppuccin bar with Dinky workspaces and system status |
 | `hammerspoon/` | `~/.hammerspoon/` | AeroSpace helpers, shortcut popup, and rounded screen corners |
 | `smb-archive/` | macOS LaunchAgent and `~/.local/bin/townhaus-archive-mount` | Reconnect the Townhaus SMB archive when Beelink is reachable |
 | `ghzinga/` | `~/.config/ghzinga/config.toml` | Ghzinga UI with Catppuccin theme |
@@ -58,6 +60,83 @@ The btop package links only the theme file, preserving your existing
 `btop.conf`. In btop, press `Esc`, choose **Options**, then select
 `catppuccin_mocha` as the color theme.
 
+## Dinky trial (macOS)
+
+Install [Dinky](https://dinky.rodeo/) and link its config:
+
+```sh
+brew install --cask mikker/tap/dinky
+./bootstrap.sh --apply --packages dinky
+```
+
+Quit AeroSpace and JankyBorders before opening Dinky (`open -a dinky`), then
+grant Accessibility access when asked. Hammerspoon can stay running: its
+AeroSpace layout helper pauses while Dinky runs, and the Command-Option-/
+shortcut popup shows Dinky's bindings. Reload Hammerspoon after updating its
+config.
+
+This config keeps the Option-based focus, movement, workspace, fullscreen,
+resize and layout shortcuts, 20-point inner gaps, 10-point outer gaps (56 at
+the top for SketchyBar), and Catppuccin borders. Dinky
+creates nine native macOS Spaces for workspaces 1–9. Option-S cycles tiles,
+accordion and scrolling; Option-Shift-N moves the window to the next display
+and follows it. AeroSpace's Option-Shift-Tab command to move a whole workspace
+to another monitor has no binding here.
+
+Run `dinky doctor` to check the config and macOS settings. Turn off
+**Automatically rearrange Spaces based on most recent use** in System Settings
+→ Desktop & Dock → Mission Control so workspace numbers stay stable. Dinky
+also offers to turn off automatic Space switching when activating an app;
+that enables its faster Cmd-Tab Space switching.
+
+Dinky's login startup is off during the trial. To return to AeroSpace, quit
+Dinky, run `open -a AeroSpace`, and restart JankyBorders if desired. AeroSpace's
+config and login startup remain in place. Dinky restores the windows it
+managed on exit; additional native Spaces may remain if they contain windows.
+
+## SketchyBar (macOS)
+
+```sh
+brew install felixkratz/formulae/sketchybar media-control switchaudio-osx jq
+# If JetBrains Mono is not already installed:
+brew install --cask font-jetbrains-mono
+./bootstrap.sh --apply --packages sketchybar
+brew services start sketchybar
+```
+
+The Catppuccin Mocha bar uses JetBrains Mono and shows clickable Dinky workspaces
+1–9, the active app, Now Playing, network and Tailscale status, audio output,
+Homebrew updates, volume, and a clock. Battery status appears only when the Mac
+has a battery. Click volume to toggle mute, or the clock to open Calendar.
+
+- **NET:** active connection type (Wi-Fi, LAN, or VPN), or Offline when there is
+  no default route. Refreshes every 10 seconds; click to open Network settings.
+  This reports the local connection, not an external internet connectivity test.
+- **TS:** Tailscale connection status, with Exit when using an online exit node.
+  Refreshes every 15 seconds; click to open Tailscale. Uses the installed app's
+  CLI, so no second Tailscale installation is needed.
+- **OUT:** current audio output. Click to choose an available device; the current
+  output is marked with a check. Refreshes every 15 seconds and on volume changes.
+- **BREW:** number of outdated formulae and casks. Checks hourly and when clicked;
+  click to see package names and available versions. Uses Homebrew's local index,
+  refreshed by `brew update`, and never installs upgrades automatically.
+
+The center music item uses `media-control` to read macOS Now Playing from apps
+such as Music, Spotify, and supported browsers. It shows the title and artist,
+refreshes every five seconds, and toggles play/pause when clicked. It hides when
+no track metadata is available; apps playing audio without publishing Now Playing
+information cannot provide track titles.
+
+Dinky's workspace, focus, startup and display hooks update the bar. A 30-second
+fallback refresh handles Dinky being stopped or relaunched. Keep **Displays
+have separate Spaces** enabled, and set the native menu bar to automatically
+hide so it can be revealed at the screen edge without overlapping SketchyBar.
+The Dinky config reserves 56 points at the top for the 36-point floating bar.
+
+Reload changes with `sketchybar --reload`. Stop it with
+`brew services stop sketchybar`; if keeping Dinky without the bar, set
+`gaps.outer` back to `10` in `dinky/.config/dinky/dinky.toml`.
+
 ## Coding CLIs
 
 Codex and Claude Code use native binaries managed by the global mise config
@@ -72,6 +151,22 @@ mise upgrade codex claude
 Claude's background updater is disabled in `claude/.claude/settings.json` so
 mise owns its version. Use mise for updates and avoid additional npm, pnpm,
 Homebrew, or standalone installations of these CLIs.
+
+## Groovenet CLI
+
+The global mise config pins `@groovenet/cli` to an explicit version and exposes
+the `groovenet` command independently of Node's global npm packages.
+Its package-specific `allow_low_downloads` option permits installation despite
+the CLI's low npm download count.
+
+```sh
+mise install npm:@groovenet/cli
+groovenet --version
+mise upgrade --bump npm:@groovenet/cli # install the newest release and update the pin
+```
+
+Review and commit the version change in `tools/.config/mise/config.toml` after
+upgrading. Avoid also installing the CLI with `npm install -g`.
 
 ## Townhaus archive mount (macOS)
 
@@ -138,6 +233,10 @@ After installing Herdr, link its configuration and task picker explicitly:
 ```sh
 ./bootstrap.sh --apply --packages herdr
 ```
+
+Command+1–9 switches tabs. Control+Option+1–9 switches workspaces, and
+Control+Option+J/K focuses the next/previous agent in the sidebar.
+Command+[ hides or shows the Spaces and Agents sidebar completely.
 
 Herdr's `prefix+alt+p` shortcut opens `herdr-repo-tasks`, which uses jq and fzf
 to select repository tasks. Machine-specific task definitions live in

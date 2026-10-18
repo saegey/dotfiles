@@ -8,6 +8,7 @@ enabled = true
 
 [ui]
 status_indicators = "symbols"
+sidebar_collapsed_mode = "hidden"
 
 [theme]
 name = "catppuccin"
@@ -19,6 +20,12 @@ auto_switch = false
 # (see ~/.config/ghostty/config).
 new_tab = "cmd+t"
 switch_tab = "cmd+1..9"
+toggle_sidebar = ["prefix+b", "cmd+["]
+
+# Ctrl+Option navigates Herdr without conflicting with Dinky's Option shortcuts.
+switch_workspace = "ctrl+alt+1..9"
+next_agent = "ctrl+alt+j"
+previous_agent = "ctrl+alt+k"
 
 [[keys.command]]
 key = "prefix+alt+p"

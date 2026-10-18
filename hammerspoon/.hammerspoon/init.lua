@@ -72,7 +72,15 @@ hs.hotkey.bind({'cmd', 'alt'}, '/', function()
   if shortcutsAlert then
     dismissShortcuts()
   else
-    shortcutsAlert = hs.alert.show(aerospaceShortcuts, shortcutsStyle, nil, '')
+    local shortcuts = aerospaceShortcuts
+    if hs.application.get('com.brnbw.dinky') then
+      shortcuts = shortcuts:gsub('AEROSPACE SHORTCUTS', 'DINKY SHORTCUTS')
+        :gsub('AeroSpace fullscreen %(keeps outer gaps%)', 'Dinky fullscreen')
+        :gsub('Arrange windows\n', 'Arrange windows\n⌥ S                 cycle tiles / accordion / scrolling\n')
+        :gsub('⌥ Tab               previous workspace',
+          '⌥ Tab               previous workspace\n⌥ ⇧ N               move window to next display and follow')
+    end
+    shortcutsAlert = hs.alert.show(shortcuts, shortcutsStyle, nil, '')
     shortcutsEscapeHotkey = hs.hotkey.bind({}, 'escape', dismissShortcuts)
   end
 end)
@@ -143,6 +151,8 @@ local function isGhostty(id)
 end
 
 local function updateLayout()
+  -- Dinky owns window frames during its trial; keep only the screen decorations.
+  if hs.application.get('com.brnbw.dinky') then return end
   if not hs.accessibilityState() then return end
   local visible = visibleWorkspaces()
   local groups, liveIds = windowsByWorkspace()
