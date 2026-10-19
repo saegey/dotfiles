@@ -216,25 +216,54 @@ preexec() {
   fi
 }
 
+_require_herdr() {
+  if [[ "${HERDR_ENV:-}" != 1 ]]; then
+    echo "error: run this command inside a Herdr terminal" >&2
+    return 1
+  fi
+  local tool
+  for tool in herdr jq; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      echo "error: $tool is required" >&2
+      return 1
+    fi
+  done
+}
+
+_herdr_worktree_claude() {
+  local branch="$1" base="$2" prompt="$3"
+  shift 3
+  local -a worktree_args=(--cwd "$PWD" --branch "$branch" --focus)
+  [[ -n "$base" ]] && worktree_args+=(--base "$base")
+
+  local result pane_id
+  result=$(herdr worktree create "${worktree_args[@]}") || {
+    echo "error: failed to create Herdr worktree" >&2
+    return 1
+  }
+  pane_id=$(printf '%s\n' "$result" | jq -er '.result.root_pane.pane_id') || {
+    echo "error: Herdr did not return a worktree pane" >&2
+    return 1
+  }
+
+  herdr agent start "claude-$$-$RANDOM" --kind claude --pane "$pane_id" -- "$@" || return
+  herdr agent prompt "$pane_id" "$prompt"
+}
+
 workon() {
   local ticket="${1:?usage: workon <TICKET-ID>}"
+  _require_herdr || return
 
   local prefix="${BRANCH_PREFIX:-adam}"
   local branch="${prefix}/${ticket}"
 
-  local wt_id
-  wt_id=$(supacode repo worktree-new --branch "$branch" --pin) || {
-    echo "error: failed to create worktree" >&2
-    return 1
-  }
-
-  supacode worktree focus -w "$wt_id"
-
-  supacode tab new -w "$wt_id" -i "claude \"Lets work on ticket ${ticket} and come up with a plan to implement. Lets discuss.\""
+  _herdr_worktree_claude "$branch" "" \
+    "Lets work on ticket ${ticket} and come up with a plan to implement. Lets discuss."
 }
 
 review() {
   local ticket="${1:?usage: review <TICKET-ID>}"
+  _require_herdr || return
 
   local pr_info
   pr_info=$(gh pr list --search "$ticket" --json number,headRefName --jq '.[0]') || {
@@ -255,15 +284,8 @@ review() {
     return 1
   }
 
-  local wt_id
-  wt_id=$(supacode repo worktree-new --branch "$branch" --base "origin/${branch}" --upstream "origin/${branch}" --pin) || {
-    echo "error: failed to create worktree" >&2
-    return 1
-  }
-
-  supacode worktree focus -w "$wt_id"
-
-  supacode tab new -w "$wt_id" -i "claude --model opus \"/pr-review ${pr_number}\""
+  _herdr_worktree_claude "$branch" "origin/${branch}" \
+    "/pr-review ${pr_number}" --model opus
 }
 
 if (( $+commands[mise] )); then

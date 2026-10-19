@@ -2,6 +2,8 @@
 
 SCRIPTDIR=$(cd $(dirname $0) && pwd)
 
+bash "${SCRIPTDIR}/scripts/macos-defaults.sh"
+
 mkdir -p ~/bin
 cd ~/bin
 # [[ ! -L spotify ]] && ln -s ${SCRIPTDIR}/bin/spotify
