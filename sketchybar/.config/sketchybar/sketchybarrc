@@ -57,6 +57,15 @@ sketchybar --add item clock right \
   script="$plugin_dir/clock.sh" click_script="open -a Calendar" \
   --subscribe clock system_woke
 
+sketchybar --add item slack right \
+  --set slack drawing=off updates=on update_freq=5 \
+  icon=SLACK icon.drawing=on icon.color="$MAUVE" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon.padding_right=8 padding_right=8 label.color="$MAUVE" label.max_chars=8 \
+  label.padding_left=0 label.padding_right=0 label.align=center \
+  script="$plugin_dir/slack.sh" click_script="open -a Slack" \
+  --subscribe slack front_app_switched system_woke
+
 sketchybar --add item volume right \
   --set volume icon=VOL icon.drawing=on icon.color="$GREEN" \
   icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
