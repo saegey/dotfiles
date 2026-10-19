@@ -137,6 +137,25 @@ Reload changes with `sketchybar --reload`. Stop it with
 `brew services stop sketchybar`; if keeping Dinky without the bar, set
 `gaps.outer` back to `10` in `dinky/.config/dinky/dinky.toml`.
 
+## macOS preferences
+
+Hide desktop icons independently of the Desktop & Dock checkbox:
+
+```sh
+./scripts/macos-defaults.sh
+```
+
+This restarts Finder; files remain accessible in `~/Desktop`.
+`bootstrap.darwin.sh` also applies this preference. `bootstrap.sh` only links
+configs and does not apply system preferences.
+
+To show icons again:
+
+```sh
+defaults write com.apple.finder CreateDesktop -bool true
+killall Finder
+```
+
 ## Coding CLIs
 
 Codex and Claude Code use native binaries managed by the global mise config
@@ -253,6 +272,13 @@ herdr plugin install ramarivera/herdr-palette
 `prefix+space` opens the palette. Update it with
 `herdr plugin update ramarivera.palette`.
 
+The Zsh `workon <TICKET-ID>` and `review <TICKET-ID>` helpers run inside Herdr.
+They create and focus a worktree workspace, then start Claude in its root pane.
+`workon` uses `${BRANCH_PREFIX:-adam}/<TICKET-ID>` and asks for an implementation
+plan; `review` finds the ticket's PR with `gh`, fetches its branch, and runs
+Claude Opus with `/pr-review <PR-number>`. Both require `herdr` and `jq`;
+`review` also requires authenticated GitHub CLI access.
+
 ## Local overrides
 
 Machine-specific config that shouldn't be committed goes in:
@@ -260,6 +286,13 @@ Machine-specific config that shouldn't be committed goes in:
 - `~/.gitconfig.local` — included at the end of `.gitconfig`; set `commit.gpgsign = true` and `gpg.ssh.program` to the OS-specific signer only where available
 - `~/.ssh/config.local` — included before shared host entries; put machine-specific SSH settings and optional OrbStack/Colima includes there. Conditional `Match` rules can select a forwarded agent when one is available.
 - `~/.bashrc.local` — sourced by the shared Bash config
+
+GitHub account selection also belongs in `~/.ssh/config.local`. Set
+`IdentityAgent` to the machine's 1Password socket, with `IdentitiesOnly yes`
+and an `IdentityFile` pointing to the desired public key. Use `Host github.com`
+for the default account and a separate alias such as `github-saegey`
+(`HostName github.com`, `User git`) for personal repositories. Repositories
+whose remotes use that alias need the corresponding local host entry.
 
 Supacode's live settings file (`~/.supacode/settings.json`) is deliberately local and is never symlinked or committed. It stores repository roots, per-repository scripts, pinned worktrees, and other machine-specific state.
 
