@@ -1,0 +1,106 @@
+#!/bin/bash
+set -euo pipefail
+
+export CONFIG_DIR="${CONFIG_DIR:-$HOME/.config/sketchybar}"
+source "$CONFIG_DIR/plugins/env.sh"
+plugin_dir="$CONFIG_DIR/plugins"
+
+sketchybar --bar position=top height=36 margin=10 y_offset=6 \
+  color=0xee1e1e2e border_color="$SURFACE" border_width=1 \
+  corner_radius=12 blur_radius=20 shadow=on \
+  padding_left=8 padding_right=8 display=all topmost=off
+
+sketchybar --default icon.drawing=off \
+  label.font="JetBrains Mono:Medium:12.0" label.color="$TEXT" \
+  label.padding_left=8 label.padding_right=8 \
+  padding_left=2 padding_right=2 \
+  background.height=24 background.corner_radius=8
+
+sketchybar --add event dinky_workspace_change \
+  --add event dinky_focus_change
+
+sketchybar --add item brand left \
+  --set brand label=SAEGEY label.color="$MAUVE" \
+  label.font="JetBrains Mono:Medium:11.0" padding_right=6
+
+# These are Dinky workspace numbers, not macOS's transient native Space IDs.
+for workspace in {1..9}; do
+  sketchybar --add item "space.$workspace" left \
+    --set "space.$workspace" label="$workspace" width=dynamic \
+    label.width=28 label.align=center label.padding_left=0 label.padding_right=0 \
+    background.drawing=on background.color="$SURFACE" \
+    click_script="dinky workspace $workspace"
+done
+
+# One script updates all workspace indicators in a single batch.
+sketchybar --add item dinky_state left \
+  --set dinky_state drawing=off updates=on update_freq=30 \
+  script="$plugin_dir/workspaces.sh" \
+  --subscribe dinky_state dinky_workspace_change dinky_focus_change \
+  space_change space_windows_change display_change system_woke
+
+sketchybar --add item front_app left \
+  --set front_app label=Desktop label.max_chars=28 padding_left=12 update_freq=30 \
+  script="$plugin_dir/front-app.sh" \
+  --subscribe front_app front_app_switched dinky_focus_change system_woke
+
+sketchybar --add item media center \
+  --set media drawing=off updates=on update_freq=5 \
+  icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:11.0" icon.padding_left=8 \
+  icon.padding_right=0 label.max_chars=48 \
+  script="$plugin_dir/media.sh" \
+  --subscribe media mouse.clicked system_woke
+
+sketchybar --add item clock right \
+  --set clock update_freq=30 label.color="$LAVENDER" \
+  script="$plugin_dir/clock.sh" click_script="open -a Calendar" \
+  --subscribe clock system_woke
+
+sketchybar --add item volume right \
+  --set volume icon=VOL icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon.padding_right=0 update_freq=60 script="$plugin_dir/volume.sh" \
+  --subscribe volume volume_change mouse.clicked system_woke
+
+sketchybar --add item audio right \
+  --set audio icon=OUT icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon.padding_right=0 label.max_chars=18 update_freq=15 \
+  popup.align=right popup.height=30 popup.background.color="$BASE" \
+  popup.background.border_color="$SURFACE" popup.background.border_width=1 \
+  popup.background.corner_radius=8 \
+  script="$plugin_dir/audio.sh" \
+  --subscribe audio volume_change mouse.clicked mouse.exited.global system_woke
+
+sketchybar --add item network right \
+  --set network icon=NET icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon.padding_right=0 update_freq=10 script="$plugin_dir/network.sh" \
+  click_script="open 'x-apple.systempreferences:com.apple.Network-Settings.extension'" \
+  --subscribe network system_woke
+
+sketchybar --add item tailscale right \
+  --set tailscale icon=TS icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon.padding_right=0 update_freq=15 script="$plugin_dir/tailscale.sh" \
+  click_script="open -a Tailscale" \
+  --subscribe tailscale system_woke
+
+sketchybar --add item brew_updates right \
+  --set brew_updates icon=BREW icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon.padding_right=0 update_freq=3600 \
+  popup.align=right popup.height=30 popup.background.color="$BASE" \
+  popup.background.border_color="$SURFACE" popup.background.border_width=1 \
+  popup.background.corner_radius=8 \
+  script="$plugin_dir/brew-updates.sh" \
+  --subscribe brew_updates mouse.clicked mouse.exited.global system_woke
+
+sketchybar --add item battery right \
+  --set battery icon=BAT icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon.padding_right=0 update_freq=120 script="$plugin_dir/battery.sh" \
+  --subscribe battery power_source_change system_woke
+
+sketchybar --update
