@@ -137,6 +137,13 @@ fallback refresh handles Dinky being stopped or relaunched. Keep **Displays
 have separate Spaces** enabled, and set the native menu bar to automatically
 hide so it can be revealed at the screen edge without overlapping SketchyBar.
 The Dinky config reserves 56 points at the top for the 36-point floating bar.
+On notched laptop displays, the bar fits in the 24-point strip beside the
+camera housing. Workspaces and the active app stay on the left; shorter Now
+Playing text and status items stay on the right. The name label, date/time,
+volume, and audio-output widgets appear only on external displays, where the
+full 36-point bar and centered Now Playing item remain available. Display
+associations refresh automatically when docking or undocking. Dinky uses a
+10-point top gap on the built-in screen to reclaim the space below the notch.
 
 Reload changes with `sketchybar --reload`. Stop it with
 `brew services stop sketchybar`; if keeping Dinky without the bar, set

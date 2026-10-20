@@ -5,7 +5,9 @@ export CONFIG_DIR="${CONFIG_DIR:-$HOME/.config/sketchybar}"
 source "$CONFIG_DIR/plugins/env.sh"
 plugin_dir="$CONFIG_DIR/plugins"
 
-sketchybar --bar position=top height=36 margin=10 y_offset=6 \
+# Fit inside the notch-height strip on laptops; external bars stay full-height.
+sketchybar --bar position=top height=36 notch_display_height=24 \
+  margin=10 y_offset=6 notch_offset=0 notch_width=220 \
   color=0xee1e1e2e border_color="$SURFACE" border_width=1 \
   corner_radius=12 blur_radius=20 shadow=on \
   padding_left=8 padding_right=8 display=all topmost=off
@@ -112,4 +114,21 @@ sketchybar --add item battery right \
   icon.padding_right=0 update_freq=120 script="$plugin_dir/battery.sh" \
   --subscribe battery power_source_change system_woke
 
+# A separate media item keeps laptop text beside the notch, while external
+# monitors retain the full, centered Now Playing item.
+sketchybar --add item media.compact right \
+  --set media.compact drawing=off updates=on update_freq=5 \
+  icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=4 \
+  icon.padding_right=0 label.font="JetBrains Mono:Medium:11.0" label.max_chars=16 \
+  script="$plugin_dir/media.sh" \
+  --subscribe media.compact mouse.clicked system_woke
+
+sketchybar --add item display_layout left \
+  --set display_layout drawing=off updates=on update_freq=30 \
+  script="$plugin_dir/display-layout.sh" \
+  --subscribe display_layout display_change dinky_workspace_change system_woke
+
+# Set display associations before plugin updates can make items visible.
+"$plugin_dir/display-layout.sh"
 sketchybar --update
