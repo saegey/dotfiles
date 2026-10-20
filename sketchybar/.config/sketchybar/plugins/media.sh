@@ -1,9 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 source "${CONFIG_DIR:-$HOME/.config/sketchybar}/plugins/env.sh"
+item="${NAME:-media}"
 
 if ! command -v media-control >/dev/null 2>&1; then
-  sketchybar --set media drawing=off
+  sketchybar --set "$item" drawing=off
   exit 0
 fi
 
@@ -13,7 +14,7 @@ fi
 
 # System Now Playing follows the current media app, including supported browsers.
 if ! metadata=$(media-control get --no-artwork 2>/dev/null); then
-  sketchybar --set media drawing=off
+  sketchybar --set "$item" drawing=off
   exit 0
 fi
 
@@ -25,7 +26,7 @@ if ! label=$(printf '%s' "$metadata" | jq -er '
   | join(" — ")
   | gsub("[\r\n\t]"; " ")
 '); then
-  sketchybar --set media drawing=off
+  sketchybar --set "$item" drawing=off
   exit 0
 fi
 
@@ -36,4 +37,4 @@ if [[ $(printf '%s' "$metadata" | jq -r '.playing == true') == true ]]; then
   color="$GREEN"
 fi
 
-sketchybar --set media drawing=on icon="$icon" icon.color="$color" label="$label"
+sketchybar --set "$item" drawing=on icon="$icon" icon.color="$color" label="$label"

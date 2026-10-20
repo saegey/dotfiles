@@ -78,8 +78,8 @@ config.
 This config keeps the Option-based focus, movement, workspace, fullscreen,
 resize and layout shortcuts, 20-point inner gaps, 10-point outer gaps (56 at
 the top for SketchyBar), and Catppuccin borders. Dinky
-creates nine native macOS Spaces for workspaces 1–9. Option-S cycles tiles,
-accordion and scrolling; Option-Shift-N moves the window to the next display
+creates nine native macOS Spaces for workspaces 1–9. Option-S cycles tiles
+and scrolling; Option-Comma cycles accordion orientation. Option-Shift-N moves the window to the next display
 and follows it. AeroSpace's Option-Shift-Tab command to move a whole workspace
 to another monitor has no binding here.
 
@@ -112,6 +112,11 @@ has a battery. Click volume to toggle mute, or the clock to open Calendar.
 - **NET:** active connection type (Wi-Fi, LAN, or VPN), or Offline when there is
   no default route. Refreshes every 10 seconds; click to open Network settings.
   This reports the local connection, not an external internet connectivity test.
+- **SLACK:** mirrors the running Slack app's Dock badge, showing a count or an
+  unread dot. Hides when the badge clears or Slack is closed; refreshes every
+  five seconds and when switching apps. Click to open Slack. Requires Slack's
+  app-icon badge to be enabled, but no Slack API credentials. The count follows
+  Slack's notification settings rather than counting every unread message.
 - **TS:** Tailscale connection status, with Exit when using an online exit node.
   Refreshes every 15 seconds; click to open Tailscale. Uses the installed app's
   CLI, so no second Tailscale installation is needed.
@@ -132,6 +137,13 @@ fallback refresh handles Dinky being stopped or relaunched. Keep **Displays
 have separate Spaces** enabled, and set the native menu bar to automatically
 hide so it can be revealed at the screen edge without overlapping SketchyBar.
 The Dinky config reserves 56 points at the top for the 36-point floating bar.
+On notched laptop displays, the bar fits in the 24-point strip beside the
+camera housing. Workspaces and the active app stay on the left; shorter Now
+Playing text and status items stay on the right. The name label, date/time,
+volume, and audio-output widgets appear only on external displays, where the
+full 36-point bar and centered Now Playing item remain available. Display
+associations refresh automatically when docking or undocking. Dinky uses a
+10-point top gap on the built-in screen to reclaim the space below the notch.
 
 Reload changes with `sketchybar --reload`. Stop it with
 `brew services stop sketchybar`; if keeping Dinky without the bar, set
