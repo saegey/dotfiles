@@ -1,0 +1,427 @@
+#!/usr/bin/env python3
+"""Read-only worktree dashboard in a Herdr popup."""
+
+import argparse
+from concurrent.futures import ThreadPoolExecutor
+import curses
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import signal
+import subprocess
+import sys
+import tempfile
+import textwrap
+import time
+from urllib.parse import urlsplit
+
+
+TICKET = re.compile(r"(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]*-[0-9]+)(?![0-9])")
+ENV_KEYS = {"COMPOSE_PROJECT_NAME", "WEBAPP_PORT", "EXTERNAL_API_PORT",
+            "SKYCLOUD_BASE_URL", "SKYCLOUD_API_V1_BASE_URL"}
+
+
+def text(value):
+    return "".join(c if c.isprintable() or c == '\n' else ' ' for c in str(value or ''))
+
+
+def safe_url(value):
+    if not isinstance(value, str) or any(c.isspace() or not c.isprintable() for c in value):
+        return None
+    try:
+        parsed = urlsplit(value)
+        if parsed.scheme in ("http", "https") and parsed.hostname and not parsed.username and not parsed.password:
+            parsed.port  # Validate malformed port values.
+            return value
+    except ValueError:
+        pass
+    return None
+
+
+def run(args, directory=None, timeout=12):
+    return subprocess.run(args, cwd=directory, env=dict(os.environ, LINEAR_IGNORE_ENV_FILE="1"),
+                          capture_output=True, text=True, check=True, timeout=timeout).stdout.strip()
+
+
+def read_json(args, directory=None):
+    return json.loads(run(args, directory))
+
+
+def resolve_checkout(explicit=None, context=None):
+    context = context or {}
+    candidates = [explicit] if explicit else [os.environ.get("VISOR_CWD"),
+        context.get("focused_pane_cwd"), context.get("workspace_cwd")]
+    if not explicit and not context and not os.environ.get("VISOR_CWD"):
+        candidates.append(os.getcwd())
+    for directory in candidates:
+        if not isinstance(directory, str) or not directory:
+            continue
+        try:
+            return Path(run(["git", "rev-parse", "--show-toplevel"], directory)).resolve()
+        except (OSError, subprocess.SubprocessError):
+            pass
+    raise RuntimeError("No Git worktree found in this pane; open the visor from a repository terminal")
+
+
+def read_app_env(root):
+    """Parse only known URL/port keys as literals; never source a repository file."""
+    result = {}
+    try:
+        lines = (root / "docker/localdev/.env").read_text().splitlines()
+    except OSError:
+        return result
+    for line in lines:
+        match = re.match(r"^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=(.*)$", line)
+        if not match or match[1] not in ENV_KEYS:
+            continue
+        try:
+            parts = shlex.split(match[2], comments=True)
+            if len(parts) == 1:
+                result[match[1]] = parts[0]
+        except ValueError:
+            continue
+    return result
+
+
+def app_links(root, projects, conf_directory=None):
+    values = read_app_env(root)
+    links = []
+    def add(label, url):
+        url = safe_url(url)
+        if url and all(old["url"] != url for old in links):
+            links.append({"label": label, "url": url})
+    project = values.get("COMPOSE_PROJECT_NAME") or next((p["name"] for p in projects), "")
+    slug = project[len("localdev-"):] if project.startswith("localdev-") else project
+    if re.fullmatch(r"[a-z0-9][a-z0-9_-]*", slug):
+        conf = conf_directory or Path(os.environ.get("SKYSAFE_CADDY_CONFD",
+                                                      str(Path.home() / ".skysafe/proxy/conf.d")))
+        try:
+            snippet = (conf / (slug + ".caddy")).read_text()
+            urls = []
+            for line in snippet.splitlines():
+                if not line.strip().endswith("{"):
+                    continue
+                for address in line.strip()[:-1].split(","):
+                    address = address.strip()
+                    if re.fullmatch(r"(?:https?://)?[A-Za-z0-9._-]+\.localhost(?::[0-9]+)?", address):
+                        # Caddy site addresses without a scheme use automatic HTTPS.
+                        urls.append(address if "://" in address else "https://" + address)
+            for url in sorted(set(urls), key=lambda u: (".app.localhost" not in u, u)):
+                api = ".api.localhost" in url
+                add("API (Caddy)" if api else "App (Caddy)", url + ("/v1" if api else ""))
+        except OSError:
+            pass
+    add("Configured app", values.get("SKYCLOUD_BASE_URL"))
+    add("Configured API", values.get("SKYCLOUD_API_V1_BASE_URL"))
+    port = values.get("WEBAPP_PORT", "")
+    if port.isdigit() and 0 < int(port) < 65536:
+        add("App (direct)", "https://localhost:" + port)
+    return links
+
+
+def load_linear(root, ticket):
+    if not ticket:
+        return {"issue": None, "error": None}
+    try:
+        issue = read_json(["linear", "issue", "view", ticket, "--json", "--no-comments",
+                           "--no-download", "--no-input"], root)
+        if isinstance(issue, dict) and str(issue.get("identifier", "")).upper() == ticket:
+            # Keep only the fields needed in the popup.
+            return {"issue": {key: issue.get(key) for key in
+                              ["identifier", "title", "description", "url", "state"]}, "error": None}
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    return {"issue": None, "error": "Linear ticket unavailable; check the CLI login or connection"}
+
+
+def load_pr(root, branch):
+    if not branch:
+        return {"pr": None, "error": None}
+    try:
+        pr = read_json(["gh", "pr", "view", branch, "--json",
+            "number,title,state,isDraft,url,reviewDecision,headRefName,headRefOid,statusCheckRollup"], root)
+        if isinstance(pr, dict) and pr.get("headRefName") == branch:
+            return {"pr": pr, "error": None}
+        return {"pr": None, "error": "No matching PR for this branch"}
+    except subprocess.CalledProcessError as error:
+        if "no pull requests found" in (error.stderr or "").lower():
+            return {"pr": None, "error": None}
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    return {"pr": None, "error": "GitHub PR unavailable; check gh authentication or connection"}
+
+
+def latest_runs(runs, head):
+    result = []
+    seen = set()
+    for item in runs:
+        if item.get("headSha") != head:
+            continue
+        key = (item.get("workflowName"), item.get("event"))
+        if key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
+
+
+def load_actions(root, branch, head):
+    if not head:
+        return {"runs": [], "error": None}
+    try:
+        args = ["gh", "run", "list", "--commit", head, "--limit", "30", "--json",
+                "workflowName,status,conclusion,url,headSha,headBranch,event"]
+        if branch:
+            args += ["--branch", branch]
+        runs = read_json(args, root)
+        if isinstance(runs, list):
+            return {"runs": latest_runs(runs, head), "error": None}
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    return {"runs": [], "error": "Actions unavailable; check gh authentication or connection"}
+
+
+def load_stacks(root):
+    try:
+        state = read_json([str(Path.home() / ".local/bin/dev-stack-status"), "--json"])
+        return {"projects": [p for p in state["projects"] if p["checkout"] == str(root)],
+                "error": state.get("error")}
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError):
+        return {"projects": [], "error": "Stack monitor unavailable"}
+
+
+def collect(root):
+    head = run(["git", "rev-parse", "HEAD"], root)
+    try:
+        branch = run(["git", "symbolic-ref", "--quiet", "--short", "HEAD"], root)
+    except subprocess.CalledProcessError:
+        branch = ""
+    match = TICKET.search(branch) or TICKET.search(root.name)
+    ticket = match[1].upper() if match else None
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        tasks = {"linear": pool.submit(load_linear, root, ticket),
+                 "github": pool.submit(load_pr, root, branch),
+                 "actions": pool.submit(load_actions, root, branch, head),
+                 "stacks": pool.submit(load_stacks, root)}
+        data = {key: task.result() for key, task in tasks.items()}
+    data.update(directory=str(root), branch=branch, head=head, ticket=ticket,
+                updated=time.strftime("%H:%M:%S"))
+    data["apps"] = app_links(root, data["stacks"]["projects"])
+    return data
+
+
+def rows_for(data, width):
+    rows = []
+    def add(value, url=None, heading=False):
+        for line in text(value).splitlines() or [""]:
+            for part in textwrap.wrap(line, max(width, 10), replace_whitespace=False) or [""]:
+                rows.append({"text": part, "url": safe_url(url), "heading": heading})
+    def section(label):
+        add("")
+        add(label, heading=True)
+    section("APP LINKS")
+    for item in data["apps"]:
+        add(item["label"] + "  " + item["url"], item["url"])
+    if not data["apps"]:
+        add("No recorded app URLs for this checkout. Run make setup in the app repo to create them.")
+    section("LINEAR")
+    linear = data["linear"]
+    issue = linear["issue"]
+    if issue:
+        state = (issue.get("state") or {}).get("name", "")
+        add("{}  {}".format(issue["identifier"], state), issue.get("url"))
+        add(issue.get("title"))
+        add(issue.get("url"), issue.get("url"))
+    else:
+        add(linear["error"] or "No ticket ID detected in this branch or worktree name.")
+    section("GITHUB PULL REQUEST")
+    pr = data["github"]["pr"]
+    if pr:
+        state = "Draft" if pr.get("isDraft") else pr.get("state", "")
+        add("#{}  {}  {}".format(pr["number"], state, pr.get("reviewDecision") or ""), pr.get("url"))
+        add(pr.get("title"))
+        add(pr.get("url"), pr.get("url"))
+        if pr.get("headRefOid") != data["head"]:
+            add("PR head differs from this checkout; Actions below are for local HEAD.")
+        checks = pr.get("statusCheckRollup") or []
+        if checks:
+            add("PR head checks:")
+        for check in checks:
+            status = check.get("conclusion") or check.get("state") or check.get("status", "")
+            add("  {}  {}".format(status, check.get("name") or check.get("context", "")),
+                check.get("detailsUrl") or check.get("targetUrl"))
+    else:
+        add(data["github"]["error"] or "No PR found for this branch.")
+    section("GITHUB ACTIONS  (checkout commit " + data["head"][:8] + ")")
+    for item in data["actions"]["runs"]:
+        status = item.get("conclusion") or item.get("status", "")
+        add("{}  {} ({})".format(status, item.get("workflowName"), item.get("event")), item.get("url"))
+    if not data["actions"]["runs"]:
+        add(data["actions"]["error"] or "No Actions runs for this commit; it may not be pushed yet.")
+    section("DEV STACK")
+    for project in data["stacks"]["projects"]:
+        add("{}  {}/{} running  {} unhealthy".format(
+            project["name"], project["running"], project["total"], project["unhealthy"]))
+    if not data["stacks"]["projects"]:
+        add(data["stacks"]["error"] or "No existing dev-stack containers for this checkout.")
+    if issue and issue.get("description"):
+        section("TICKET DESCRIPTION")
+        add(issue["description"][:6000])
+    return rows
+
+
+def launch_popup(root):
+    if os.environ.get("HERDR_ENV") != "1":
+        raise RuntimeError("Open the visor inside Herdr")
+    binary = os.environ.get("HERDR_BIN_PATH", "herdr")
+    args = [binary, "plugin", "pane", "open", "--plugin", "dotfiles.worktree-visor",
+            "--entrypoint", "visor", "--placement", "popup", "--width", "90%",
+            "--height", "85%", "--env", "VISOR_CWD=" + str(root)]
+    # Popups target the active pane and reject --workspace/--target-pane.
+    # VISOR_CWD preserves the invoking worktree independently of popup placement.
+    subprocess.run(args, check=True)
+
+
+def open_url(url):
+    url = safe_url(url)
+    if url:
+        subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", url],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+class Fetch:
+    """Fetch in an owned process group so Escape can cancel pending requests."""
+    def __init__(self, root):
+        self.output = tempfile.TemporaryFile(mode="w+")
+        self.process = subprocess.Popen([
+            sys.executable, str(Path(__file__).resolve()), "--json", "--cwd", str(root),
+        ], stdout=self.output, stderr=subprocess.DEVNULL, start_new_session=True)
+
+    def done(self):
+        return self.process.poll() is not None
+
+    def result(self):
+        if self.process.returncode != 0:
+            raise RuntimeError("Worktree fetch failed")
+        self.output.seek(0)
+        return json.load(self.output)
+
+    def close(self):
+        if self.process.poll() is None:
+            # Only this collector and its CLI children belong to this new group.
+            try:
+                os.killpg(self.process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                self.process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(self.process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                self.process.wait()
+        self.output.close()
+
+
+def display(screen, root):
+    screen.timeout(150)
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
+    future = Fetch(root)
+    data = None
+    error = ""
+    selected = 0
+    scroll = 0
+    last_refresh = time.monotonic()
+    try:
+        while True:
+            if future is not None and future.done():
+                try:
+                    data = future.result()
+                    error = ""
+                except Exception:
+                    error = "Could not read the worktree; press r to retry."
+                future.close()
+                future = None
+                last_refresh = time.monotonic()
+            if future is None and time.monotonic() - last_refresh >= 15:
+                future = Fetch(root)
+            height, width = screen.getmaxyx()
+            body_height = max(1, height - 5)
+            rows = rows_for(data, width - 4) if data else []
+            links = [i for i, row in enumerate(rows) if row["url"]]
+            selected = min(selected, max(0, len(links) - 1))
+            scroll = min(scroll, max(0, len(rows) - body_height))
+            screen.erase()
+            def draw(y, value, style=0):
+                try:
+                    screen.addnstr(y, 2, text(value).replace('\n', ' '), max(1, width - 4), style)
+                except curses.error:
+                    pass
+            draw(0, "WORKTREE VISOR  " + root.name, curses.A_BOLD)
+            draw(1, (data["branch"] or "Detached HEAD") + "  " + data["head"][:8] if data else "Loading ticket, PR, Actions and app links…")
+            draw(2, "↑/↓ links  Enter open  PgUp/PgDn scroll  r refresh  Esc/q close", curses.A_DIM)
+            for offset, row in enumerate(rows[scroll:scroll + body_height]):
+                style = curses.A_BOLD if row["heading"] else 0
+                if links and links[selected] == scroll + offset:
+                    style |= curses.A_REVERSE
+                draw(offset + 4, row["text"], style)
+            footer = error or ("Refreshing…" if future else "Updated " + (data["updated"] if data else "") + " · refreshes every 15s")
+            draw(height - 1, footer, curses.A_DIM)
+            screen.refresh()
+            key = screen.getch()
+            if key in (27, ord('q')):
+                return
+            if key == ord('r') and future is None:
+                future = Fetch(root)
+            if key in (curses.KEY_DOWN, ord('j'), curses.KEY_UP, ord('k')) and links:
+                selected = (selected + (1 if key in (curses.KEY_DOWN, ord('j')) else -1)) % len(links)
+                target = links[selected]
+                if target < scroll:
+                    scroll = target
+                elif target >= scroll + body_height:
+                    scroll = target - body_height + 1
+            elif key == curses.KEY_NPAGE:
+                scroll += body_height
+            elif key == curses.KEY_PPAGE:
+                scroll = max(0, scroll - body_height)
+            elif key in (10, 13, curses.KEY_ENTER) and links:
+                open_url(rows[links[selected]]["url"])
+    finally:
+        if future is not None:
+            future.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("mode", choices=["open", "show"], nargs="?", default="open")
+    parser.add_argument("--cwd", help="explicit checkout or directory inside it")
+    parser.add_argument("--json", action="store_true", help="print data without opening a popup")
+    args = parser.parse_args()
+    try:
+        context = json.loads(os.environ.get("HERDR_PLUGIN_CONTEXT_JSON", "{}"))
+        root = resolve_checkout(args.cwd, context)
+        if args.json:
+            print(json.dumps(collect(root)))
+        elif args.mode == "open":
+            launch_popup(root)
+        else:
+            def interrupted(_signum, _frame):
+                raise KeyboardInterrupt
+            signal.signal(signal.SIGTERM, interrupted)
+            signal.signal(signal.SIGHUP, interrupted)
+            curses.wrapper(display, root)
+    except KeyboardInterrupt:
+        return 0
+    except (RuntimeError, OSError, subprocess.SubprocessError, ValueError, curses.error) as error:
+        print("herdr-worktree-visor: {}".format(error), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

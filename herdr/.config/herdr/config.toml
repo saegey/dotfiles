@@ -10,6 +10,9 @@ enabled = true
 status_indicators = "symbols"
 sidebar_collapsed_mode = "hidden"
 
+[ui.sidebar.spaces]
+rows = [["state_icon", "workspace", "$dev_stack", "git_status"], ["$linear_title"]]
+
 [theme]
 name = "catppuccin"
 auto_switch = false
@@ -38,3 +41,21 @@ key = "prefix+space"
 type = "plugin_action"
 description = "Herdr palette"
 command = "ramarivera.palette.open"
+
+[[keys.command]]
+key = "prefix+alt+d"
+type = "plugin_action"
+description = "Refresh dev stack status"
+command = "dotfiles.dev-stacks.refresh"
+
+[[keys.command]]
+key = "prefix+alt+l"
+type = "plugin_action"
+description = "Refresh Linear ticket titles"
+command = "dotfiles.linear-titles.refresh"
+
+[[keys.command]]
+key = "cmd+i"
+type = "plugin_action"
+description = "Worktree ticket, PR, Actions and app links"
+command = "dotfiles.worktree-visor.open"

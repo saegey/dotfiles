@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Show Linear ticket titles in Herdr workspace metadata."""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import tempfile
+import time
+
+
+TICKET = re.compile(r"(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]*-[0-9]+)(?![0-9])")
+
+
+def ticket_id(*names):
+    for name in names:
+        match = TICKET.search(name or "")
+        if match:
+            return match.group(1).upper()
+    return None
+
+
+def workspace_ticket(workspace):
+    worktree = workspace.get("worktree") or {}
+    directory = worktree.get("checkout_path")
+    if not directory:
+        return None
+    branch = ""
+    try:
+        result = subprocess.run(["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
+                                cwd=directory, text=True, capture_output=True, timeout=3)
+        if result.returncode == 0:
+            branch = result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return ticket_id(branch, Path(directory).name, workspace.get("label"))
+
+
+def clean_title(value):
+    if not isinstance(value, str):
+        return None
+    title = " ".join("".join(c if c.isprintable() else " " for c in value).split())
+    return title[:240] or None
+
+
+def read_cache(path):
+    try:
+        data = json.loads(path.read_text())
+        if isinstance(data, dict) and isinstance(data.get("expires_at"), (float, int)):
+            return data
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def write_cache(path, data):
+    temporary = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as output:
+            temporary = output.name
+            json.dump(data, output)
+        os.replace(temporary, path)
+    except OSError:
+        pass  # Display the title even if caching is unavailable.
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def lookup_title(ticket, directory, scope, cache_directory, force=False):
+    key = hashlib.sha256((scope + "\0" + ticket).encode()).hexdigest()
+    path = cache_directory / (key + ".json")
+    cached = read_cache(path)
+    if not force and cached.get("expires_at", 0) > time.time():
+        return clean_title(cached.get("title"))
+    title = None
+    try:
+        result = subprocess.run([
+            "linear", "issue", "view", ticket, "--json", "--no-comments",
+            "--no-download", "--no-input",
+        ], cwd=directory, env=dict(os.environ, LINEAR_IGNORE_ENV_FILE="1"),
+            capture_output=True, text=True, check=True, timeout=12)
+        issue = json.loads(result.stdout)
+        if isinstance(issue, dict) and str(issue.get("identifier", "")).upper() == ticket:
+            title = clean_title(issue.get("title"))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    success = title is not None
+    if not success:
+        title = clean_title(cached.get("title"))
+    write_cache(path, {"ticket": ticket, "title": title,
+                       "expires_at": time.time() + (300 if success else 60)})
+    return title
+
+
+def refresh(force=False):
+    if os.environ.get("HERDR_ENV") != "1":
+        raise RuntimeError("Run inside a Herdr terminal or plugin")
+    binary = os.environ.get("HERDR_BIN_PATH", "herdr")
+    result = subprocess.run([binary, "workspace", "list"], capture_output=True,
+                            text=True, check=True, timeout=8)
+    workspaces = json.loads(result.stdout)["result"]["workspaces"]
+    cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "herdr-linear-titles"
+    titles = {}
+    count = 0
+    for workspace in workspaces:
+        ticket = workspace_ticket(workspace)
+        args = [binary, "workspace", "report-metadata", workspace["workspace_id"],
+                "--source", "dotfiles:linear-titles"]
+        if ticket:
+            worktree = workspace["worktree"]
+            scope = worktree.get("repo_root", worktree["checkout_path"])
+            key = (scope, ticket)
+            if key not in titles:
+                titles[key] = lookup_title(ticket, worktree["checkout_path"], scope, cache, force)
+            title = titles[key] or (ticket + " (title unavailable)")
+            args += ["--token", "linear_title=" + title]
+            count += 1
+        else:
+            args += ["--clear-token", "linear_title"]
+        subprocess.run(args, capture_output=True, text=True, check=True, timeout=8)
+    print("Updated Linear titles for {} ticket workspaces".format(count))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--force", action="store_true", help="bypass the five-minute cache")
+    args = parser.parse_args()
+    try:
+        refresh(args.force)
+    except (RuntimeError, OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
+        print("herdr-linear-titles: {}".format(error), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
