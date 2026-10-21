@@ -114,6 +114,15 @@ sketchybar --add item battery right \
   icon.padding_right=0 update_freq=120 script="$plugin_dir/battery.sh" \
   --subscribe battery power_source_change system_woke
 
+sketchybar --add item stacks right \
+  --set stacks icon=STACKS icon.drawing=on icon.color="$GREEN" \
+  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 icon.padding_right=0 \
+  update_freq=10 script="$plugin_dir/stacks.sh" \
+  popup.align=right popup.height=28 popup.background.color="$BASE" \
+  popup.background.border_color="$SURFACE" popup.background.border_width=1 \
+  popup.background.corner_radius=8 \
+  --subscribe stacks mouse.clicked mouse.exited.global system_woke
+
 # A separate media item keeps laptop text beside the notch, while external
 # monitors retain the full, centered Now Playing item.
 sketchybar --add item media.compact right \

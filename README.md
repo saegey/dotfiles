@@ -291,6 +291,94 @@ plan; `review` finds the ticket's PR with `gh`, fetches its branch, and runs
 Claude Opus with `/pr-review <PR-number>`. Both require `herdr` and `jq`;
 `review` also requires authenticated GitHub CLI access.
 
+## Dev stack status
+
+The read-only monitor counts localdev Compose projects by their container
+labels and checkout paths. Link both packages and register the local plugin:
+
+```sh
+./bootstrap.sh --apply --packages herdr sketchybar
+herdr plugin link "$HOME/.config/herdr/plugins/dev-stack-status"
+herdr server reload-config
+dev-stack-status --herdr
+sketchybar --reload
+```
+
+Herdr's workspace rows show `DEV 17/17`, `DEV off` for a checkout without
+containers, or `DEV 0/17` for stopped containers. `!` marks partial running
+counts or unhealthy containers; `~` marks health checks still starting.
+Badges refresh on workspace/worktree events and Herdr startup. Use
+`prefix+alt+d` to refresh immediately after a stack changes without switching
+workspaces. Unrelated repositories get no badge.
+
+SketchyBar's **STACKS** item polls every ten seconds and counts projects with
+at least one running container, including stacks outside open Herdr workspaces.
+Click it for each project's running/total count. Docker being unavailable shows
+`?`, rather than a misleading zero. Only the current Docker context is queried.
+One-off Compose jobs are excluded. Counts describe existing containers, not an
+HTTP readiness check or an expected service count from Compose YAML; host Vite
+processes started by `make dev` are not included.
+
+No containers or volumes are started, stopped, removed, or pruned. Python 3,
+Docker CLI, and jq (for SketchyBar) are required. `dev-stack-status --json`
+prints the same status from any terminal.
+
+## Linear workspace titles
+
+Herdr can show each ticket's Linear title beneath the workspace name. Install
+and authenticate the `linear` CLI, then link and register the local plugin:
+
+```sh
+./bootstrap.sh --apply --packages herdr
+herdr plugin link "$HOME/.config/herdr/plugins/linear-titles"
+herdr server reload-config
+herdr-linear-titles
+```
+
+The lookup checks the Git branch first, then the checkout directory name and
+workspace label, recognizing IDs such as `adam/SKY-6712`, `adam-sky-6712`, and
+`sky-6712-description`. Names without an ID get no title. Ticket lookups use
+the worktree's Linear configuration and credentials, without loading `.env`.
+Neither worktree names nor Linear issues are changed.
+
+Titles refresh on workspace/worktree events and Herdr startup. Successful
+lookups are cached for five minutes; failures retry after a minute and keep
+the last known title. Press `prefix+alt+l` (or run `herdr-linear-titles --force`)
+to bypass the cache. The cache contains titles only under
+`~/.cache/herdr-linear-titles` (or `$XDG_CACHE_HOME/herdr-linear-titles`), scoped
+by repository and ticket ID. DEV badges appear beside the workspace name,
+with the Linear title underneath, keeping each entry to two rows.
+
+## Worktree visor
+
+Press `cmd+i` to open a popup for the focused pane's Git worktree, with
+the workspace checkout as a fallback. It shows the Linear ticket's title,
+status and description; the matching branch PR and review/check status;
+GitHub Actions for the checkout's current commit; and dev-stack container status.
+
+```sh
+./bootstrap.sh --apply --packages herdr
+herdr plugin link "$HOME/.config/herdr/plugins/worktree-visor"
+herdr server reload-config
+```
+
+App links come from allowlisted URL and port values in `docker/localdev/.env`
+and the matching generated Caddy route under `~/.skysafe/proxy/conf.d` (or
+`$SKYSAFE_CADDY_CONFD`). This includes the `.app.localhost` URL, API URL, and
+configured OrbStack/direct address when present. Files are parsed as data;
+setup scripts and `.env` files are never executed. A configured URL is not a
+promise that its stack or Caddy is currently running.
+
+Use Up/Down (or j/k) to select links, Enter to open them, Page Up/Down to scroll,
+`r` to refresh, and Escape or `q` to close. The popup refreshes every 15 seconds
+while open. It uses the existing `linear` and `gh` logins and is read-only.
+Unpushed commits may have no Actions runs; PR-head checks are labeled separately
+when the remote PR head differs from the local checkout.
+
+For a noninteractive snapshot, run
+`herdr-worktree-visor --json --cwd /path/to/worktree`. Python 3 with curses,
+GitHub CLI, Linear CLI, and the `dev-stack-status` helper are required.
+
 ## Local overrides
 
 Machine-specific config that shouldn't be committed goes in:

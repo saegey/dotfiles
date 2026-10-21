@@ -1,0 +1,31 @@
+id = "dotfiles.linear-titles"
+name = "Linear workspace titles"
+version = "0.1.0"
+min_herdr_version = "0.7.4"
+description = "Read-only Linear issue titles extracted from worktree branches and names"
+platforms = ["macos", "linux"]
+
+[[startup]]
+command = ["bash", "refresh.sh"]
+
+[[actions]]
+id = "refresh"
+title = "Refresh Linear ticket titles"
+contexts = ["workspace", "global"]
+command = ["bash", "refresh.sh", "--force"]
+
+[[events]]
+on = "workspace.focused"
+command = ["bash", "refresh.sh"]
+
+[[events]]
+on = "workspace.created"
+command = ["bash", "refresh.sh"]
+
+[[events]]
+on = "worktree.created"
+command = ["bash", "refresh.sh"]
+
+[[events]]
+on = "worktree.opened"
+command = ["bash", "refresh.sh"]

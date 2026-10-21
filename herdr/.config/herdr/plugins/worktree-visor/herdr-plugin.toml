@@ -1,0 +1,20 @@
+id = "dotfiles.worktree-visor"
+name = "Worktree visor"
+version = "0.1.0"
+min_herdr_version = "0.7.4"
+description = "Ticket, PR, Actions, dev stack and app links for the focused worktree"
+platforms = ["macos", "linux"]
+
+[[actions]]
+id = "open"
+title = "Open worktree visor"
+contexts = ["workspace", "tab", "pane"]
+command = ["bash", "visor.sh", "open"]
+
+[[panes]]
+id = "visor"
+title = "Worktree visor"
+placement = "popup"
+width = "90%"
+height = "85%"
+command = ["bash", "visor.sh", "show"]
