@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Finish a worktree task from inside its herdr workspace: run the repo's own
+# scripts/worktree-rm.sh (unsaved-work guard, docker stack, caddy route, ports,
+# git worktree removal), then close the herdr workspace. Extra args (e.g.
+# --force) pass through to worktree-rm.sh. Wired up per repo in
+# ~/.config/herdr/repo-scripts.json, so the repo itself needs no herdr glue.
+#
+# herdr-repo-tasks runs commands from the *main* checkout, so the worktree is
+# resolved from the focused pane's cwd, not $PWD.
+set -euo pipefail
+
+die() {
+  echo "$1" >&2
+  exit 1
+}
+
+[[ "${HERDR_ENV:-}" == 1 ]] || die "Not inside herdr."
+command -v jq >/dev/null 2>&1 || die "herdr-wt-done needs jq (brew install jq)"
+
+cwd="${HERDR_ACTIVE_PANE_CWD:-$PWD}"
+wt="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" || die "Not in a git checkout: $cwd"
+[[ -f "$wt/.git" ]] || die "Refusing: $wt is the main checkout, not a linked worktree."
+[[ -x "$wt/scripts/worktree-rm.sh" ]] || die "No scripts/worktree-rm.sh in $wt."
+
+ws="${HERDR_WORKSPACE_ID:-}"
+if [[ -z "$ws" ]]; then
+  ws="$(herdr pane current --current | jq -r '.result.pane.workspace_id // empty')"
+fi
+[[ -n "$ws" ]] || die "Could not determine the current herdr workspace id."
+
+# Resolve everything above before this runs: it deletes the checkout. It
+# refuses (non-zero, nothing removed) on unsaved work unless --force.
+"$wt/scripts/worktree-rm.sh" "$@" "$wt"
+
+# Closing the workspace kills the pane this runs in, so detach it as the last step.
+echo "Closing herdr workspace $ws ..."
+nohup herdr workspace close "$ws" >/dev/null 2>&1 &
+disown

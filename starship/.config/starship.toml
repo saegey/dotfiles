@@ -5,6 +5,8 @@ $username$hostname$directory$git_branch$git_status$custom$cmd_duration
 $character"""
 
 add_newline = false
+command_timeout = 2000
+scan_timeout = 100
 
 [character]
 success_symbol = '[❯](bold green)'
@@ -55,7 +57,9 @@ disabled = true
 [custom.worktree]
 description = 'Show the linked git worktree name'
 command = "basename \"$(git rev-parse --show-toplevel)\""
-when = '[ "$(git rev-parse --git-dir 2>/dev/null)" != "$(git rev-parse --git-common-dir 2>/dev/null)" ]'
+when = 'test "$(git rev-parse --git-dir 2>/dev/null)" != "$(git rev-parse --git-common-dir 2>/dev/null)"'
+require_repo = true
+ignore_timeout = true
 symbol = '⑂ '
 style = 'bold yellow'
 format = '[$symbol$output]($style) '
