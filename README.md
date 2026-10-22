@@ -14,6 +14,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `dinky/` | `~/.config/dinky/dinky.toml` | Optional Dinky trial with native macOS Spaces |
 | `sketchybar/` | `~/.config/sketchybar/` | Catppuccin bar with Dinky workspaces and system status |
 | `hammerspoon/` | `~/.hammerspoon/` | AeroSpace helpers, shortcut popup, and rounded screen corners |
+| `karabiner/` | `~/.config/karabiner/karabiner.json` | Caps Lock as Hyper when held, Escape when tapped |
 | `smb-archive/` | macOS LaunchAgent and `~/.local/bin/townhaus-archive-mount` | Reconnect the Townhaus SMB archive when Beelink is reachable |
 | `ghzinga/` | `~/.config/ghzinga/config.toml` | Ghzinga UI with Catppuccin theme |
 | `gh-dash/` | `~/.config/gh-dash/config.yml` | gh-dash config |
@@ -59,6 +60,45 @@ default.
 The btop package links only the theme file, preserving your existing
 `btop.conf`. In btop, press `Esc`, choose **Options**, then select
 `catppuccin_mocha` as the color theme.
+
+## Caps Lock / Hyper (macOS)
+
+```sh
+brew install --cask hammerspoon
+./bootstrap.sh --apply --packages hammerspoon
+open -a Hammerspoon
+```
+
+Grant Hammerspoon Accessibility permission. The `caps-hyper.lua` module uses
+macOS's built-in `hidutil` to map Caps Lock to F18, then intercepts that key:
+a quick tap (under 250 ms) sends Escape; holding it with another key adds
+Control+Option+Shift+Command (Hyper), without a hold delay. Existing unrelated
+`hidutil` mappings are preserved, and a conflicting Caps Lock mapping is refused.
+Hammerspoon restores Caps Lock on a normal quit/reload, reapplies the mapping on
+wake and USB connection, and starts at login. Leave Caps Lock unchanged in macOS
+Keyboard → Modifier Keys. F18 is reserved for this mapping while it is active.
+Secure Input can prevent Hammerspoon from intercepting keys in password fields.
+
+The optional `karabiner` package and Brewfile cask remain available, but its
+Caps Lock rule is disabled to avoid double remapping. This machine's extension
+allowlist currently blocks its virtual keyboard driver. If switching back after
+approval, remove the Hammerspoon Caps Hyper startup block before enabling the
+Karabiner rule. Existing Karabiner configs must be merged or backed up before
+linking; bootstrap will refuse a conflicting file.
+
+With the Hammerspoon package linked and loaded, hold Caps Lock and press
+**T** for Ghostty, **B** for Chrome, **L** for Linear, **S** for Slack,
+**P** for 1Password, or **K** for Secretive. Each shortcut focuses or launches
+the app; Dinky handles workspace switching and placement of new windows.
+Command+Option+/ toggles the persistent two-column shortcut overlay, including
+app launchers, dedicated spaces, window controls, and Herdr shortcuts. Escape
+closes it. The font scales to fit the current display.
+
+Inside Herdr, Command+D splits right and Command+Shift+D splits down.
+Command+Option+Arrow keys focus the pane in that direction; the original
+Control+B then H/J/K/L bindings also work. Ghostty's own bindings for these
+chords are unbound so Herdr can receive them. Reload
+Ghostty's configuration and run `herdr server reload-config` after linking changes.
 
 ## Dinky trial (macOS)
 
@@ -269,10 +309,23 @@ Command+1–9 switches tabs. Control+Option+1–9 switches workspaces, and
 Control+Option+J/K focuses the next/previous agent in the sidebar.
 Command+[ hides or shows the Spaces and Agents sidebar completely.
 
-Herdr's `prefix+alt+p` shortcut opens `herdr-repo-tasks`, which uses jq and fzf
+Herdr's `cmd+p` shortcut opens `herdr-repo-tasks`, which uses jq and fzf
 to select repository tasks. Machine-specific task definitions live in
 `~/.config/herdr/repo-scripts.json`; otherwise it discovers Makefile targets and
 npm scripts.
+
+Run `herdr-wt-done` inside a linked worktree (or choose **Done (teardown
+worktree)** from configured repository tasks) to remove it and close its Herdr
+workspace. It uses that repository's executable `scripts/worktree-rm.sh`, falling
+back to the same repository's main checkout for older worktrees. Repositories
+without this script use Herdr's native removal, which refuses dirty worktrees;
+the helper also refuses commits ahead of an upstream when one is configured.
+Before removing either kind of worktree, it removes that checkout's Docker
+Compose containers, volumes, and networks using their Compose labels. It leaves
+other checkouts' stacks alone and refuses shared Compose projects or Docker
+failures, even with `--force`, so a failed teardown keeps the worktree available.
+`--force` overrides dirty-worktree and unpushed-commit checks. Main checkouts and mismatched workspace paths
+are refused.
 
 Install the Herdr command palette plugin after installing Herdr and the Brewfile
 dependencies (Rust/Cargo is required to build it):
@@ -283,6 +336,14 @@ herdr plugin install ramarivera/herdr-palette
 
 `prefix+space` opens the palette. Update it with
 `herdr plugin update ramarivera.palette`.
+
+Install the fuzzy tab, agent, workspace, and branch switcher with
+`herdr plugin install jeffarese/herdr-bar`, then run
+`herdr server reload-config`. Command+K opens it; `prefix+alt+k` is the fallback.
+Ghostty translates Command+K to Ctrl+Alt+Shift+K for Herdr. Reload Ghostty's configuration after
+linking this setting. The plugin automatically titles unnamed agent tabs;
+start its watcher in an existing session with
+`herdr plugin action invoke herdr-bar.start-titles`.
 
 The Zsh `workon <TICKET-ID>` and `review <TICKET-ID>` helpers run inside Herdr.
 They create and focus a worktree workspace, then start Claude in its root pane.
@@ -304,12 +365,15 @@ dev-stack-status --herdr
 sketchybar --reload
 ```
 
-Herdr's workspace rows show `DEV 17/17`, `DEV off` for a checkout without
-containers, or `DEV 0/17` for stopped containers. `!` marks partial running
-counts or unhealthy containers; `~` marks health checks still starting.
+Herdr's workspace rows show the running container count as `[17]`, `[0]` for
+a checkout with no running containers, or `[?]` when Docker is unavailable.
 Badges refresh on workspace/worktree events and Herdr startup. Use
 `prefix+alt+d` to refresh immediately after a stack changes without switching
 workspaces. Unrelated repositories get no badge.
+
+A yellow `[R]` badge marks worktrees whose current branch is neither `main` nor
+prefixed with `adam/`. The Linear titles plugin refreshes this badge alongside ticket titles;
+`prefix+alt+l` refreshes it manually. Detached or unreadable branches are unmarked.
 
 SketchyBar's **STACKS** item polls every ten seconds and counts projects with
 at least one running container, including stacks outside open Herdr workspaces.

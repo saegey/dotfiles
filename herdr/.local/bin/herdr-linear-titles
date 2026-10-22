@@ -24,19 +24,27 @@ def ticket_id(*names):
     return None
 
 
-def workspace_ticket(workspace):
+def workspace_branch(workspace):
     worktree = workspace.get("worktree") or {}
     directory = worktree.get("checkout_path")
     if not directory:
-        return None
-    branch = ""
+        return ""
     try:
         result = subprocess.run(["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
                                 cwd=directory, text=True, capture_output=True, timeout=3)
         if result.returncode == 0:
-            branch = result.stdout.strip()
+            return result.stdout.strip()
     except (OSError, subprocess.SubprocessError):
         pass
+    return ""
+
+
+def workspace_ticket(workspace, branch=None):
+    directory = (workspace.get("worktree") or {}).get("checkout_path")
+    if not directory:
+        return None
+    if branch is None:
+        branch = workspace_branch(workspace)
     return ticket_id(branch, Path(directory).name, workspace.get("label"))
 
 
@@ -109,9 +117,14 @@ def refresh(force=False):
     titles = {}
     count = 0
     for workspace in workspaces:
-        ticket = workspace_ticket(workspace)
+        branch = workspace_branch(workspace)
+        ticket = workspace_ticket(workspace, branch)
         args = [binary, "workspace", "report-metadata", workspace["workspace_id"],
                 "--source", "dotfiles:linear-titles"]
+        if branch and branch != "main" and not branch.startswith("adam/"):
+            args += ["--token", "review=[R]"]
+        else:
+            args += ["--clear-token", "review"]
         if ticket:
             worktree = workspace["worktree"]
             scope = worktree.get("repo_root", worktree["checkout_path"])

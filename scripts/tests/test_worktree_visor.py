@@ -17,6 +17,33 @@ loader.exec_module(visor)
 
 
 class WorktreeVisorTests(unittest.TestCase):
+    def test_status_colors_distinguish_failures_pending_and_success(self):
+        for status in ['FAILURE', 'TIMED_OUT', 'CHANGES_REQUESTED']:
+            self.assertEqual(visor.status_tone(status), 'error')
+        for status in ['QUEUED', 'IN_PROGRESS', 'REVIEW_REQUIRED']:
+            self.assertEqual(visor.status_tone(status), 'warning')
+        for status in ['SUCCESS', 'APPROVED', 'MERGED']:
+            self.assertEqual(visor.status_tone(status), 'success')
+        self.assertEqual(visor.status_tone('unknown'), 'text')
+
+    def test_monochrome_terminal_keeps_selection_visible(self):
+        with patch.object(visor.curses, 'has_colors', return_value=False):
+            styles = visor.visor_styles()
+        self.assertTrue(styles['selected'] & visor.curses.A_REVERSE)
+        self.assertTrue(styles['heading'] & visor.curses.A_BOLD)
+
+    def test_catppuccin_colors_preserve_terminal_palette_and_background(self):
+        with patch.multiple(visor.curses, has_colors=MagicMock(return_value=True),
+                            start_color=MagicMock(), use_default_colors=MagicMock(),
+                            COLORS=256, COLOR_PAIRS=256, create=True):
+            with patch.object(visor.curses, 'init_pair') as pair, \
+                 patch.object(visor.curses, 'color_pair', side_effect=lambda n: n << 8):
+                styles = visor.visor_styles()
+        self.assertEqual(pair.call_count, 8)
+        self.assertTrue(all(call.args[2] == -1 for call in pair.call_args_list[:-1]))
+        self.assertNotEqual(pair.call_args_list[-1].args[2], -1)
+        self.assertNotEqual(styles['success'], styles['error'])
+
     def test_safe_urls(self):
         for url in ['https://example.app.localhost', 'http://localhost:1338', 'https://github.com/org/repo/pull/1']:
             self.assertEqual(visor.safe_url(url), url)

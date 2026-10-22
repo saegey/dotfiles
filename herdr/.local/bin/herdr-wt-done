@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Finish a worktree task from inside its herdr workspace: run the repo's own
 # scripts/worktree-rm.sh (unsaved-work guard, docker stack, caddy route, ports,
-# git worktree removal), then close the herdr workspace. Extra args (e.g.
-# --force) pass through to worktree-rm.sh. Wired up per repo in
+# git worktree removal), then close the herdr workspace. Other repos use
+# Herdr's native worktree removal. --force bypasses unsaved-work checks.
+# Wired up per repo in
 # ~/.config/herdr/repo-scripts.json, so the repo itself needs no herdr glue.
 #
 # herdr-repo-tasks runs commands from the *main* checkout, so the worktree is
@@ -17,22 +18,132 @@ die() {
 [[ "${HERDR_ENV:-}" == 1 ]] || die "Not inside herdr."
 command -v jq >/dev/null 2>&1 || die "herdr-wt-done needs jq (brew install jq)"
 
+force=0
+for arg in "$@"; do
+  case "$arg" in
+    --force|-f) force=1 ;;
+    --help|-h) echo "usage: herdr-wt-done [--force]"; exit 0 ;;
+    *) die "Unknown argument: $arg (usage: herdr-wt-done [--force])" ;;
+  esac
+done
+
+binary="${HERDR_BIN_PATH:-herdr}"
 cwd="${HERDR_ACTIVE_PANE_CWD:-$PWD}"
 wt="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" || die "Not in a git checkout: $cwd"
 [[ -f "$wt/.git" ]] || die "Refusing: $wt is the main checkout, not a linked worktree."
-[[ -x "$wt/scripts/worktree-rm.sh" ]] || die "No scripts/worktree-rm.sh in $wt."
 
 ws="${HERDR_WORKSPACE_ID:-}"
 if [[ -z "$ws" ]]; then
-  ws="$(herdr pane current --current | jq -r '.result.pane.workspace_id // empty')"
+  ws="$("$binary" pane current --current | jq -r '.result.pane.workspace_id // empty')"
 fi
 [[ -n "$ws" ]] || die "Could not determine the current herdr workspace id."
 
+# Verify that this workspace owns the target before removing or closing anything.
+registered="$("$binary" workspace list | jq -er --arg ws "$ws" \
+  '.result.workspaces[] | select(.workspace_id == $ws) | .worktree.checkout_path // empty')" \
+  || die "Workspace $ws is not a Herdr worktree workspace."
+registered="$(cd "$registered" && pwd -P)" || die "Worktree path is unavailable: $registered"
+[[ "$registered" == "$wt" ]] || die "Refusing: workspace $ws belongs to $registered, not $wt."
+
+# Use cleanup helpers from this repository's main checkout if the linked
+# worktree is older and does not contain them yet.
+main="$(git -C "$wt" worktree list --porcelain | sed -n '1s/^worktree //p')"
+cleanup="$wt/scripts/worktree-rm.sh"
+if [[ ! -x "$cleanup" ]]; then
+  cleanup="$main/scripts/worktree-rm.sh"
+fi
+cd "$main"
+
+if [[ "$force" -eq 0 ]]; then
+  untracked=all
+  [[ ! -x "$cleanup" ]] || untracked=no
+  dirty="$(git -C "$wt" status --porcelain --untracked-files="$untracked")" \
+    || die "Could not check unsaved work; leaving the worktree untouched."
+  [[ -z "$dirty" ]] || die "Refusing: $wt has unsaved work. Commit first, or use --force."
+  if git -C "$wt" rev-parse --verify '@{u}' >/dev/null 2>&1; then
+    unpushed="$(git -C "$wt" rev-list --count '@{u}..HEAD')" \
+      || die "Could not check unpushed commits; leaving the worktree untouched."
+    [[ "$unpushed" -eq 0 ]] || die "Refusing: $wt has unpushed commits. Push first, or use --force."
+  fi
+fi
+
+# Teardown by Compose labels, rather than a guessed project name or compose
+# file. Finish and verify this before either removal path can delete anything.
+# Docker failures are fatal even with --force.
+python3 - "$wt" <<'PY'
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+
+def docker(*args):
+    return subprocess.run(['docker', *args], capture_output=True, text=True,
+                          check=True, timeout=120).stdout.strip()
+
+
+def containers():
+    ids = docker('ps', '--all', '--quiet', '--filter', 'label=com.docker.compose.project').split()
+    return json.loads(docker('inspect', '--type', 'container', *ids)) if ids else []
+
+
+def labels(container):
+    return container.get('Config', {}).get('Labels') or {}
+
+
+def belongs(container, checkout):
+    directory = labels(container).get('com.docker.compose.project.working_dir', '')
+    if not directory or not Path(directory).is_absolute():
+        return False
+    path = Path(directory).resolve()
+    return path == checkout or checkout in path.parents
+
+
+try:
+    if shutil.which('docker') is None:
+        print('Docker is not installed; no local stack to stop.')
+        sys.exit(0)
+    checkout = Path(sys.argv[1]).resolve()
+    existing = containers()
+    projects = {labels(c)['com.docker.compose.project'] for c in existing if belongs(c, checkout)}
+    # A shared Compose project must not tear down another checkout's resources.
+    for c in existing:
+        if labels(c).get('com.docker.compose.project') in projects and not belongs(c, checkout):
+            raise RuntimeError('Compose project is shared with another checkout; refusing teardown')
+    for project in sorted(projects):
+        print('Bringing down Docker stack: ' + project, flush=True)
+        for c in existing:
+            if labels(c).get('com.docker.compose.project') == project:
+                docker('rm', '--force', '--volumes', c['Id'])
+        for resource in ['volume', 'network']:
+            ids = docker(resource, 'ls', '--quiet', '--filter',
+                         'label=com.docker.compose.project=' + project).split()
+            for resource_id in ids:
+                docker(resource, 'rm', resource_id)
+    if any(belongs(c, checkout) for c in containers()):
+        raise RuntimeError('Worktree still has Compose containers after teardown')
+except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+    print('Stack teardown failed; leaving worktree and Herdr workspace intact: ' + str(error),
+          file=sys.stderr)
+    sys.exit(1)
+PY
+
+if [[ ! -x "$cleanup" ]]; then
+  args=(worktree remove --workspace "$ws")
+  [[ "$force" -eq 0 ]] || args+=(--force)
+  echo "Removing worktree $wt and its Herdr workspace ..."
+  # Herdr checks for dirty files and removes/closes the linked workspace itself.
+  exec "$binary" "${args[@]}"
+fi
+
 # Resolve everything above before this runs: it deletes the checkout. It
 # refuses (non-zero, nothing removed) on unsaved work unless --force.
-"$wt/scripts/worktree-rm.sh" "$@" "$wt"
+args=("$wt")
+[[ "$force" -eq 0 ]] || args=(--force "$wt")
+"$cleanup" "${args[@]}"
 
 # Closing the workspace kills the pane this runs in, so detach it as the last step.
 echo "Closing herdr workspace $ws ..."
-nohup herdr workspace close "$ws" >/dev/null 2>&1 &
+nohup "$binary" workspace close "$ws" >/dev/null 2>&1 &
 disown

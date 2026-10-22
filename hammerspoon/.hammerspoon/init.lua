@@ -14,6 +14,38 @@ spoon.RoundedCorners.allScreens = true
 spoon.RoundedCorners.radius = 18
 spoon.RoundedCorners:start()
 
+local hyper = {'ctrl', 'alt', 'shift', 'cmd'}
+-- Karabiner's driver is blocked by system policy; use the driver-free fallback.
+capsHyper = require('caps-hyper').new()
+if not capsHyper:start() then
+  hs.alert.show('Caps Lock Hyper could not start; check Hammerspoon Accessibility access and existing key remaps.')
+end
+hs.shutdownCallback = function() capsHyper:stop() end
+
+local appShortcuts = {
+  {key = 't', name = 'Ghostty', bundleID = 'com.mitchellh.ghostty'},
+  {key = 'b', name = 'Chrome', bundleID = 'com.google.Chrome'},
+  {key = 'l', name = 'Linear', bundleID = 'com.linear'},
+  {key = 's', name = 'Slack', bundleID = 'com.tinyspeck.slackmacgap'},
+  {key = 'p', name = '1Password', bundleID = 'com.1password.1password'},
+  {key = 'k', name = 'Secretive', bundleID = 'com.maxgoedjen.Secretive.Host'},
+}
+
+for _, app in ipairs(appShortcuts) do
+  local bundleID, name = app.bundleID, app.name
+  hs.hotkey.bind(hyper, app.key, function()
+    if not hs.application.launchOrFocusByBundleID(bundleID) then
+      hs.alert.show('Could not open ' .. name)
+    end
+  end)
+end
+
+-- Generate the help text from the bindings so it stays in sync.
+local appShortcutLines = {'Apps · Hyper = hold Caps Lock (⌃⌥⇧⌘)'}
+for _, app in ipairs(appShortcuts) do
+  table.insert(appShortcutLines, string.format('Hyper %s  %s', app.key:upper(), app.name))
+end
+
 local aerospaceShortcuts = [[
 AEROSPACE SHORTCUTS
 
@@ -38,9 +70,47 @@ Window controls
 Workspaces
 ⌥ 1–9               switch workspace
 ⌥ ⇧ 1–9             move window to workspace
-⌥ Tab               previous workspace
+⌥ Tab               previous workspace]]
 
-Press Escape or ⌘ ⌥ / to dismiss]]
+local herdrShortcuts = [[
+HERDR · inside Ghostty
+⌘ D                 split right
+⌘ ⇧ D               split down
+⌘ T                 new tab
+⌘ 1–9               switch tab
+⌘ [                 toggle sidebar
+⌘ P                 repo tasks
+⌘ I                 worktree visor
+⌘ K                 search tabs / agents / branches
+⌃ ⌥ 1–9             switch Herdr workspace
+⌃ ⌥ J / K           next / previous agent
+⌘ ⌥ ←/↓/↑/→         focus pane left/down/up/right
+⌃ B then Z           zoom focused pane
+⌃ B then R           resize mode
+⌃ B then ?           full Herdr shortcut help
+
+Dedicated spaces · external preferred
+1  Ghostty
+2  Linear + Chrome
+3  Slack
+4  1Password + Secretive
+⌘ ⌥ F  fill area / return to tiling]]
+
+local function shortcutColumns(left, right)
+  local function lines(value)
+    local result = {}
+    for line in (value .. '\n'):gmatch('(.-)\n') do table.insert(result, line) end
+    return result
+  end
+  local a, b, width = lines(left), lines(right), 0
+  for _, line in ipairs(a) do width = math.max(width, utf8.len(line) or #line) end
+  local result = {}
+  for i = 1, math.max(#a, #b) do
+    local line = a[i] or ''
+    table.insert(result, line .. string.rep(' ', width - (utf8.len(line) or #line) + 5) .. (b[i] or ''))
+  end
+  return table.concat(result, '\n') .. '\n\nEscape or ⌘ ⌥ / to dismiss · Caps Lock tap = Escape'
+end
 
 local shortcutsAlert
 local shortcutsEscapeHotkey
@@ -80,7 +150,18 @@ hs.hotkey.bind({'cmd', 'alt'}, '/', function()
         :gsub('⌥ Tab               previous workspace',
           '⌥ Tab               previous workspace\n⌥ ⇧ N               move window to next display and follow')
     end
-    shortcutsAlert = hs.alert.show(shortcuts, shortcutsStyle, nil, '')
+    shortcuts = shortcutColumns(shortcuts, table.concat(appShortcutLines, '\n') .. '\n\n' .. herdrShortcuts)
+    -- Two columns and an adaptive font keep the reference on the laptop screen.
+    local style = {}
+    for key, value in pairs(shortcutsStyle) do style[key] = value end
+    local frame = hs.screen.mainScreen():frame()
+    local size = hs.drawing.getTextDrawingSize(shortcuts, {font = style.textFont, size = style.textSize})
+    local margin = style.padding * 2 + 48
+    style.textSize = math.min(style.textSize, style.textSize * (frame.w - margin) / size.w,
+                             style.textSize * (frame.h - margin) / size.h)
+    -- Omit the optional screen argument: nil stops alert's argument parser
+    -- before it reaches the nonnumeric duration used for a persistent alert.
+    shortcutsAlert = hs.alert.show(shortcuts, style, '')
     shortcutsEscapeHotkey = hs.hotkey.bind({}, 'escape', dismissShortcuts)
   end
 end)
