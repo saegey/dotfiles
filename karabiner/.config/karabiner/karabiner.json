@@ -1,0 +1,36 @@
+{
+  "profiles": [
+    {
+      "name": "Dotfiles",
+      "selected": true,
+      "complex_modifications": {
+        "rules": [
+          {
+            "description": "Caps Lock: Hyper when held, Escape when tapped",
+            "enabled": false,
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "caps_lock",
+                  "modifiers": { "optional": ["any"] }
+                },
+                "to": [
+                  {
+                    "key_code": "left_shift",
+                    "modifiers": ["left_control", "left_option", "left_command"],
+                    "lazy": true
+                  }
+                ],
+                "to_if_alone": [{ "key_code": "escape" }],
+                "parameters": {
+                  "basic.to_if_alone_timeout_milliseconds": 250
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

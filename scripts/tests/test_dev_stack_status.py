@@ -31,15 +31,15 @@ class StackStatusTests(unittest.TestCase):
 
     def test_stopped_and_partial_stacks(self):
         state = monitor.summarize([container(), container(state='exited')])
-        self.assertEqual(monitor.workspace_token(state, workspace()), 'DEV 1/2 !')
+        self.assertEqual(monitor.workspace_token(state, workspace()), '[1]')
         stopped = monitor.summarize([container(state='exited')])
         self.assertEqual(stopped['running_stacks'], 0)
-        self.assertEqual(monitor.workspace_token(stopped, workspace()), 'DEV 0/1')
+        self.assertEqual(monitor.workspace_token(stopped, workspace()), '[0]')
 
     def test_health_states(self):
-        for health, suffix in [('unhealthy', '!'), ('health: starting', '~')]:
+        for health in ['unhealthy', 'health: starting']:
             state = monitor.summarize([container(status='Up 1 minute (' + health + ')')])
-            self.assertEqual(monitor.workspace_token(state, workspace()), 'DEV 1/1 ' + suffix)
+            self.assertEqual(monitor.workspace_token(state, workspace()), '[1]')
 
     def test_ignores_oneoff_jobs_and_unrelated_stacks(self):
         state = monitor.summarize([container(oneoff='True'), container(project='production'),
@@ -49,8 +49,8 @@ class StackStatusTests(unittest.TestCase):
 
     def test_worktree_paths_match_exactly(self):
         state = monitor.summarize([container()])
-        self.assertEqual(monitor.workspace_token(state, workspace()), 'DEV 1/1')
-        self.assertEqual(monitor.workspace_token(state, workspace('/tmp/repo-ab')), 'DEV off')
+        self.assertEqual(monitor.workspace_token(state, workspace()), '[1]')
+        self.assertEqual(monitor.workspace_token(state, workspace('/tmp/repo-ab')), '[0]')
         self.assertIsNone(monitor.workspace_token(state, workspace('/tmp/unrelated', 'other')))
         self.assertIsNone(monitor.workspace_token(state, {}))
 
@@ -58,7 +58,7 @@ class StackStatusTests(unittest.TestCase):
         with patch.object(monitor.subprocess, 'run', side_effect=FileNotFoundError()):
             state = monitor.snapshot()
         self.assertIsNone(state['running_stacks'])
-        self.assertEqual(monitor.workspace_token(state, workspace()), 'DEV ?')
+        self.assertEqual(monitor.workspace_token(state, workspace()), '[?]')
 
     def test_invalid_docker_output_is_unknown(self):
         response = subprocess.CompletedProcess([], 0, stdout='not json')

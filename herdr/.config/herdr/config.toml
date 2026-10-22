@@ -9,9 +9,10 @@ enabled = true
 [ui]
 status_indicators = "symbols"
 sidebar_collapsed_mode = "hidden"
+sidebar_max_width = 44
 
 [ui.sidebar.spaces]
-rows = [["state_icon", "workspace", "$dev_stack", "git_status"], ["$linear_title"]]
+rows = [["state_icon", { token = "$review", fg = "#f9e2af", bold = true }, "workspace", "$dev_stack", "git_status"], ["$linear_title"]]
 
 [theme]
 name = "catppuccin"
@@ -22,6 +23,12 @@ auto_switch = false
 # Requires Ghostty to stop intercepting cmd+t/cmd+1..9 itself first
 # (see ~/.config/ghostty/config).
 new_tab = "cmd+t"
+split_vertical = "cmd+d"
+split_horizontal = "cmd+shift+d"
+focus_pane_left = ["cmd+alt+left", "prefix+h"]
+focus_pane_down = ["cmd+alt+down", "prefix+j"]
+focus_pane_up = ["cmd+alt+up", "prefix+k"]
+focus_pane_right = ["cmd+alt+right", "prefix+l"]
 switch_tab = "cmd+1..9"
 toggle_sidebar = ["prefix+b", "cmd+["]
 
@@ -31,7 +38,7 @@ next_agent = "ctrl+alt+j"
 previous_agent = "ctrl+alt+k"
 
 [[keys.command]]
-key = "prefix+alt+p"
+key = "cmd+p"
 type = "pane"
 description = "Repo tasks"
 command = "herdr-repo-tasks"
@@ -41,6 +48,12 @@ key = "prefix+space"
 type = "plugin_action"
 description = "Herdr palette"
 command = "ramarivera.palette.open"
+
+[[keys.command]]
+key = ["cmd+k", "ctrl+alt+shift+k", "prefix+alt+k"]
+type = "plugin_action"
+description = "Search tabs, agents, workspaces and branches"
+command = "herdr-bar.open"
 
 [[keys.command]]
 key = "prefix+alt+d"

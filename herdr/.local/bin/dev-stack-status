@@ -68,15 +68,9 @@ def workspace_token(state, workspace):
     if not projects and worktree.get("repo_name") != "skysafe-cloud":
         return None
     if state["error"]:
-        return "DEV ?"
-    if not projects:
-        return "DEV off"
+        return "[?]"
     running = sum(p["running"] for p in projects)
-    total = sum(p["total"] for p in projects)
-    suffix = " !" if any(p["unhealthy"] for p in projects) or 0 < running < total else ""
-    if not suffix and any(p["starting"] for p in projects):
-        suffix = " ~"
-    return "DEV {}/{}{}".format(running, total, suffix)
+    return "[{}]".format(running)
 
 
 def report_herdr(state):
