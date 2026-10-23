@@ -1,0 +1,32 @@
+# Dedicated work PR queue; global config retains personal/general dashboard settings.
+include:
+    - config.yml
+prSections:
+    - title: Needs My Review
+      filters: is:open is:pr org:skysafe review-requested:@me -is:draft
+    - title: Changes Requested
+      filters: is:open is:pr org:skysafe author:@me review:changes_requested
+    - title: Failing CI
+      filters: is:open is:pr org:skysafe author:@me status:failure
+    - title: Ready to Merge
+      filters: is:open is:pr org:skysafe author:@me review:approved status:success -is:draft
+    - title: My Open PRs
+      filters: is:open is:pr org:skysafe author:@me
+defaults:
+    view: prs
+    prsLimit: 50
+    refetchIntervalMinutes: 2
+keybindings:
+    prs:
+        - key: ctrl+r
+          name: Review PR with Claude Opus
+          command: >-
+              "$HOME/.local/bin/herdr-pr-open" --repo '{{.RepoName}}' --pr '{{.PrNumber}}' --review
+        - key: w
+          name: Open worktree in Herdr
+          command: >-
+              "$HOME/.local/bin/herdr-pr-open" --repo '{{.RepoName}}' --pr '{{.PrNumber}}'
+repoPaths:
+    skysafe/*: ~/Projects/*
+smartFilteringAtLaunch: false
+confirmQuit: true

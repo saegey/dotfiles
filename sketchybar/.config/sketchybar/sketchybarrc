@@ -8,8 +8,8 @@ plugin_dir="$CONFIG_DIR/plugins"
 # Fit inside the notch-height strip on laptops; external bars stay full-height.
 sketchybar --bar position=top height=36 notch_display_height=24 \
   margin=10 y_offset=6 notch_offset=0 notch_width=220 \
-  color=0xee1e1e2e border_color="$SURFACE" border_width=1 \
-  corner_radius=12 blur_radius=20 shadow=on \
+  color=0x00000000 border_width=0 \
+  corner_radius=0 blur_radius=0 shadow=off \
   padding_left=8 padding_right=8 display=all topmost=off
 
 sketchybar --default icon.drawing=off \
@@ -17,6 +17,35 @@ sketchybar --default icon.drawing=off \
   label.padding_left=8 label.padding_right=8 \
   padding_left=2 padding_right=2 \
   background.height=24 background.corner_radius=8
+
+# Zero-width anchors span each side of the notch. Display associations are set
+# by display-layout.sh; the global bar stays transparent on every display.
+# Add these before content so brackets remain behind item backgrounds.
+sketchybar --add item panel_anchor_laptop_left left \
+  --add item panel_anchor_laptop_notch_left q \
+  --add item panel_anchor_laptop_notch_right e \
+  --add item panel_anchor_laptop_right right \
+  --add item panel_anchor_external_left left \
+  --add item panel_anchor_external_right right \
+  --set '/panel_anchor_.*/' width=0 drawing=off updates=off \
+  icon.drawing=off label.drawing=off padding_left=0 padding_right=0 \
+  background.drawing=off
+
+sketchybar --add bracket panel_left panel_anchor_laptop_left panel_anchor_laptop_notch_left \
+  --add bracket panel_right panel_anchor_laptop_notch_right panel_anchor_laptop_right \
+  --add bracket panel_external panel_anchor_external_left panel_anchor_external_right \
+  --set panel_left background.height=24 \
+  --set panel_right background.height=24 \
+  --set panel_external background.height=36
+for panel in panel_left panel_right panel_external; do
+  sketchybar --set "$panel" background.drawing=on \
+    background.color=0xee1e1e2e background.border_color="$SURFACE" \
+    background.border_width=1 background.corner_radius=12 background.shadow.drawing=on \
+    background.padding_left=0 background.padding_right=0
+done
+# Offset shadows form a dark crescent beyond the rounded notebook panels.
+sketchybar --set panel_left background.shadow.drawing=off \
+  --set panel_right background.shadow.drawing=off
 
 sketchybar --add event dinky_workspace_change \
   --add event dinky_focus_change
@@ -28,9 +57,11 @@ sketchybar --add item brand left \
 # These are Dinky workspace numbers, not macOS's transient native Space IDs.
 for workspace in {1..9}; do
   sketchybar --add item "space.$workspace" left \
-    --set "space.$workspace" label="$workspace" width=dynamic \
-    label.width=28 label.align=center label.padding_left=0 label.padding_right=0 \
+    --set "space.$workspace" label="$workspace" width=18 \
+    label.width=18 label.align=center label.padding_left=0 label.padding_right=0 \
     background.drawing=on background.color="$SURFACE" \
+    background.height=18 background.corner_radius=9 \
+    background.padding_left=0 background.padding_right=0 \
     click_script="dinky workspace $workspace"
 done
 
