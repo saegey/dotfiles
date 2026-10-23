@@ -59,6 +59,8 @@ keybind = cmd+[=unbind
 # Let Herdr create pane splits inside its workspace.
 keybind = cmd+d=unbind
 keybind = cmd+shift+d=unbind
+# The persistent PR review dashboard belongs to Herdr.
+keybind = cmd+shift+r=unbind
 # Let Herdr navigate its panes instead of Ghostty's own splits.
 keybind = cmd+alt+left=unbind
 keybind = cmd+alt+down=unbind

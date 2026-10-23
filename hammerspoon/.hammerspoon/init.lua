@@ -81,6 +81,7 @@ HERDR · inside Ghostty
 ⌘ [                 toggle sidebar
 ⌘ P                 repo tasks
 ⌘ I                 worktree visor
+⌘ ⇧ R               Review PR dashboard
 ⌘ K                 search tabs / agents / branches
 ⌃ ⌥ 1–9             switch Herdr workspace
 ⌃ ⌥ J / K           next / previous agent
@@ -112,7 +113,8 @@ local function shortcutColumns(left, right)
   return table.concat(result, '\n') .. '\n\nEscape or ⌘ ⌥ / to dismiss · Caps Lock tap = Escape'
 end
 
-local shortcutsAlert
+local shortcutVisor = require('shortcut-visor')
+local shortcutsCanvas
 local shortcutsEscapeHotkey
 local shortcutsStyle = {
   fillColor = { red = 30 / 255, green = 30 / 255, blue = 46 / 255, alpha = 0.98 }, -- Catppuccin Mocha Base
@@ -120,7 +122,7 @@ local shortcutsStyle = {
   strokeWidth = 2,
   textColor = { red = 205 / 255, green = 214 / 255, blue = 244 / 255, alpha = 1 }, -- Text
   textFont = 'JetBrains Mono',
-  textSize = 17,
+  textSize = 14,
   radius = 18,
   padding = 24,
   fadeInDuration = 0.12,
@@ -128,9 +130,9 @@ local shortcutsStyle = {
 }
 
 local function dismissShortcuts()
-  if shortcutsAlert then
-    hs.alert.closeSpecific(shortcutsAlert)
-    shortcutsAlert = nil
+  if shortcutsCanvas then
+    shortcutsCanvas:delete()
+    shortcutsCanvas = nil
   end
   if shortcutsEscapeHotkey then
     shortcutsEscapeHotkey:delete()
@@ -138,10 +140,8 @@ local function dismissShortcuts()
   end
 end
 
-hs.hotkey.bind({'cmd', 'alt'}, '/', function()
-  if shortcutsAlert then
-    dismissShortcuts()
-  else
+function showKeyboardShortcuts()
+    if shortcutsCanvas then return shortcutsCanvas end
     local shortcuts = aerospaceShortcuts
     if hs.application.get('com.brnbw.dinky') then
       shortcuts = shortcuts:gsub('AEROSPACE SHORTCUTS', 'DINKY SHORTCUTS')
@@ -151,20 +151,26 @@ hs.hotkey.bind({'cmd', 'alt'}, '/', function()
           '⌥ Tab               previous workspace\n⌥ ⇧ N               move window to next display and follow')
     end
     shortcuts = shortcutColumns(shortcuts, table.concat(appShortcutLines, '\n') .. '\n\n' .. herdrShortcuts)
-    -- Two columns and an adaptive font keep the reference on the laptop screen.
-    local style = {}
-    for key, value in pairs(shortcutsStyle) do style[key] = value end
-    local frame = hs.screen.mainScreen():frame()
-    local size = hs.drawing.getTextDrawingSize(shortcuts, {font = style.textFont, size = style.textSize})
-    local margin = style.padding * 2 + 48
-    style.textSize = math.min(style.textSize, style.textSize * (frame.w - margin) / size.w,
-                             style.textSize * (frame.h - margin) / size.h)
-    -- Omit the optional screen argument: nil stops alert's argument parser
-    -- before it reaches the nonnumeric duration used for a persistent alert.
-    shortcutsAlert = hs.alert.show(shortcuts, style, '')
+    shortcutsCanvas = shortcutVisor.show(shortcuts, shortcutsStyle, hs.screen.mainScreen())
     shortcutsEscapeHotkey = hs.hotkey.bind({}, 'escape', dismissShortcuts)
+    return shortcutsCanvas
+end
+
+hs.hotkey.bind({'cmd', 'alt'}, '/', function()
+  if shortcutsCanvas then
+    dismissShortcuts()
+  else
+    showKeyboardShortcuts()
   end
 end)
+
+-- An open reference must fit the new display after docking, undocking or scaling.
+shortcutsScreenWatcher = hs.screen.watcher.new(function()
+  if shortcutsCanvas then
+    dismissShortcuts()
+    showKeyboardShortcuts()
+  end
+end):start()
 
 local function run(command)
   local output, ok = hs.execute(aerospace .. ' ' .. command, false)

@@ -19,11 +19,15 @@ done <<< "$monitors"
 args=()
 if (( ${#external[@]} )); then
   external_ids=$(IFS=,; printf '%s' "${external[*]}")
+  for anchor in panel_anchor_external_left panel_anchor_external_right; do
+    args+=(--set "$anchor" display="$external_ids" drawing=on)
+  done
   for item in brand clock volume audio; do
     args+=(--set "$item" display="$external_ids" drawing=on updates=on)
   done
   args+=(--set media display="$external_ids" updates=on)
 else
+  args+=(--set '/panel_anchor_external_.*/' drawing=off)
   for item in brand clock volume audio media; do
     args+=(--set "$item" drawing=off updates=off)
   done
@@ -31,8 +35,12 @@ fi
 
 if (( ${#internal[@]} )); then
   internal_ids=$(IFS=,; printf '%s' "${internal[*]}")
+  for anchor in panel_anchor_laptop_left panel_anchor_laptop_notch_left panel_anchor_laptop_notch_right panel_anchor_laptop_right; do
+    args+=(--set "$anchor" display="$internal_ids" drawing=on)
+  done
   args+=(--set media.compact display="$internal_ids" updates=on)
 else
+  args+=(--set '/panel_anchor_laptop_.*/' drawing=off)
   args+=(--set media.compact drawing=off updates=off)
 fi
 

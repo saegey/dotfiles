@@ -84,7 +84,8 @@ while the Hammerspoon fallback is active, to avoid double remapping.
       app launching, spaces, window management, and Herdr.
 - [x] Keep Command+Option+/ to toggle; Escape dismisses. No auto-dismiss timer.
 - [x] Show modifier symbols, grouped commands, two columns, and an adaptive font
-      so the full reference fits the laptop screen.
+      capped at 14pt. Use a canvas centered inside the usable screen frame;
+      recalculate an open visor on display changes so it fits the laptop screen.
 - [x] Reflect current app, Dinky, and Herdr bindings; app entries come from the
       binding table. Keep the Herdr reference in sync when those keys change.
 
@@ -107,6 +108,21 @@ extend it rather than introducing a second competing shortcut list.
 
 Already configured: Command+I for worktree visor, Command+P for repo tasks,
 Command+[ for sidebar, Command+T for a tab, and Command+1–9 for tabs.
+
+## 6. Central PR review queue
+
+- [x] Persistent gh-dash workspace for work PRs across SkySafe repositories.
+- [x] Separate review config, work-account check, two-minute refresh, and queues
+      for requested reviews, changes requested, failing CI, approved/passing PRs,
+      and all authored open PRs.
+- [x] W opens/reuses the selected PR's worktree; preserve existing local work,
+      avoid switching the main checkout, and isolate fork branch names.
+- [x] Ctrl+R starts/reuses a dedicated Claude Opus review session with
+      `/pr-review <PR number>`; R remains the dashboard refresh binding.
+- [x] Command+Shift+R opens the dashboard; remember the workspace with metadata
+      so the user can keep its preferred name, Dashboard.
+- [x] Live dashboard queries and reopening an existing parked checkout verified.
+- [ ] Try the W action in daily use across other repositories and fork PRs.
 
 ## Working approach
 

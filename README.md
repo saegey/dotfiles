@@ -22,7 +22,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `hunk/` | `~/.config/hunk/config.toml` | Hunk diff viewer |
 | `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
 | `ssh/` | `~/.ssh/config` | SSH config with per-machine 1Password agent selection for Home Assistant |
-| `tools/` | `~/.config/mise/config.toml`, `~/.tool-versions` | mise version manager |
+| `tools/` | `~/.config/mise/config.toml` | Global mise tool versions |
 | `npm/` | `~/.npmrc` | npm config |
 | `bash/` | `~/.bash_profile`, `~/.bashrc`, etc. | Bash config |
 | `claude/` | `~/.claude/settings.json` | Claude Code settings |
@@ -92,7 +92,8 @@ With the Hammerspoon package linked and loaded, hold Caps Lock and press
 the app; Dinky handles workspace switching and placement of new windows.
 Command+Option+/ toggles the persistent two-column shortcut overlay, including
 app launchers, dedicated spaces, window controls, and Herdr shortcuts. Escape
-closes it. The font scales to fit the current display.
+closes it. The panel centers inside the usable screen area, with text capped at
+14pt and scaled down as needed. An open panel resizes when displays change.
 
 Inside Herdr, Command+D splits right and Command+Shift+D splits down.
 Command+Option+Arrow keys focus the pane in that direction; the original
@@ -178,10 +179,11 @@ have separate Spaces** enabled, and set the native menu bar to automatically
 hide so it can be revealed at the screen edge without overlapping SketchyBar.
 The Dinky config reserves 56 points at the top for the 36-point floating bar.
 On notched laptop displays, the bar fits in the 24-point strip beside the
-camera housing. Workspaces and the active app stay on the left; shorter Now
+camera housing. Two rounded Catppuccin panels span the left and right sides,
+with a transparent 220-point gap around the notch. Workspaces and the active app stay on the left; shorter Now
 Playing text and status items stay on the right. The name label, date/time,
 volume, and audio-output widgets appear only on external displays, where the
-full 36-point bar and centered Now Playing item remain available. Display
+full-width 36-point floating panel and centered Now Playing item remain available. Display
 associations refresh automatically when docking or undocking. Dinky uses a
 10-point top gap on the built-in screen to reclaim the space below the notch.
 
@@ -225,19 +227,21 @@ Homebrew, or standalone installations of these CLIs.
 
 ## Groovenet CLI
 
-The global mise config pins `@groovenet/cli` to an explicit version and exposes
-the `groovenet` command independently of Node's global npm packages.
+The Stow-managed global mise config manages `@groovenet/cli` and
+`@groovenet/player` with `latest`, making them available outside this dotfiles
+checkout and independently of Node's global npm packages. Link it with
+`./bootstrap.sh --apply --packages tools`; no root `mise.toml` is needed.
 Its package-specific `allow_low_downloads` option permits installation despite
 the CLI's low npm download count.
 
 ```sh
-mise install npm:@groovenet/cli
+mise install npm:@groovenet/cli npm:@groovenet/player
 groovenet --version
-mise upgrade --bump npm:@groovenet/cli # install the newest release and update the pin
+mise upgrade npm:@groovenet/cli npm:@groovenet/player
 ```
 
-Review and commit the version change in `tools/.config/mise/config.toml` after
-upgrading. Avoid also installing the CLI with `npm install -g`.
+For an explicit version pin, change the entry in `tools/.config/mise/config.toml`
+and commit it. Avoid also installing these tools with `npm install -g`.
 
 ## Townhaus archive mount (macOS)
 
@@ -351,6 +355,52 @@ They create and focus a worktree workspace, then start Claude in its root pane.
 plan; `review` finds the ticket's PR with `gh`, fetches its branch, and runs
 Claude Opus with `/pr-review <PR-number>`. Both require `herdr` and `jq`;
 `review` also requires authenticated GitHub CLI access.
+
+## PR review dashboard
+
+In Herdr, **Command+Shift+R** (or `herdr-review`) opens the persistent review
+workspace. The dashboard uses the `adam-skysafe` GitHub login and shows SkySafe
+PRs across repositories: reviews requested, changes requested on your PRs,
+failing CI, approved PRs with passing CI, and all your open PRs. Queues refresh
+every two minutes; use gh-dash's refresh keys for an immediate update.
+
+Press **w** on a PR to open its worktree in Herdr. An existing workspace is
+focused, a parked checkout is reopened, and a missing checkout is created from
+the PR's fetched head. Existing local branches and dirty files are preserved;
+a differing local HEAD is reported. Fork PRs use `review/pr-<number>` branches
+to avoid confusing them with local branches of the same name. No agents or
+repository setup scripts are started automatically.
+
+Local repositories are found under `~/Projects/<repo>` or
+`~/Projects/<owner>/<repo>` and verified against their origin remote. Override
+the root with `HERDR_PROJECTS_DIR`, or invoke
+`herdr-pr-open --repo OWNER/REPO --pr NUMBER --repo-path PATH` manually.
+`--dry-run` prints the plan without changing worktrees; `--no-focus` keeps focus.
+New checkouts live under `~/.herdr/worktrees/<owner>/<repo>/pr-<number>`.
+
+Press **Ctrl+R** on a PR to open its checkout and start Claude Opus in a dedicated
+review tab with `/pr-review <PR number>`—the same workflow as the `review SKY-…`
+shell helper. A review agent is remembered per repository/PR: subsequent presses
+reuse it, and a busy or blocked session is focused without sending another
+prompt. Existing terminals and agents are left alone. **R** keeps gh-dash's
+normal refresh behavior. The command-line equivalent is
+`herdr-pr-open --repo OWNER/REPO --pr NUMBER --review`.
+
+```sh
+./bootstrap.sh --apply --packages herdr gh-dash
+herdr plugin link "$HOME/.config/herdr/plugins/review"
+herdr server reload-config
+herdr-review
+```
+
+Reload Ghostty's configuration to release Command+Shift+R. The review workspace
+is remembered by metadata, so renaming it (for example, to **Dashboard**) keeps
+the shortcut working. It remains open while its dashboard/shell is running.
+Close inactive task workspaces to keep herdr-bar focused on active work; their
+checkouts remain available to reopen. `herdr-wt-done` is for final teardown and
+also removes stack resources. The general `gh dash` configuration is unchanged;
+this work queue uses the separate `~/.config/gh-dash/review.yml` configuration.
+Both dashboards use the shared Catppuccin Mocha palette with mauve accents.
 
 ## Dev stack status
 

@@ -11,6 +11,10 @@
 .idea/
 *.orig
 
+# Python bytecode
+__pycache__/
+*.py[cod]
+
 # Brewfile lock — regenerated on install
 Brewfile.lock.json
 
