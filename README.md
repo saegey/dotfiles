@@ -22,7 +22,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `hunk/` | `~/.config/hunk/config.toml` | Hunk diff viewer |
 | `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
 | `ssh/` | `~/.ssh/config` | SSH config with per-machine 1Password agent selection for Home Assistant |
-| `tools/` | `~/.config/mise/config.toml`, `~/.tool-versions` | mise version manager |
+| `tools/` | `~/.config/mise/config.toml` | Global mise tool versions |
 | `npm/` | `~/.npmrc` | npm config |
 | `bash/` | `~/.bash_profile`, `~/.bashrc`, etc. | Bash config |
 | `claude/` | `~/.claude/settings.json` | Claude Code settings |
@@ -227,19 +227,21 @@ Homebrew, or standalone installations of these CLIs.
 
 ## Groovenet CLI
 
-The global mise config pins `@groovenet/cli` to an explicit version and exposes
-the `groovenet` command independently of Node's global npm packages.
+The Stow-managed global mise config manages `@groovenet/cli` and
+`@groovenet/player` with `latest`, making them available outside this dotfiles
+checkout and independently of Node's global npm packages. Link it with
+`./bootstrap.sh --apply --packages tools`; no root `mise.toml` is needed.
 Its package-specific `allow_low_downloads` option permits installation despite
 the CLI's low npm download count.
 
 ```sh
-mise install npm:@groovenet/cli
+mise install npm:@groovenet/cli npm:@groovenet/player
 groovenet --version
-mise upgrade --bump npm:@groovenet/cli # install the newest release and update the pin
+mise upgrade npm:@groovenet/cli npm:@groovenet/player
 ```
 
-Review and commit the version change in `tools/.config/mise/config.toml` after
-upgrading. Avoid also installing the CLI with `npm install -g`.
+For an explicit version pin, change the entry in `tools/.config/mise/config.toml`
+and commit it. Avoid also installing these tools with `npm install -g`.
 
 ## Townhaus archive mount (macOS)
 
