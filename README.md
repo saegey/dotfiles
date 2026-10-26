@@ -360,9 +360,15 @@ Claude Opus with `/pr-review <PR-number>`. Both require `herdr` and `jq`;
 
 In Herdr, **Command+Shift+R** (or `herdr-review`) opens the persistent review
 workspace. The dashboard uses the `adam-skysafe` GitHub login and shows SkySafe
-PRs across repositories: reviews requested, changes requested on your PRs,
-failing CI, approved PRs with passing CI, and all your open PRs. Queues refresh
-every two minutes; use gh-dash's refresh keys for an immediate update.
+PRs across repositories: reviews requested, previously reviewed PRs, changes
+requested on your PRs, failing CI, approved PRs with passing CI, and all your open
+PRs. Queues refresh every two minutes; use gh-dash's refresh keys for an immediate
+update.
+
+The **Previously Reviewed** queue keeps open PRs you reviewed visible even when
+the author hasn't requested another review. It sorts by latest update; updates
+can include comments and other activity, so this isn't an exact list of PRs
+with new commits since your review.
 
 Press **w** on a PR to open its worktree in Herdr. An existing workspace is
 focused, a parked checkout is reopened, and a missing checkout is created from
