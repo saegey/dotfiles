@@ -1,0 +1,3 @@
+[tools]
+"npm:@groovenet/cli" = { version = "latest", allow_low_downloads = "true" }
+"npm:@groovenet/player" = "latest"
