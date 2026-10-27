@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Open a GitHub PR in Herdr, reusing its checkout without resetting local work."""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+
+def call(args, cwd=None):
+    return subprocess.run(args, cwd=cwd, check=True, capture_output=True,
+                          text=True, timeout=120).stdout.strip()
+
+
+def herdr(*args):
+    output = call([os.environ.get('HERDR_BIN_PATH', 'herdr'), *args])
+    return json.loads(output)['result'] if output else {}
+
+
+def remote_repo(remote):
+    match = re.fullmatch(r'(?:git@github(?:\.com|-[\w.-]+):|ssh://git@github(?:\.com|-[\w.-]+)/|https://github\.com/)([\w.-]+/[\w.-]+?)(?:\.git)?/?', remote)
+    return match[1].lower() if match else None
+
+
+def find_repo(repo, explicit=None):
+    root = Path(os.environ.get('HERDR_PROJECTS_DIR', str(Path.home() / 'Projects')))
+    candidates = [Path(explicit).expanduser()] if explicit else [root / repo.split('/')[1], root / repo]
+    for path in candidates:
+        try:
+            if remote_repo(call(['git', 'remote', 'get-url', 'origin'], path)) == repo.lower():
+                return path.resolve()
+        except (OSError, subprocess.SubprocessError):
+            pass
+    raise RuntimeError('No matching local repository for ' + repo + '. Clone it under ~/Projects, or pass --repo-path PATH.')
+
+
+def plan_open(repo, number, pr, source, worktrees, home=None):
+    branch = pr['headRefName']
+    # Forks can share a branch name with an unrelated local branch.
+    local_branch = branch if not pr['isCrossRepository'] and branch not in ('main', 'master', pr['baseRefName']) else 'review/pr-' + str(number)
+    if any(item.get('branch') == local_branch and not item.get('is_linked_worktree') for item in worktrees):
+        local_branch = 'review/pr-' + str(number)
+    for item in worktrees:
+        if item.get('branch') == local_branch and item.get('is_linked_worktree') and not item.get('is_prunable'):
+            return dict(operation='reuse', path=item['path'], branch=local_branch,
+                        workspace_id=item.get('open_workspace_id'), repo_root=source['repo_root'],
+                        pr=number, repo=repo)
+    path = (Path(home or Path.home()) / '.herdr/worktrees' / repo.split('/')[0] /
+            repo.split('/')[1] / ('pr-' + str(number)))
+    return dict(operation='create', path=str(path), branch=local_branch, workspace_id=None,
+                repo_root=source['repo_root'], pr=number, repo=repo)
+
+
+def execute_plan(plan, pr, focus=True):
+    root, path = Path(plan['repo_root']), Path(plan['path'])
+    if plan['operation'] == 'create':
+        if path.exists():
+            raise RuntimeError('Destination already exists; leaving it untouched: ' + str(path))
+        ref = 'refs/herdr/pr/' + str(plan['pr'])
+        call(['git', 'fetch', '--no-recurse-submodules', '--no-write-fetch-head', 'origin',
+              '+refs/pull/{}/head:{}'.format(plan['pr'], ref)], root)
+        if call(['git', 'rev-parse', ref], root) != pr['headRefOid']:
+            raise RuntimeError('The PR changed while fetching. Refresh the dashboard and retry.')
+        exists = subprocess.run(['git', 'show-ref', '--verify', '--quiet', 'refs/heads/' + plan['branch']],
+                                cwd=root, capture_output=True).returncode
+        if exists not in (0, 1):
+            raise RuntimeError('Could not inspect the local branch; no checkout created.')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        args = ['git', 'worktree', 'add']
+        if exists == 1:
+            args += ['-b', plan['branch'], str(path), ref]
+        else:
+            args += [str(path), plan['branch']]
+        call(args, root)
+    # Existing worktrees may be dirty or contain unpushed commits. Never pull,
+    # checkout, reset, or run setup scripts in them merely to open the PR.
+    if plan['workspace_id']:
+        if focus:
+            herdr('workspace', 'focus', plan['workspace_id'])
+    else:
+        label = 'PR #{} {}'.format(plan['pr'], ''.join(c for c in pr['title'] if c.isprintable()))[:90]
+        herdr('worktree', 'open', '--cwd', str(root), '--path', str(path),
+              '--label', label, '--focus' if focus else '--no-focus')
+    head = call(['git', 'rev-parse', 'HEAD'], path)
+    if head != pr['headRefOid']:
+        print('Opened existing local work; HEAD differs from the PR. Fetch/update when ready.', file=sys.stderr)
+    print('Opened PR #{}: {}'.format(plan['pr'], path))
+
+
+def start_review(plan, focus=True):
+    """Review in a dedicated tab; repeated requests never interrupt busy agents."""
+    identity = plan['repo'].lower() + '#' + str(plan['pr'])
+    name = 'review-' + hashlib.sha256(identity.encode()).hexdigest()[:12]
+    try:
+        agent = herdr('agent', 'get', name)['agent']
+    except subprocess.CalledProcessError as error:
+        try:
+            missing = json.loads(error.stderr)['error']['code'] == 'agent_not_found'
+        except (ValueError, KeyError, TypeError):
+            missing = False
+        if not missing:
+            raise
+        agent = None
+    if agent is not None:
+        if agent.get('agent') != 'claude' or Path(agent.get('cwd', '')).resolve() != Path(plan['path']).resolve():
+            raise RuntimeError('Review agent is in another checkout; leaving it untouched.')
+        if focus:
+            herdr('agent', 'focus', name)
+        if agent.get('agent_status') not in ('idle', 'done'):
+            print('Review session is {}; no new prompt sent.'.format(agent.get('agent_status', 'unknown')))
+            return
+    else:
+        if shutil.which('claude') is None:
+            raise RuntimeError('Claude CLI is required to start a review.')
+        workspace = next((w['workspace_id'] for w in herdr('workspace', 'list')['workspaces']
+                          if (w.get('worktree') or {}).get('checkout_path')
+                          and Path(w['worktree']['checkout_path']).resolve() == Path(plan['path']).resolve()), None)
+        if not workspace:
+            raise RuntimeError('Could not find the opened PR workspace; no review started.')
+        tab = herdr('tab', 'create', '--workspace', workspace, '--cwd', plan['path'],
+                    '--label', 'Review #{}'.format(plan['pr']), '--focus' if focus else '--no-focus')
+        pane = tab['root_pane']['pane_id']
+        herdr('agent', 'start', name, '--kind', 'claude', '--pane', pane, '--', '--model', 'opus')
+    herdr('agent', 'prompt', name, '/pr-review ' + str(plan['pr']))
+    print('Started Claude Opus review for ' + identity)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--repo', required=True, help='GitHub OWNER/REPO')
+    parser.add_argument('--pr', type=int, required=True)
+    parser.add_argument('--repo-path', help='explicit existing local repository')
+    parser.add_argument('--no-focus', action='store_true')
+    parser.add_argument('--review', action='store_true', help='start the existing Claude Opus /pr-review workflow')
+    parser.add_argument('--dry-run', action='store_true', help='print plan without fetching or opening anything')
+    args = parser.parse_args()
+    try:
+        if os.environ.get('HERDR_ENV') != '1':
+            raise RuntimeError('Run inside Herdr.')
+        if (not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', args.repo)
+                or any(part in ('.', '..') for part in args.repo.split('/')) or args.pr < 1):
+            raise RuntimeError('Expected a GitHub OWNER/REPO and a positive PR number.')
+        root = find_repo(args.repo, args.repo_path)
+        pr = json.loads(call(['gh', 'pr', 'view', str(args.pr), '--repo', args.repo, '--json',
+                             'number,title,headRefName,headRefOid,baseRefName,isCrossRepository']))
+        if pr['number'] != args.pr or not re.fullmatch(r'[0-9a-f]{40,64}', pr['headRefOid']):
+            raise RuntimeError('Invalid PR metadata returned by GitHub.')
+        if pr['headRefName'].startswith('-'):
+            raise RuntimeError('Invalid PR branch name.')
+        call(['git', 'check-ref-format', '--branch', pr['headRefName']])
+        state = herdr('worktree', 'list', '--cwd', str(root))
+        plan = plan_open(args.repo, args.pr, pr, state['source'], state['worktrees'])
+        if args.dry_run:
+            if args.review:
+                plan['review'] = {'model': 'opus', 'prompt': '/pr-review ' + str(args.pr)}
+            print(json.dumps(plan, indent=2))
+        else:
+            execute_plan(plan, pr, not args.no_focus)
+            if args.review:
+                start_review(plan, not args.no_focus)
+    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+        details = getattr(error, 'stderr', '') or str(error)
+        print('Could not open PR worktree: ' + details.strip(), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

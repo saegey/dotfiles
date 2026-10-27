@@ -1,0 +1,12 @@
+id = "dotfiles.review"
+name = "Review dashboard"
+version = "0.1.0"
+min_herdr_version = "0.7.4"
+description = "Persistent SkySafe PR queue with one-key worktree opening"
+platforms = ["macos", "linux"]
+
+[[actions]]
+id = "open"
+title = "Open Review dashboard"
+contexts = ["workspace", "tab", "pane"]
+command = ["bash", "review.sh"]

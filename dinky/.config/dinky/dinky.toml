@@ -4,6 +4,27 @@ start-at-login = false
 workspaces = 9
 default-layout = 'tiles'
 
+# Dedicated spaces prefer the desk monitor, then the laptop when undocked.
+[workspace-to-display]
+1 = ['LG HDR 4K', 'built-in', 'main']
+2 = ['LG HDR 4K', 'built-in', 'main']
+3 = ['LG HDR 4K', 'built-in', 'main']
+4 = ['LG HDR 4K', 'built-in', 'main']
+
+# A lone window fills the area; the next opens beside it on either display.
+[workspace.1]
+layout = 'master'
+
+[workspace.2]
+layout = 'master'
+
+[workspace.4]
+layout = 'master'
+
+[master]
+size = 0.5
+side = 'left'
+
 [gaps]
 inner = 20
 # Leave room for the floating SketchyBar and a gap below it.
@@ -27,10 +48,42 @@ inactive-color = '#45475a'
 
 [[rules]]
 app-id = 'com.mitchellh.ghostty'
-run = 'layout tiling'
+kind = 'normal'
+run = ['layout tiling', 'move-window-to-workspace 1']
+
+# Route main app windows, leaving dialogs and panels alone.
+[[rules]]
+app-id = 'com.linear'
+kind = 'normal'
+run = 'move-window-to-workspace 2'
+
+[[rules]]
+app-id = 'com.google.Chrome'
+kind = 'normal'
+run = 'move-window-to-workspace 2'
+
+[[rules]]
+app-id = 'com.tinyspeck.slackmacgap'
+kind = 'normal'
+run = 'move-window-to-workspace 3'
+
+[[rules]]
+app-id = 'com.1password.1password'
+kind = 'normal'
+run = 'move-window-to-workspace 4'
+
+[[rules]]
+app-id = 'com.maxgoedjen.Secretive.Host'
+kind = 'normal'
+run = 'move-window-to-workspace 4'
 
 [[rules]]
 app-id = 'com.apple.systempreferences'
+run = 'layout floating'
+
+# Manage containers with lazydocker; OrbStack's utility UI must not reserve a tile.
+[[rules]]
+app-id = 'dev.kdrag0n.MacVirt'
 run = 'layout floating'
 
 # Tuna's transient launcher windows should never reserve a tile.

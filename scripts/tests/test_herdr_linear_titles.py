@@ -34,6 +34,31 @@ class LinearTitleTests(unittest.TestCase):
         with patch.object(titles.subprocess, 'run', return_value=response):
             self.assertEqual(titles.workspace_ticket(workspace), 'SKY-222')
 
+    def test_review_badge_tracks_current_branch(self):
+        workspace = {'workspace_id': 'w1', 'worktree': {'checkout_path': '/tmp/repo'}}
+        listed = subprocess.CompletedProcess([], 0, stdout=json.dumps({
+            'result': {'workspaces': [workspace]}}))
+        with patch.dict(titles.os.environ, {'HERDR_ENV': '1'}):
+            for branch, expected in [('other/feature', 'review=[R]'),
+                                     ('adam/feature', 'review'),
+                                     ('main', 'review'),
+                                     ('adam-other/feature', 'review=[R]'),
+                                     ('', 'review')]:
+                with self.subTest(branch=branch):
+                    with patch.object(titles, 'workspace_branch', return_value=branch), \
+                         patch.object(titles.subprocess, 'run', return_value=listed) as run:
+                        titles.refresh()
+                    args = run.call_args.args[0]
+                    index = args.index(expected)
+                    self.assertEqual(args[index - 1],
+                                     '--token' if expected == 'review=[R]' else '--clear-token')
+
+    def test_missing_or_unreadable_worktree_has_no_branch(self):
+        self.assertEqual(titles.workspace_branch({}), '')
+        workspace = {'worktree': {'checkout_path': '/tmp/repo'}}
+        with patch.object(titles.subprocess, 'run', side_effect=FileNotFoundError()):
+            self.assertEqual(titles.workspace_branch(workspace), '')
+
     def test_sanitizes_controls_and_preserves_unicode(self):
         self.assertEqual(titles.clean_title('Fix\n  reader\tprobe\x00 — café'), 'Fix reader probe — café')
         self.assertIsNone(titles.clean_title(None))

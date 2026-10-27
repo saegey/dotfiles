@@ -23,6 +23,57 @@ ENV_KEYS = {"COMPOSE_PROJECT_NAME", "WEBAPP_PORT", "EXTERNAL_API_PORT",
             "SKYCLOUD_BASE_URL", "SKYCLOUD_API_V1_BASE_URL"}
 
 
+def visor_styles():
+    """Catppuccin Mocha, mapped to terminal colors without changing its palette."""
+    styles = dict(text=0, heading=curses.A_BOLD, link=curses.A_UNDERLINE,
+                  muted=0, success=0, warning=curses.A_BOLD,
+                  error=curses.A_BOLD, selected=curses.A_REVERSE | curses.A_BOLD)
+    try:
+        if not curses.has_colors():
+            return styles
+        curses.start_color()
+        curses.use_default_colors()
+        levels = [0, 95, 135, 175, 215, 255]
+        colors = [(16 + 36*r + 6*g + b, (red, green, blue))
+                  for r, red in enumerate(levels) for g, green in enumerate(levels)
+                  for b, blue in enumerate(levels)]
+        colors += [(232+i, (8+10*i,) * 3) for i in range(24)]
+        def nearest(value):
+            rgb = tuple(int(value[i:i+2], 16) for i in (0, 2, 4))
+            return min(colors, key=lambda item: sum((a-b)**2 for a, b in zip(rgb, item[1])))[0]
+        palette = [
+            ("text", "cdd6f4", curses.COLOR_WHITE),
+            ("heading", "cba6f7", curses.COLOR_MAGENTA),
+            ("link", "89dceb", curses.COLOR_CYAN),
+            ("muted", "a6adc8", curses.COLOR_WHITE),
+            ("success", "a6e3a1", curses.COLOR_GREEN),
+            ("warning", "f9e2af", curses.COLOR_YELLOW),
+            ("error", "f38ba8", curses.COLOR_RED),
+            ("selected", "cdd6f4", curses.COLOR_WHITE),
+        ]
+        for pair, (name, hex_color, fallback) in enumerate(palette, 1):
+            if pair >= curses.COLOR_PAIRS:
+                break
+            foreground = nearest(hex_color) if curses.COLORS >= 256 else fallback
+            background = (nearest("45475a") if curses.COLORS >= 256 else curses.COLOR_BLUE) if name == "selected" else -1
+            curses.init_pair(pair, foreground, background)
+            styles[name] = curses.color_pair(pair) | (curses.A_BOLD if name in ("heading", "selected") else 0)
+    except curses.error:
+        pass
+    return styles
+
+
+def status_tone(status):
+    status = str(status).lower().replace("_", " ")
+    if status in ("failure", "failed", "error", "timed out", "action required", "changes requested"):
+        return "error"
+    if status in ("success", "approved", "merged", "completed"):
+        return "success"
+    if status in ("pending", "queued", "in progress", "waiting", "requested", "review required", "draft", "cancelled", "stale"):
+        return "warning"
+    return "text"
+
+
 def text(value):
     return "".join(c if c.isprintable() or c == '\n' else ' ' for c in str(value or ''))
 
@@ -213,10 +264,12 @@ def collect(root):
 
 def rows_for(data, width):
     rows = []
-    def add(value, url=None, heading=False):
+    def add(value, url=None, heading=False, tone=None):
         for line in text(value).splitlines() or [""]:
             for part in textwrap.wrap(line, max(width, 10), replace_whitespace=False) or [""]:
-                rows.append({"text": part, "url": safe_url(url), "heading": heading})
+                link = safe_url(url)
+                rows.append({"text": part, "url": link, "heading": heading,
+                             "tone": tone or ("heading" if heading else "link" if link else "text")})
     def section(label):
         add("")
         add(label, heading=True)
@@ -224,7 +277,7 @@ def rows_for(data, width):
     for item in data["apps"]:
         add(item["label"] + "  " + item["url"], item["url"])
     if not data["apps"]:
-        add("No recorded app URLs for this checkout. Run make setup in the app repo to create them.")
+        add("No recorded app URLs for this checkout. Run make setup in the app repo to create them.", tone="muted")
     section("LINEAR")
     linear = data["linear"]
     issue = linear["issue"]
@@ -234,37 +287,39 @@ def rows_for(data, width):
         add(issue.get("title"))
         add(issue.get("url"), issue.get("url"))
     else:
-        add(linear["error"] or "No ticket ID detected in this branch or worktree name.")
+        add(linear["error"] or "No ticket ID detected in this branch or worktree name.", tone="warning" if linear["error"] else "muted")
     section("GITHUB PULL REQUEST")
     pr = data["github"]["pr"]
     if pr:
         state = "Draft" if pr.get("isDraft") else pr.get("state", "")
-        add("#{}  {}  {}".format(pr["number"], state, pr.get("reviewDecision") or ""), pr.get("url"))
+        add("#{}  {}  {}".format(pr["number"], state, pr.get("reviewDecision") or ""), pr.get("url"),
+            tone=status_tone(pr.get("reviewDecision") or state))
         add(pr.get("title"))
         add(pr.get("url"), pr.get("url"))
         if pr.get("headRefOid") != data["head"]:
-            add("PR head differs from this checkout; Actions below are for local HEAD.")
+            add("PR head differs from this checkout; Actions below are for local HEAD.", tone="warning")
         checks = pr.get("statusCheckRollup") or []
         if checks:
             add("PR head checks:")
         for check in checks:
             status = check.get("conclusion") or check.get("state") or check.get("status", "")
             add("  {}  {}".format(status, check.get("name") or check.get("context", "")),
-                check.get("detailsUrl") or check.get("targetUrl"))
+                check.get("detailsUrl") or check.get("targetUrl"), tone=status_tone(status))
     else:
-        add(data["github"]["error"] or "No PR found for this branch.")
+        add(data["github"]["error"] or "No PR found for this branch.", tone="warning" if data["github"]["error"] else "muted")
     section("GITHUB ACTIONS  (checkout commit " + data["head"][:8] + ")")
     for item in data["actions"]["runs"]:
         status = item.get("conclusion") or item.get("status", "")
-        add("{}  {} ({})".format(status, item.get("workflowName"), item.get("event")), item.get("url"))
+        add("{}  {} ({})".format(status, item.get("workflowName"), item.get("event")), item.get("url"), tone=status_tone(status))
     if not data["actions"]["runs"]:
-        add(data["actions"]["error"] or "No Actions runs for this commit; it may not be pushed yet.")
+        add(data["actions"]["error"] or "No Actions runs for this commit; it may not be pushed yet.", tone="warning" if data["actions"]["error"] else "muted")
     section("DEV STACK")
     for project in data["stacks"]["projects"]:
         add("{}  {}/{} running  {} unhealthy".format(
-            project["name"], project["running"], project["total"], project["unhealthy"]))
+            project["name"], project["running"], project["total"], project["unhealthy"]),
+            tone="error" if project["unhealthy"] else "success" if project["running"] == project["total"] else "warning")
     if not data["stacks"]["projects"]:
-        add(data["stacks"]["error"] or "No existing dev-stack containers for this checkout.")
+        add(data["stacks"]["error"] or "No existing dev-stack containers for this checkout.", tone="warning" if data["stacks"]["error"] else "muted")
     if issue and issue.get("description"):
         section("TICKET DESCRIPTION")
         add(issue["description"][:6000])
@@ -327,6 +382,8 @@ class Fetch:
 
 def display(screen, root):
     screen.timeout(150)
+    styles = visor_styles()
+    screen.bkgd(' ', styles["text"])
     try:
         curses.curs_set(0)
     except curses.error:
@@ -362,16 +419,16 @@ def display(screen, root):
                     screen.addnstr(y, 2, text(value).replace('\n', ' '), max(1, width - 4), style)
                 except curses.error:
                     pass
-            draw(0, "WORKTREE VISOR  " + root.name, curses.A_BOLD)
-            draw(1, (data["branch"] or "Detached HEAD") + "  " + data["head"][:8] if data else "Loading ticket, PR, Actions and app links…")
-            draw(2, "↑/↓ links  Enter open  PgUp/PgDn scroll  r refresh  Esc/q close", curses.A_DIM)
+            draw(0, "WORKTREE VISOR  " + root.name, styles["heading"])
+            draw(1, (data["branch"] or "Detached HEAD") + "  " + data["head"][:8] if data else "Loading ticket, PR, Actions and app links…", styles["text"])
+            draw(2, "↑/↓ links  Enter open  PgUp/PgDn scroll  r refresh  Esc/q close", styles["muted"])
             for offset, row in enumerate(rows[scroll:scroll + body_height]):
-                style = curses.A_BOLD if row["heading"] else 0
+                style = styles[row["tone"]]
                 if links and links[selected] == scroll + offset:
-                    style |= curses.A_REVERSE
+                    style = styles["selected"]
                 draw(offset + 4, row["text"], style)
             footer = error or ("Refreshing…" if future else "Updated " + (data["updated"] if data else "") + " · refreshes every 15s")
-            draw(height - 1, footer, curses.A_DIM)
+            draw(height - 1, footer, styles["error"] if error else styles["muted"])
             screen.refresh()
             key = screen.getch()
             if key in (27, ord('q')):

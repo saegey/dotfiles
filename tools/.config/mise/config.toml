@@ -6,7 +6,8 @@ uv = "latest"
 "aqua:anthropics/claude-code" = "latest"
 "aqua:openai/codex" = "latest"
 # The project's CLI is below mise's default npm download-count threshold.
-"npm:@groovenet/cli" = { version = "3.2.0", allow_low_downloads = "true" }
+"npm:@groovenet/cli" = { version = "latest", allow_low_downloads = "true" }
+"npm:@groovenet/player" = "latest"
 rust = "latest"
 "cargo:ghzinga" = "latest"
 

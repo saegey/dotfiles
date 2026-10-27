@@ -56,10 +56,20 @@ keybind = cmd+shift+]=unbind
 keybind = cmd+shift+[=unbind
 # Let Herdr handle sidebar visibility with Command+[.
 keybind = cmd+[=unbind
-keybind = cmd+d=new_split:right
-keybind = cmd+shift+d=new_split:down
+# Let Herdr create pane splits inside its workspace.
+keybind = cmd+d=unbind
+keybind = cmd+shift+d=unbind
+# The persistent PR review dashboard belongs to Herdr.
+keybind = cmd+shift+r=unbind
+# Let Herdr navigate its panes instead of Ghostty's own splits.
+keybind = cmd+alt+left=unbind
+keybind = cmd+alt+down=unbind
+keybind = cmd+alt+up=unbind
+keybind = cmd+alt+right=unbind
 keybind = cmd+enter=toggle_fullscreen
-keybind = cmd+k=clear_screen
+# Send Ctrl+Alt+Shift+K explicitly so Command+K works without relying on
+# the foreground application requesting the terminal's Super-key protocol.
+keybind = cmd+k=text:\x1b[107;8u
 keybind = cmd+plus=increase_font_size:1
 keybind = cmd+minus=decrease_font_size:1
 keybind = cmd+0=reset_font_size

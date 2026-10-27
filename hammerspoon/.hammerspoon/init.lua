@@ -14,6 +14,38 @@ spoon.RoundedCorners.allScreens = true
 spoon.RoundedCorners.radius = 18
 spoon.RoundedCorners:start()
 
+local hyper = {'ctrl', 'alt', 'shift', 'cmd'}
+-- Karabiner's driver is blocked by system policy; use the driver-free fallback.
+capsHyper = require('caps-hyper').new()
+if not capsHyper:start() then
+  hs.alert.show('Caps Lock Hyper could not start; check Hammerspoon Accessibility access and existing key remaps.')
+end
+hs.shutdownCallback = function() capsHyper:stop() end
+
+local appShortcuts = {
+  {key = 't', name = 'Ghostty', bundleID = 'com.mitchellh.ghostty'},
+  {key = 'b', name = 'Chrome', bundleID = 'com.google.Chrome'},
+  {key = 'l', name = 'Linear', bundleID = 'com.linear'},
+  {key = 's', name = 'Slack', bundleID = 'com.tinyspeck.slackmacgap'},
+  {key = 'p', name = '1Password', bundleID = 'com.1password.1password'},
+  {key = 'k', name = 'Secretive', bundleID = 'com.maxgoedjen.Secretive.Host'},
+}
+
+for _, app in ipairs(appShortcuts) do
+  local bundleID, name = app.bundleID, app.name
+  hs.hotkey.bind(hyper, app.key, function()
+    if not hs.application.launchOrFocusByBundleID(bundleID) then
+      hs.alert.show('Could not open ' .. name)
+    end
+  end)
+end
+
+-- Generate the help text from the bindings so it stays in sync.
+local appShortcutLines = {'Apps · Hyper = hold Caps Lock (⌃⌥⇧⌘)'}
+for _, app in ipairs(appShortcuts) do
+  table.insert(appShortcutLines, string.format('Hyper %s  %s', app.key:upper(), app.name))
+end
+
 local aerospaceShortcuts = [[
 AEROSPACE SHORTCUTS
 
@@ -38,11 +70,51 @@ Window controls
 Workspaces
 ⌥ 1–9               switch workspace
 ⌥ ⇧ 1–9             move window to workspace
-⌥ Tab               previous workspace
+⌥ Tab               previous workspace]]
 
-Press Escape or ⌘ ⌥ / to dismiss]]
+local herdrShortcuts = [[
+HERDR · inside Ghostty
+⌘ D                 split right
+⌘ ⇧ D               split down
+⌘ T                 new tab
+⌘ 1–9               switch tab
+⌘ [                 toggle sidebar
+⌘ P                 repo tasks
+⌘ I                 worktree visor
+⌘ ⇧ R               Review PR dashboard
+⌘ K                 search tabs / agents / branches
+⌃ ⌥ 1–9             switch Herdr workspace
+⌃ ⌥ J / K           next / previous agent
+⌘ ⌥ ←/↓/↑/→         focus pane left/down/up/right
+⌃ B then Z           zoom focused pane
+⌃ B then R           resize mode
+⌃ B then ?           full Herdr shortcut help
 
-local shortcutsAlert
+Dedicated spaces · external preferred
+1  Ghostty
+2  Linear + Chrome
+3  Slack
+4  1Password + Secretive
+⌘ ⌥ F  fill area / return to tiling]]
+
+local function shortcutColumns(left, right)
+  local function lines(value)
+    local result = {}
+    for line in (value .. '\n'):gmatch('(.-)\n') do table.insert(result, line) end
+    return result
+  end
+  local a, b, width = lines(left), lines(right), 0
+  for _, line in ipairs(a) do width = math.max(width, utf8.len(line) or #line) end
+  local result = {}
+  for i = 1, math.max(#a, #b) do
+    local line = a[i] or ''
+    table.insert(result, line .. string.rep(' ', width - (utf8.len(line) or #line) + 5) .. (b[i] or ''))
+  end
+  return table.concat(result, '\n') .. '\n\nEscape or ⌘ ⌥ / to dismiss · Caps Lock tap = Escape'
+end
+
+local shortcutVisor = require('shortcut-visor')
+local shortcutsCanvas
 local shortcutsEscapeHotkey
 local shortcutsStyle = {
   fillColor = { red = 30 / 255, green = 30 / 255, blue = 46 / 255, alpha = 0.98 }, -- Catppuccin Mocha Base
@@ -50,7 +122,7 @@ local shortcutsStyle = {
   strokeWidth = 2,
   textColor = { red = 205 / 255, green = 214 / 255, blue = 244 / 255, alpha = 1 }, -- Text
   textFont = 'JetBrains Mono',
-  textSize = 17,
+  textSize = 14,
   radius = 18,
   padding = 24,
   fadeInDuration = 0.12,
@@ -58,9 +130,9 @@ local shortcutsStyle = {
 }
 
 local function dismissShortcuts()
-  if shortcutsAlert then
-    hs.alert.closeSpecific(shortcutsAlert)
-    shortcutsAlert = nil
+  if shortcutsCanvas then
+    shortcutsCanvas:delete()
+    shortcutsCanvas = nil
   end
   if shortcutsEscapeHotkey then
     shortcutsEscapeHotkey:delete()
@@ -68,10 +140,8 @@ local function dismissShortcuts()
   end
 end
 
-hs.hotkey.bind({'cmd', 'alt'}, '/', function()
-  if shortcutsAlert then
-    dismissShortcuts()
-  else
+function showKeyboardShortcuts()
+    if shortcutsCanvas then return shortcutsCanvas end
     local shortcuts = aerospaceShortcuts
     if hs.application.get('com.brnbw.dinky') then
       shortcuts = shortcuts:gsub('AEROSPACE SHORTCUTS', 'DINKY SHORTCUTS')
@@ -80,10 +150,27 @@ hs.hotkey.bind({'cmd', 'alt'}, '/', function()
         :gsub('⌥ Tab               previous workspace',
           '⌥ Tab               previous workspace\n⌥ ⇧ N               move window to next display and follow')
     end
-    shortcutsAlert = hs.alert.show(shortcuts, shortcutsStyle, nil, '')
+    shortcuts = shortcutColumns(shortcuts, table.concat(appShortcutLines, '\n') .. '\n\n' .. herdrShortcuts)
+    shortcutsCanvas = shortcutVisor.show(shortcuts, shortcutsStyle, hs.screen.mainScreen())
     shortcutsEscapeHotkey = hs.hotkey.bind({}, 'escape', dismissShortcuts)
+    return shortcutsCanvas
+end
+
+hs.hotkey.bind({'cmd', 'alt'}, '/', function()
+  if shortcutsCanvas then
+    dismissShortcuts()
+  else
+    showKeyboardShortcuts()
   end
 end)
+
+-- An open reference must fit the new display after docking, undocking or scaling.
+shortcutsScreenWatcher = hs.screen.watcher.new(function()
+  if shortcutsCanvas then
+    dismissShortcuts()
+    showKeyboardShortcuts()
+  end
+end):start()
 
 local function run(command)
   local output, ok = hs.execute(aerospace .. ' ' .. command, false)
