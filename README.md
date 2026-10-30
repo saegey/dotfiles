@@ -331,6 +331,22 @@ The generated `~/.config/herdr/plugins.json` contains absolute paths and cached
 metadata, so it stays machine-local. Plugins outside the list are left alone.
 Existing GitHub plugins are not updated by setup; use `herdr plugin update`.
 
+On each machine, enable a reminder after pulling Herdr changes (merge or rebase):
+
+```sh
+./scripts/setup-git-hooks --apply # once per clone
+```
+
+The tracked Git hooks print a reminder only when Herdr files or its setup scripts
+change. They never install anything or prompt for input during a pull. After the
+reminder, run `./scripts/update-herdr` to apply Stow links, register plugins, and
+reload Herdr in one step. This can install missing GitHub plugins and run their
+build hooks; already installed GitHub plugins still use `herdr plugin update`.
+Run `./scripts/update-herdr` once on a fresh machine too, since cloning does not
+run these hooks. Hook setup refuses to replace an existing custom hooks path or
+bypass existing pull hooks. Disable reminders with
+`git config --local --unset core.hooksPath`.
+
 Command+1–9 switches tabs. Control+Option+1–9 switches workspaces, and
 Control+Option+J/K focuses the next/previous agent in the sidebar.
 Command+[ hides or shows the Spaces and Agents sidebar completely.
