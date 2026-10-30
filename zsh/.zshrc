@@ -53,6 +53,9 @@ alias gco='git checkout'
 alias gf='git fetch'
 alias gpl='git pull'
 alias v='zed .'
+if [[ "$OSTYPE" == darwin* ]]; then
+  alias chrome-tailscale='open -na "Google Chrome" --args --user-data-dir="$HOME/Library/Application Support/Chrome-Tailscale" --proxy-server="socks5://127.0.0.1:1055"'
+fi
 
 # A curated, discoverable reminder for shell aliases and helper functions.
 shortcuts() {
@@ -64,6 +67,9 @@ shortcuts() {
   print -r -- '  gc/gp         git commit / push'
   print -r -- '  gco           git checkout <branch>'
   print -r -- '  gf/gpl        git fetch / pull'
+  if [[ "$OSTYPE" == darwin* ]]; then
+    print -r -- '  chrome-tailscale  Chrome profile using SOCKS proxy at 127.0.0.1:1055'
+  fi
   print -r -- ''
   print -r -- 'Helpers:'
   print -r -- '  tfplan [args] page a Terraform plan with color and retained output'

@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+
+# Herdr's server commands do not inherit interactive shell aliases or mise PATH.
+export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
+unset NO_COLOR
+export COLORTERM=truecolor
+
+case "${1:-}" in
+  --cached-status) exec "$HOME/.local/bin/herdr-music-view" --cached-status ;;
+  --status)
+    exec zsh -f -e -c 'source "$HOME/.zshrc.local"; eval "groovenet-lounge-status --max-width 42 --bar-width 4"'
+    ;;
+  --player)
+    exec zsh -f -e -c 'source "$HOME/.zshrc.local"; eval groovenet-lounge'
+    ;;
+  '') exec "$HOME/.local/bin/herdr-music-view" ;;
+  *) printf 'Usage: herdr-music [--status|--cached-status|--player]\n' >&2; exit 2 ;;
+esac

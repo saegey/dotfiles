@@ -15,6 +15,25 @@ spoon.RoundedCorners.radius = 18
 spoon.RoundedCorners:start()
 
 local hyper = {'ctrl', 'alt', 'shift', 'cmd'}
+tileFocus = require('tile-focus').new('/opt/homebrew/bin/dinky')
+local tileFocusBindings = {
+  {key = 'left', vim = 'h', direction = 'left'},
+  {key = 'down', vim = 'j', direction = 'down'},
+  {key = 'up', vim = 'k', direction = 'up'},
+  {key = 'right', vim = 'l', direction = 'right'},
+}
+for _, binding in ipairs(tileFocusBindings) do
+  local direction = binding.direction
+  local function focusTile()
+    if hs.application.get('com.brnbw.dinky') then
+      tileFocus:focus(direction)
+    else
+      hs.execute(aerospace .. ' focus ' .. direction, false)
+    end
+  end
+  hs.hotkey.bind(hyper, binding.key, focusTile)
+  hs.hotkey.bind({'alt'}, binding.vim, focusTile)
+end
 -- Karabiner's driver is blocked by system policy; use the driver-free fallback.
 capsHyper = require('caps-hyper').new()
 if not capsHyper:start() then
@@ -40,16 +59,45 @@ for _, app in ipairs(appShortcuts) do
   end)
 end
 
+-- Match Herdr's sidebar shortcut in Chrome and Linear.
+local sidebarShortcuts = {
+  ['com.google.Chrome'] = {modifiers = {'cmd', 'shift'}, key = 'l'},
+  ['com.linear'] = {modifiers = {}, key = '['},
+}
+local appSidebarHotkey = hs.hotkey.new({'cmd'}, '[', function()
+  local app = hs.application.frontmostApplication()
+  local shortcut = app and sidebarShortcuts[app:bundleID()]
+  if shortcut then
+    hs.eventtap.keyStroke(shortcut.modifiers, shortcut.key, 0, app)
+  end
+end)
+local function updateAppSidebarHotkey()
+  local app = hs.application.frontmostApplication()
+  if app and sidebarShortcuts[app:bundleID()] then
+    appSidebarHotkey:enable()
+  else
+    appSidebarHotkey:disable()
+  end
+end
+appSidebarWatcher = hs.application.watcher.new(function(_, event)
+  if event == hs.application.watcher.activated then
+    updateAppSidebarHotkey()
+  end
+end):start()
+updateAppSidebarHotkey()
+
 -- Generate the help text from the bindings so it stays in sync.
 local appShortcutLines = {'Apps · Hyper = hold Caps Lock (⌃⌥⇧⌘)'}
 for _, app in ipairs(appShortcuts) do
   table.insert(appShortcutLines, string.format('Hyper %s  %s', app.key:upper(), app.name))
 end
+table.insert(appShortcutLines, '\nSidebars\n⌘ [                 Chrome tabs / Linear sidebar')
 
 local aerospaceShortcuts = [[
 AEROSPACE SHORTCUTS
 
 Focus windows
+Hyper ← / ↓ / ↑ / → left / down / up / right
 ⌥ H / J / K / L     left / down / up / right
 
 Move windows
@@ -82,6 +130,7 @@ HERDR · inside Ghostty
 ⌘ P                 repo tasks
 ⌘ I                 worktree visor
 ⌘ ⇧ R               Review PR dashboard
+⌘ ⇧ M / ⌘ ⌥ M       open / hide lounge player
 ⌘ K                 search tabs / agents / branches
 ⌃ ⌥ 1–9             switch Herdr workspace
 ⌃ ⌥ J / K           next / previous agent
@@ -145,6 +194,7 @@ function showKeyboardShortcuts()
     local shortcuts = aerospaceShortcuts
     if hs.application.get('com.brnbw.dinky') then
       shortcuts = shortcuts:gsub('AEROSPACE SHORTCUTS', 'DINKY SHORTCUTS')
+        :gsub('1–9', '1–5')
         :gsub('AeroSpace fullscreen %(keeps outer gaps%)', 'Dinky fullscreen')
         :gsub('Arrange windows\n', 'Arrange windows\n⌥ S                 cycle tiles / accordion / scrolling\n')
         :gsub('⌥ Tab               previous workspace',

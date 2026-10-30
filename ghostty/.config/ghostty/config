@@ -61,6 +61,10 @@ keybind = cmd+d=unbind
 keybind = cmd+shift+d=unbind
 # The persistent PR review dashboard belongs to Herdr.
 keybind = cmd+shift+r=unbind
+# Disable window minimization and send music shortcuts explicitly to Herdr.
+keybind = cmd+m=ignore
+keybind = cmd+shift+m=text:\x1b[109;8u
+keybind = cmd+alt+m=text:\x1b[110;8u
 # Let Herdr navigate its panes instead of Ghostty's own splits.
 keybind = cmd+alt+left=unbind
 keybind = cmd+alt+down=unbind

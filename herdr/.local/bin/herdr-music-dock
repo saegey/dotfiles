@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Keep one lounge player pane alive; follow tabs and toggle its zoom."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import socket
+import signal
+import subprocess
+import sys
+import time
+
+DOCK_ROWS = 3
+STATUS_BAR = True
+
+
+def status_cache():
+    name = hashlib.sha256(os.environ['HERDR_SOCKET_PATH'].encode()).hexdigest()[:16]
+    return Path.home() / '.cache/herdr-music' / (name + '.status')
+
+
+def api(method, **params):
+    with socket.socket(socket.AF_UNIX) as connection:
+        connection.settimeout(15)
+        connection.connect(os.environ['HERDR_SOCKET_PATH'])
+        request = {'id': 'music-dock', 'method': method, 'params': params}
+        connection.sendall((json.dumps(request) + '\n').encode())
+        response = json.loads(connection.makefile('rb').readline())
+    if 'error' in response:
+        raise RuntimeError(response['error']['message'])
+    result = response['result']
+    return result.get('move_result', result)
+
+
+def metadata(pane, **tokens):
+    api('pane.report_metadata', pane_id=pane, source='dotfiles:music', tokens=tokens)
+
+
+def refresh_work_pane(target, tab):
+    # The client applies pane-move geometry asynchronously. Let it settle, then
+    # refresh the existing work focus and ask its TUI to redraw at the new size.
+    # Never retarget focus if the user has already navigated somewhere else.
+    time.sleep(0.15)
+    snapshot = api('session.snapshot')['snapshot']
+    if (snapshot['focused_tab_id'] != tab or
+            snapshot['focused_pane_id'] != target):
+        return
+    api('pane.focus', pane_id=target)
+    info = api('pane.process_info', pane_id=target)['process_info']
+    group = info.get('foreground_process_group_id')
+    if isinstance(group, int) and group > 1 and group != os.getpgrp():
+        try:
+            os.killpg(group, signal.SIGWINCH)
+        except ProcessLookupError:
+            pass  # The app exited between inspection and the redraw request.
+
+
+def dock(toggle=False, follow=False, visibility=False):
+    snapshot = api('session.snapshot')['snapshot']
+    tab = snapshot['focused_tab_id']
+    target = snapshot['focused_pane_id']
+    panes = snapshot['panes']
+    music = [p for p in panes if p.get('tokens', {}).get('music_lounge') == '1']
+    if len(music) > 1:
+        raise RuntimeError('Multiple lounge panes found; refusing to choose one.')
+    player = music[0] if music else None
+    if STATUS_BAR and follow:
+        if (player and player['tab_id'] != tab and
+                player.get('tokens', {}).get('music_hidden') != '1'):
+            dock(visibility=True)
+        return
+    if STATUS_BAR and player and not (toggle or follow or visibility):
+        return
+    if player and player.get('tokens', {}).get('music_hidden') == '1' and follow:
+        return
+    if follow and not player:
+        return  # Switching tabs must never start a new authenticated player.
+    if not tab or not target:
+        return
+    current = api('layout.export', tab_id=tab)['layout']
+    if visibility and player and player.get('tokens', {}).get('music_hidden') != '1':
+        pane = player['pane_id']
+        source = api('layout.export', tab_id=player['tab_id'])['layout']
+        if source['zoomed']:
+            if source['focused_pane_id'] != pane:
+                raise RuntimeError('Unzoom the work pane before hiding the music dock.')
+            api('pane.zoom', pane_id=pane, mode='off')
+        # Mark hidden before moving so focus events cannot immediately bring it back.
+        metadata(pane, music_hidden='1', music_zoom='0')
+        try:
+            moved = api('pane.move', pane_id=pane, destination={
+                'type': 'new_tab', 'workspace_id': player['workspace_id'],
+                'label': '♫ Music'}, focus=False)
+        except Exception:
+            metadata(pane, music_hidden='0')
+            raise
+        if not moved['changed']:
+            metadata(pane, music_hidden='0')
+            raise RuntimeError('Could not park the music pane.')
+        refresh_work_pane(target, tab)
+        return
+    if not player:
+        if current['zoomed']:
+            raise RuntimeError('Unzoom the current tab before opening the music dock.')
+        layout = api('pane.layout', pane_id=target)['layout']
+        height = next(p['rect']['height'] for p in layout['panes'] if p['pane_id'] == target)
+        ratio = max(0.5, min(0.95, 1 - DOCK_ROWS / max(height, 1)))
+        player = api('pane.split', target_pane_id=target, direction='down',
+                     ratio=ratio, cwd=str(Path.home()), focus=False)['pane']
+        pane = player['pane_id']
+        metadata(pane, music_lounge='1', music_return=target, music_zoom='0', music_hidden='0')
+        api('pane.rename', pane_id=pane, label='Lounge')
+        subprocess.run([os.environ.get('HERDR_BIN_PATH', 'herdr'), 'pane', 'run', pane,
+                        '"$HOME/.local/bin/herdr-music"'], check=True, timeout=15)
+        refresh_work_pane(target, tab)
+        if STATUS_BAR:
+            dock(toggle=toggle, visibility=not toggle)
+        return
+    pane = player['pane_id']
+    if player['tab_id'] != tab:
+        if current['zoomed']:
+            if follow:
+                return  # Never disturb another pane's zoom.
+            raise RuntimeError('Unzoom the current tab before bringing the music dock here.')
+        source = api('layout.export', tab_id=player['tab_id'])['layout']
+        if source['zoomed']:
+            if (source['focused_pane_id'] != pane or
+                    player.get('tokens', {}).get('music_zoom') != '1'):
+                return
+            api('pane.zoom', pane_id=pane, mode='off')
+        layout = api('pane.layout', pane_id=target)['layout']
+        height = next(p['rect']['height'] for p in layout['panes'] if p['pane_id'] == target)
+        ratio = max(0.5, min(0.95, 1 - DOCK_ROWS / max(height, 1)))
+        moved = api('pane.move', pane_id=pane, destination={
+            'type': 'tab', 'tab_id': tab, 'target_pane_id': target,
+            'split': 'down', 'ratio': ratio}, focus=False)
+        if not moved['changed']:
+            return
+        player = moved['pane']
+        pane = player['pane_id']  # Cross-workspace moves assign a new public ID.
+        metadata(pane, music_lounge='1', music_return=target, music_zoom='0', music_hidden='0')
+        refresh_work_pane(target, tab)
+        current = api('layout.export', tab_id=tab)['layout']
+    if not toggle:
+        return
+    tokens = player.get('tokens', {})
+    if current['zoomed'] and current['focused_pane_id'] == pane:
+        api('pane.zoom', pane_id=pane, mode='off')
+        metadata(pane, music_zoom='0')
+        previous = tokens.get('music_return')
+        if any(p['pane_id'] == previous and p['tab_id'] == tab for p in panes):
+            api('pane.focus', pane_id=previous)
+        if STATUS_BAR:
+            dock(visibility=True)
+    elif current['zoomed']:
+        raise RuntimeError('Unzoom the current pane before expanding the player.')
+    else:
+        previous = target if target != pane else tokens.get('music_return', '')
+        metadata(pane, music_return=previous, music_zoom='1')
+        api('pane.zoom', pane_id=pane, mode='on')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--follow', action='store_true')
+    parser.add_argument('--dock', action='store_true')
+    parser.add_argument('--toggle-visible', action='store_true')
+    args = parser.parse_args()
+    try:
+        path = os.environ.get('HERDR_SOCKET_PATH')
+        if not path:
+            raise RuntimeError('Run inside Herdr.')
+        cache = Path.home() / '.cache/herdr-music'
+        cache.mkdir(parents=True, exist_ok=True)
+        name = hashlib.sha256(path.encode()).hexdigest()[:16] + '.lock'
+        with (cache / name).open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            dock(toggle=(not (args.follow or args.dock or args.toggle_visible)
+                         or (STATUS_BAR and args.toggle_visible)),
+                 follow=args.follow, visibility=args.toggle_visible and not STATUS_BAR)
+    except (OSError, RuntimeError, KeyError, ValueError, subprocess.SubprocessError) as error:
+        print('Music dock: ' + str(error), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

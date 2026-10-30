@@ -116,10 +116,16 @@ AeroSpace layout helper pauses while Dinky runs, and the Command-Option-/
 shortcut popup shows Dinky's bindings. Reload Hammerspoon after updating its
 config.
 
+Hold Caps Lock (Hyper) and press an arrow to focus a tiled window in that
+direction on the current Dinky space and display. Option-H/J/K/L uses the same
+Hammerspoon handler. Floating windows are excluded, and focus stays put when
+there is no tile in that direction. These shortcuts move between app windows;
+Command-Option-arrows still move between Herdr panes inside a Ghostty window.
+
 This config keeps the Option-based focus, movement, workspace, fullscreen,
 resize and layout shortcuts, 20-point inner gaps, 10-point outer gaps (56 at
 the top for SketchyBar), and Catppuccin borders. Dinky
-creates nine native macOS Spaces for workspaces 1–9. Option-S cycles tiles
+creates five native macOS Spaces for workspaces 1–5. Option-S cycles tiles
 and scrolling; Option-Comma cycles accordion orientation. Option-Shift-N moves the window to the next display
 and follows it. AeroSpace's Option-Shift-Tab command to move a whole workspace
 to another monitor has no binding here.
@@ -146,7 +152,7 @@ brew services start sketchybar
 ```
 
 The Catppuccin Mocha bar uses JetBrains Mono and shows clickable Dinky workspaces
-1–9, the active app, Now Playing, network and Tailscale status, audio output,
+1–5, the active app, Now Playing, network and Tailscale status, audio output,
 Homebrew updates, volume, and a clock. Battery status appears only when the Mac
 has a battery. Click volume to toggle mute, or the clock to open Calendar.
 
@@ -355,6 +361,32 @@ They create and focus a worktree workspace, then start Claude in its root pane.
 plan; `review` finds the ticket's PR with `gh`, fetches its branch, and runs
 Claude Opus with `/pr-review <PR-number>`. Both require `herdr` and `jq`;
 `review` also requires authenticated GitHub CLI access.
+
+## Lounge music in Herdr
+
+The right side of Herdr's top tab bar shows a single line of lounge now-playing
+status. Tabs stay at the top; no bottom split takes space from the work pane.
+A background controller polls `groovenet-lounge-status` every two seconds and
+writes only display text to a session-specific cache. Herdr reads that cache
+once per second; stale text disappears if the controller stops.
+
+**Command+Shift+M** (or **Command+Option+M**) opens the interactive player at full
+size. Press it again to return to work. Its terminal stays alive in a background
+**♫ Music** tab, preserving the player's state between openings. Switching
+to another tab or workspace parks an open player. Closing its parked tab ends
+the controller and UI; the next shortcut press starts it again.
+
+`herdr-music` loads the machine-local `groovenet-lounge` and
+`groovenet-lounge-status` aliases from `~/.zshrc.local`, including their proxy and
+credentials. It does not invoke 1Password. Keep actual keys in that local file,
+not in the tracked dotfiles. The interactive player has a private PTY so hiding
+it doesn't stop its session. Only the status text is cached.
+
+After Stowing the Herdr package, register its focus hooks with
+`herdr plugin link ~/.config/herdr/plugins/music-dock`. Run
+`herdr-music-dock --dock` to start the background controller without opening the
+full player. `herdr-music --status` performs an on-demand status read, and
+`herdr-music --cached-status` reads the cached text without a network request.
 
 ## PR review dashboard
 

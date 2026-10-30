@@ -51,16 +51,16 @@ sketchybar --add event dinky_workspace_change \
   --add event dinky_focus_change
 
 sketchybar --add item brand left \
-  --set brand label=SAEGEY label.color="$MAUVE" \
-  label.font="JetBrains Mono:Medium:11.0" padding_right=6
+  --set brand icon='' icon.drawing=on icon.color=0xffffffff \
+  icon.font="0xProto Nerd Font Mono:Regular:15.0" \
+  icon.padding_left=6 icon.padding_right=8 label.drawing=off
 
 # These are Dinky workspace numbers, not macOS's transient native Space IDs.
-for workspace in {1..9}; do
+for workspace in {1..5}; do
   sketchybar --add item "space.$workspace" left \
     --set "space.$workspace" label="$workspace" width=18 \
     label.width=18 label.align=center label.padding_left=0 label.padding_right=0 \
-    background.drawing=on background.color="$SURFACE" \
-    background.height=18 background.corner_radius=9 \
+    background.drawing=off \
     background.padding_left=0 background.padding_right=0 \
     click_script="dinky workspace $workspace"
 done
@@ -92,22 +92,22 @@ sketchybar --add item clock right \
 
 sketchybar --add item slack right \
   --set slack drawing=off updates=on update_freq=5 \
-  icon=SLACK icon.drawing=on icon.color="$MAUVE" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  icon="" icon.drawing=on icon.color="$MAUVE" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 \
   icon.padding_right=8 padding_right=8 label.color="$MAUVE" label.max_chars=8 \
   label.padding_left=0 label.padding_right=0 label.align=center \
   script="$plugin_dir/slack.sh" click_script="open -a Slack" \
   --subscribe slack front_app_switched system_woke
 
 sketchybar --add item volume right \
-  --set volume icon=VOL icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  --set volume icon="" icon.drawing=on icon.color="$GREEN" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 \
   icon.padding_right=0 update_freq=60 script="$plugin_dir/volume.sh" \
   --subscribe volume volume_change mouse.clicked system_woke
 
 sketchybar --add item audio right \
-  --set audio icon=OUT icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  --set audio icon="" icon.drawing=on icon.color="$GREEN" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 \
   icon.padding_right=0 label.max_chars=18 update_freq=15 \
   popup.align=right popup.height=30 popup.background.color="$BASE" \
   popup.background.border_color="$SURFACE" popup.background.border_width=1 \
@@ -116,22 +116,22 @@ sketchybar --add item audio right \
   --subscribe audio volume_change mouse.clicked mouse.exited.global system_woke
 
 sketchybar --add item network right \
-  --set network icon=NET icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  --set network icon="" icon.drawing=on icon.color="$GREEN" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 \
   icon.padding_right=0 update_freq=10 script="$plugin_dir/network.sh" \
   click_script="open 'x-apple.systempreferences:com.apple.Network-Settings.extension'" \
   --subscribe network system_woke
 
 sketchybar --add item tailscale right \
-  --set tailscale icon=TS icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  --set tailscale icon="" icon.drawing=on icon.color="$GREEN" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 \
   icon.padding_right=0 update_freq=15 script="$plugin_dir/tailscale.sh" \
   click_script="open -a Tailscale" \
   --subscribe tailscale system_woke
 
 sketchybar --add item brew_updates right \
-  --set brew_updates icon=BREW icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  --set brew_updates icon="" icon.drawing=on icon.color="$GREEN" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 \
   icon.padding_right=0 update_freq=3600 \
   popup.align=right popup.height=30 popup.background.color="$BASE" \
   popup.background.border_color="$SURFACE" popup.background.border_width=1 \
@@ -140,14 +140,14 @@ sketchybar --add item brew_updates right \
   --subscribe brew_updates mouse.clicked mouse.exited.global system_woke
 
 sketchybar --add item battery right \
-  --set battery icon=BAT icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 \
+  --set battery icon="" icon.drawing=on icon.color="$GREEN" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 \
   icon.padding_right=0 update_freq=120 script="$plugin_dir/battery.sh" \
   --subscribe battery power_source_change system_woke
 
 sketchybar --add item stacks right \
-  --set stacks icon=STACKS icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=8 icon.padding_right=0 \
+  --set stacks icon="" icon.drawing=on icon.color="$GREEN" \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=8 icon.padding_right=0 \
   update_freq=10 script="$plugin_dir/stacks.sh" \
   popup.align=right popup.height=28 popup.background.color="$BASE" \
   popup.background.border_color="$SURFACE" popup.background.border_width=1 \
@@ -159,7 +159,7 @@ sketchybar --add item stacks right \
 sketchybar --add item media.compact right \
   --set media.compact drawing=off updates=on update_freq=5 \
   icon.drawing=on icon.color="$GREEN" \
-  icon.font="JetBrains Mono:Medium:10.0" icon.padding_left=4 \
+  icon.font="0xProto Nerd Font Mono:Regular:13.0" icon.padding_left=4 \
   icon.padding_right=0 label.font="JetBrains Mono:Medium:11.0" label.max_chars=16 \
   script="$plugin_dir/media.sh" \
   --subscribe media.compact mouse.clicked system_woke
