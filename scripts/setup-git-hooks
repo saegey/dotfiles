@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$root"
+case "${1:-}" in
+  '') echo 'Preview: set this checkout’s core.hooksPath to .githooks. Run with --apply to enable.'; exit 0 ;;
+  --apply) [[ $# == 1 ]] || exit 2 ;;
+  *) echo 'Usage: ./scripts/setup-git-hooks [--apply]' >&2; exit 2 ;;
+esac
+current=$(git config --get core.hooksPath || true)
+if [[ -n $current && $current != .githooks ]]; then
+  echo "Existing core.hooksPath is $current; refusing to replace it." >&2
+  exit 1
+fi
+if [[ $current != .githooks ]]; then
+  for hook in post-merge post-rewrite; do
+    path=$(git rev-parse --git-path "hooks/$hook")
+    if [[ -e $path || -L $path ]]; then
+      echo "Existing hook at $path; refusing to bypass it." >&2
+      exit 1
+    fi
+  done
+fi
+git config --local core.hooksPath .githooks
+echo 'Enabled Herdr update reminders after merge and rebase pulls in this checkout.'

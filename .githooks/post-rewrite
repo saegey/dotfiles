@@ -1,0 +1,11 @@
+#!/bin/bash
+# A rebase pull uses post-rewrite instead of post-merge.
+[[ ${1:-} == rebase ]] || exit 0
+previous=
+while read -r old new rest; do
+  previous=$old
+done
+[[ -n $previous ]] || exit 0
+root=$(git rev-parse --show-toplevel) || exit 0
+"$root/scripts/check-herdr-update" "$previous" HEAD
+exit 0
