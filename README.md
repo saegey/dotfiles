@@ -309,6 +309,22 @@ After installing Herdr, link its configuration and task picker explicitly:
 ./bootstrap.sh --apply --packages herdr
 ```
 
+Track GitHub plugins in `herdr/.config/herdr/plugin-sources.json`; local plugins
+are discovered under `herdr/.config/herdr/plugins/`. After linking, run:
+
+```sh
+./scripts/setup-herdr-plugins          # preview
+./scripts/setup-herdr-plugins --apply  # install missing plugins, link local plugins, reload
+```
+
+The apply step downloads and runs build hooks for missing GitHub plugins (the
+palette needs Rust/Cargo). Existing GitHub registrations, including disabled
+plugins, are preserved; local plugins are linked and enabled from this checkout. This is
+separate from Stow, which only links files and does not register Herdr plugins.
+The generated `~/.config/herdr/plugins.json` contains absolute paths and cached
+metadata, so it stays machine-local. Plugins outside the list are left alone.
+Existing GitHub plugins are not updated by setup; use `herdr plugin update`.
+
 Command+1–9 switches tabs. Control+Option+1–9 switches workspaces, and
 Control+Option+J/K focuses the next/previous agent in the sidebar.
 Command+[ hides or shows the Spaces and Agents sidebar completely.
