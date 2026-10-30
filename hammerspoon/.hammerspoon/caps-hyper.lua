@@ -3,14 +3,69 @@ local M = {}
 local capsUsage = 0x700000039
 local f18Usage = 0x70000006d
 
+-- Newer macOS versions print one plist per HID service, prefixed by a table
+-- header and registry ID. Only apply a global update when unrelated maps agree;
+-- a newly connected service may not have our own Caps Lock mapping yet.
+function M.parseMappings(output)
+  local values = {}
+  if output:match('^%s*RegistryID%s+Key%s+Value') then
+    local current
+    for line in output:gmatch('[^\r\n]+') do
+      local value = line:match('^%s*%x+%s+UserKeyMapping%s+(.+)$')
+      if value then
+        current = #values + 1
+        values[current] = value
+      elseif current then
+        values[current] = values[current] .. '\n' .. line
+      end
+    end
+    if #values == 0 then return nil, 'hidutil returned no HID services' end
+  else
+    values[1] = output
+  end
+  local mappings, hasCapsHyper
+  for _, value in ipairs(values) do
+    if not value:match('^%s*%(') and not value:match('^%s*<') then
+      return nil, 'Could not parse hidutil key mappings'
+    end
+    local parsed = value:match('^%s*%(null%)%s*$') and {} or hs.plist.readString(value)
+    if type(parsed) ~= 'table' then return nil, 'Could not parse hidutil key mappings' end
+    local unrelated = {}
+    for _, mapping in ipairs(parsed) do
+      if type(mapping) ~= 'table' or not tonumber(mapping.HIDKeyboardModifierMappingSrc)
+        or not tonumber(mapping.HIDKeyboardModifierMappingDst) then
+        return nil, 'Invalid hidutil key mapping'
+      end
+      if tonumber(mapping.HIDKeyboardModifierMappingSrc) == capsUsage
+        and tonumber(mapping.HIDKeyboardModifierMappingDst) == f18Usage then
+        hasCapsHyper = true
+      else
+        table.insert(unrelated, mapping)
+      end
+    end
+    parsed = unrelated
+    if mappings then
+      if #mappings ~= #parsed then return nil, 'HID services have different key mappings' end
+      for i, mapping in ipairs(mappings) do
+        if tonumber(mapping.HIDKeyboardModifierMappingSrc) ~= tonumber(parsed[i].HIDKeyboardModifierMappingSrc)
+          or tonumber(mapping.HIDKeyboardModifierMappingDst) ~= tonumber(parsed[i].HIDKeyboardModifierMappingDst) then
+          return nil, 'HID services have different key mappings'
+        end
+      end
+    end
+    mappings = parsed
+  end
+  if hasCapsHyper then
+    table.insert(mappings, {HIDKeyboardModifierMappingSrc = capsUsage, HIDKeyboardModifierMappingDst = f18Usage})
+  end
+  return mappings
+end
+
 local function remap(enabled)
   local output, ok = hs.execute('/usr/bin/hidutil property --get UserKeyMapping', false)
-  if not ok then return false end
-  local mappings = {}
-  if output:match('%S+') ~= '(null)' then
-    mappings = hs.plist.readString(output)
-    if type(mappings) ~= 'table' then return false end
-  end
+  if not ok then return false, 'Could not read hidutil key mappings' end
+  local mappings, reason = M.parseMappings(output)
+  if not mappings then return false, reason end
   local updated = {}
   for _, mapping in ipairs(mappings) do
     local src = tonumber(mapping.HIDKeyboardModifierMappingSrc)
@@ -18,7 +73,7 @@ local function remap(enabled)
     if not src or not dst then return false end
     if src == capsUsage then
       -- Never replace someone else's Caps Lock remap.
-      if dst ~= f18Usage then return false end
+      if dst ~= f18Usage then return false, 'Caps Lock already has a different key mapping' end
     else
       table.insert(updated, {HIDKeyboardModifierMappingSrc = src, HIDKeyboardModifierMappingDst = dst})
     end
@@ -28,7 +83,7 @@ local function remap(enabled)
   end
   local json = #updated == 0 and '{"UserKeyMapping":[]}' or hs.json.encode({UserKeyMapping = updated})
   local _, success = hs.execute("/usr/bin/hidutil property --set '" .. json .. "'", false)
-  return success
+  return success, success and nil or 'Could not write hidutil key mappings'
 end
 
 function M.new()
@@ -72,11 +127,15 @@ function M.new()
   self.tap = hs.eventtap.new({types.keyDown, types.keyUp, types.leftMouseDown,
                              types.rightMouseDown, types.otherMouseDown, types.scrollWheel}, self.handle)
   function self:start()
-    if not hs.accessibilityState() then return false end
+    if not hs.accessibilityState() then return false, 'Enable Hammerspoon in System Settings → Privacy & Security → Accessibility, then quit and reopen Hammerspoon' end
     self.tap:start()
-    if not self.tap:isEnabled() or not remap(true) then
+    if not self.tap:isEnabled() then
+      return false, 'Keyboard listener could not start; check Accessibility access and restart Hammerspoon'
+    end
+    local ok, reason = remap(true)
+    if not ok then
       self.tap:stop()
-      return false
+      return false, reason
     end
     hs.hid.capslock.set(false)
     -- Reapply after sleep or keyboard connection without discarding other remaps.

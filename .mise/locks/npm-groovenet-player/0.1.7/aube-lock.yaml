@@ -9,19 +9,19 @@ importers:
   .:
     dependencies:
       '@groovenet/player':
-        specifier: 0.1.5
-        version: 0.1.5(debug@4.4.3)
+        specifier: 0.1.7
+        version: 0.1.7(debug@4.4.3)
 
 packages:
 
-  '@groovenet/client@3.6.0':
-    resolution: {integrity: sha512-tgzEw2H8tmxXBKL/PIOr5BStVgL+KzL4BISlO2y0klSkR8bGsPR4kREXMFhiftLaih4972+vNPHjPxmVzIoI0Q==}
+  '@groovenet/client@3.8.0':
+    resolution: {integrity: sha512-rsBPEu2FY/GqIONSeMNbb6q0QPa+8fiJHAjoBhgsWtdwDHCmca54jOACoufEg0dA34LBhxbU5ux4jBOGH1KzQg==}
 
-  '@groovenet/contracts@1.3.0':
-    resolution: {integrity: sha512-cUPeNAscKutPyQhOfRqPnGfy/e/RnzHaavvX+EoMim9jtTi2vawBXccxk3gaW+Fd+SSp/8DUF0u38yuUcRzU2A==}
+  '@groovenet/contracts@1.4.0':
+    resolution: {integrity: sha512-cDd2kauz6CYXvexZdQMZR0dHf9HgFQCAiGmQPaLsfQ0vf4p/Qm884ii5k28p1CHhChQOmPZ4Ns7owelEOEVu7Q==}
 
-  '@groovenet/player@0.1.5':
-    resolution: {integrity: sha512-i2EBdvLobucEM0vn9LRCOHqItE/k7glXFdtLI0wT+GCCx8yjrwYUHJ+erw2qQBEC2/mb26l89uorvbdQT8BrjQ==}
+  '@groovenet/player@0.1.7':
+    resolution: {integrity: sha512-xyk8aZMpI0vRarxDHLL8fhAmmdfxzcaEDsnizmaGO7MfG0u+8t+nn5a5yNZ4Pwl87MjtjmrQeh94Ahs13cSU8A==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -599,23 +599,23 @@ packages:
 
 snapshots:
 
-  '@groovenet/client@3.6.0(debug@4.4.3)':
+  '@groovenet/client@3.8.0(debug@4.4.3)':
     dependencies:
-      '@groovenet/contracts': 1.3.0
+      '@groovenet/contracts': 1.4.0
       axios: 1.21.0(debug@4.4.3)
       zod: 4.6.7
     transitivePeerDependencies:
       - debug
       - supports-color
 
-  '@groovenet/contracts@1.3.0':
+  '@groovenet/contracts@1.4.0':
     dependencies:
       zod: 4.6.7
 
-  '@groovenet/player@0.1.5(debug@4.4.3)':
+  '@groovenet/player@0.1.7(debug@4.4.3)':
     dependencies:
-      '@groovenet/client': 3.6.0(debug@4.4.3)
-      '@groovenet/contracts': 1.3.0
+      '@groovenet/client': 3.8.0(debug@4.4.3)
+      '@groovenet/contracts': 1.4.0
       pg: 8.23.1
       zod: 4.6.7
     optionalDependencies:

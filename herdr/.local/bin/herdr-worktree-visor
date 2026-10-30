@@ -192,7 +192,7 @@ def load_pr(root, branch):
         return {"pr": None, "error": None}
     try:
         pr = read_json(["gh", "pr", "view", branch, "--json",
-            "number,title,state,isDraft,url,reviewDecision,headRefName,headRefOid,statusCheckRollup"], root)
+            "number,title,state,isDraft,url,reviewDecision,headRefName,headRefOid,statusCheckRollup,closingIssuesReferences"], root)
         if isinstance(pr, dict) and pr.get("headRefName") == branch:
             return {"pr": pr, "error": None}
         return {"pr": None, "error": "No matching PR for this branch"}
@@ -202,6 +202,38 @@ def load_pr(root, branch):
     except (OSError, subprocess.SubprocessError, ValueError):
         pass
     return {"pr": None, "error": "GitHub PR unavailable; check gh authentication or connection"}
+
+
+def github_issue_number(name):
+    # Explicit issue markers or a numeric branch segment, never SKY-123 or
+    # unrelated numbers embedded in a description (e.g. fix-python-3).
+    match = re.search(r"(?:^|[^A-Za-z0-9])(?:issues?[-_/]|gh[-_/]|github[-_/]|#)([1-9][0-9]*)(?=$|[-_/])", name, re.I)
+    match = match or re.search(r"(?:^|/)([1-9][0-9]*)(?=$|[-_/])", name)
+    return match[1] if match else None
+
+
+def load_github_issues(root, branch, pr):
+    references = (pr or {}).get("closingIssuesReferences") or []
+    # Use full URLs for PR links, which can refer to a different repository.
+    targets = list(dict.fromkeys(ref["url"] for ref in references
+                                if safe_url(ref.get("url"))))
+    if not targets:
+        number = github_issue_number(branch) or github_issue_number(root.name)
+        targets = [number] if number else []
+    issues = []
+    failed = False
+    for target in targets:
+        try:
+            issue = read_json(["gh", "issue", "view", target, "--json",
+                               "number,title,body,url,state"], root)
+            if not isinstance(issue, dict) or not issue.get("number"):
+                raise ValueError("Invalid GitHub issue")
+            issues.append({"identifier": "#{}".format(issue["number"]),
+                           "title": issue.get("title"), "description": issue.get("body"),
+                           "url": issue.get("url"), "state": {"name": issue.get("state")}})
+        except (OSError, subprocess.SubprocessError, ValueError):
+            failed = True
+    return {"issues": issues, "error": "GitHub issue unavailable; check the issue reference, gh authentication or connection" if failed else None}
 
 
 def latest_runs(runs, head):
@@ -256,6 +288,8 @@ def collect(root):
                  "actions": pool.submit(load_actions, root, branch, head),
                  "stacks": pool.submit(load_stacks, root)}
         data = {key: task.result() for key, task in tasks.items()}
+    data["github_issues"] = (load_github_issues(root, branch, data["github"]["pr"])
+                             if not data["linear"]["issue"] else {"issues": [], "error": None})
     data.update(directory=str(root), branch=branch, head=head, ticket=ticket,
                 updated=time.strftime("%H:%M:%S"))
     data["apps"] = app_links(root, data["stacks"]["projects"])
@@ -278,16 +312,21 @@ def rows_for(data, width):
         add(item["label"] + "  " + item["url"], item["url"])
     if not data["apps"]:
         add("No recorded app URLs for this checkout. Run make setup in the app repo to create them.", tone="muted")
-    section("LINEAR")
     linear = data["linear"]
-    issue = linear["issue"]
-    if issue:
+    fallback = data.get("github_issues", {"issues": [], "error": None})
+    issues = [linear["issue"]] if linear["issue"] else fallback["issues"]
+    section("LINEAR" if linear["issue"] or not issues and data.get("ticket") else "GITHUB ISSUES")
+    for issue in issues:
         state = (issue.get("state") or {}).get("name", "")
         add("{}  {}".format(issue["identifier"], state), issue.get("url"))
         add(issue.get("title"))
         add(issue.get("url"), issue.get("url"))
-    else:
-        add(linear["error"] or "No ticket ID detected in this branch or worktree name.", tone="warning" if linear["error"] else "muted")
+    if not issues:
+        message = fallback["error"] or linear["error"]
+        add(message or "No issue found. Link an issue to the PR or use an issue-123 branch name.",
+            tone="warning" if message else "muted")
+    elif fallback["error"]:
+        add(fallback["error"], tone="warning")
     section("GITHUB PULL REQUEST")
     pr = data["github"]["pr"]
     if pr:
@@ -320,9 +359,10 @@ def rows_for(data, width):
             tone="error" if project["unhealthy"] else "success" if project["running"] == project["total"] else "warning")
     if not data["stacks"]["projects"]:
         add(data["stacks"]["error"] or "No existing dev-stack containers for this checkout.", tone="warning" if data["stacks"]["error"] else "muted")
-    if issue and issue.get("description"):
-        section("TICKET DESCRIPTION")
-        add(issue["description"][:6000])
+    for issue in issues:
+        if issue.get("description"):
+            section("TICKET DESCRIPTION" if len(issues) == 1 else issue["identifier"] + " DESCRIPTION")
+            add(issue["description"][:6000])
     return rows
 
 

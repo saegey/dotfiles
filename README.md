@@ -540,6 +540,16 @@ the workspace checkout as a fallback. It shows the Linear ticket's title,
 status and description; the matching branch PR and review/check status;
 GitHub Actions for the checkout's current commit; and dev-stack container status.
 
+Linear is preferred when a ticket ID is detected and the lookup succeeds. If
+Linear is missing, unauthenticated, unreachable, or no ticket is detected, the
+visor falls back to GitHub Issues using the existing `gh` login. It first shows
+issues linked to the matching PR with closing references such as `Fixes #123`
+(including cross-repository links). Without linked issues, it looks for an issue
+number in the branch, then the worktree directory: `issue-123-description`,
+`gh-123`, `github-123`, or `123-description`, optionally under a user prefix.
+It shows each issue's title, state, link, and body. Linear IDs such as `SKY-123`
+are never treated as GitHub issue numbers. Without a reference, no issue is guessed.
+
 ```sh
 ./bootstrap.sh --apply --packages herdr
 herdr plugin link "$HOME/.config/herdr/plugins/worktree-visor"
@@ -561,7 +571,8 @@ when the remote PR head differs from the local checkout.
 
 For a noninteractive snapshot, run
 `herdr-worktree-visor --json --cwd /path/to/worktree`. Python 3 with curses,
-GitHub CLI, Linear CLI, and the `dev-stack-status` helper are required.
+GitHub CLI and the `dev-stack-status` helper are required. Linear CLI is optional
+when using GitHub Issues.
 
 ## Local overrides
 
