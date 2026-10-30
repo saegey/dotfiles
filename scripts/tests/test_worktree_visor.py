@@ -116,6 +116,74 @@ class WorktreeVisorTests(unittest.TestCase):
         with patch.object(visor, 'read_json', side_effect=error):
             self.assertEqual(visor.load_pr(Path('/tmp'), 'adam/SKY-123'), {'pr': None, 'error': None})
 
+    def test_github_issue_branch_numbers_are_unambiguous(self):
+        for name in ['issue-123-fix', 'adam/issue/123', 'gh-123', 'github-123-fix',
+                     '123-description', 'adam/123-description', 'repo-issue-123', '#123']:
+            self.assertEqual(visor.github_issue_number(name), '123', name)
+        for name in ['adam/SKY-123', 'fix-python-3', 'main', 'release-2026', 'issue-0', 'issue-123abc']:
+            self.assertIsNone(visor.github_issue_number(name), name)
+
+    def test_github_fallback_prefers_linked_issues_and_preserves_repository(self):
+        url = 'https://github.com/other/repo/issues/12'
+        pr = {'closingIssuesReferences': [{'url': url}, {'url': url}]}
+        with patch.object(visor, 'read_json', return_value={
+                'number': 12, 'title': 'Fix', 'body': 'Details', 'state': 'OPEN', 'url': url}) as read:
+            result = visor.load_github_issues(Path('/tmp'), 'issue-99', pr)
+        self.assertIsNone(result['error'])
+        self.assertEqual(result['issues'][0]['description'], 'Details')
+        self.assertEqual(read.call_count, 1)
+        self.assertEqual(read.call_args.args[0][3], url)
+
+    def test_github_fallback_without_pr_uses_branch_then_directory(self):
+        for branch, directory, expected in [('adam/issue-42-fix', '/tmp/issue-9', '42'),
+                                             ('', '/tmp/issue-9', '9')]:
+            with patch.object(visor, 'read_json', return_value={'number': int(expected)}) as read:
+                visor.load_github_issues(Path(directory), branch, None)
+                self.assertEqual(read.call_args.args[0][3], expected)
+
+    def test_github_fallback_with_no_reference_does_not_guess(self):
+        with patch.object(visor, 'read_json') as read:
+            self.assertEqual(visor.load_github_issues(Path('/tmp/repo'), 'SKY-42', None),
+                             {'issues': [], 'error': None})
+            read.assert_not_called()
+
+    def test_github_issue_failure_keeps_other_linked_issues(self):
+        pr = {'closingIssuesReferences': [{'url': 'https://github.com/a/b/issues/1'},
+                                          {'url': 'https://github.com/a/b/issues/2'}]}
+        with patch.object(visor, 'read_json', side_effect=[FileNotFoundError(), {'number': 2}]):
+            result = visor.load_github_issues(Path('/tmp'), 'main', pr)
+        self.assertEqual(len(result['issues']), 1)
+        self.assertIn('GitHub issue unavailable', result['error'])
+
+    def test_collect_falls_back_only_when_linear_has_no_issue(self):
+        for linear_issue in [None, {'identifier': 'SKY-1'}]:
+            with patch.object(visor, 'run', side_effect=['abc', 'SKY-1']), \
+                 patch.object(visor, 'load_linear', return_value={'issue': linear_issue, 'error': None}), \
+                 patch.object(visor, 'load_pr', return_value={'pr': None, 'error': None}), \
+                 patch.object(visor, 'load_actions', return_value={'runs': [], 'error': None}), \
+                 patch.object(visor, 'load_stacks', return_value={'projects': [], 'error': None}), \
+                 patch.object(visor, 'app_links', return_value=[]), \
+                 patch.object(visor, 'load_github_issues', return_value={'issues': [], 'error': None}) as fallback:
+                visor.collect(Path('/tmp/repo'))
+                self.assertEqual(fallback.call_count, 0 if linear_issue else 1)
+
+    def test_github_issue_rows_include_link_and_description(self):
+        url = 'https://github.com/org/repo/issues/1'
+        data = {
+            'apps': [], 'head': 'abc', 'ticket': 'SKY-1',
+            'linear': {'issue': None, 'error': 'Linear unavailable'},
+            'github_issues': {'issues': [{'identifier': '#1', 'title': 'Fix me',
+                'url': url, 'state': {'name': 'OPEN'}, 'description': 'Issue body'}], 'error': None},
+            'github': {'pr': None, 'error': None},
+            'actions': {'runs': [], 'error': None},
+            'stacks': {'projects': [], 'error': None},
+        }
+        rows = visor.rows_for(data, 80)
+        self.assertTrue(any(row['heading'] and row['text'] == 'GITHUB ISSUES' for row in rows))
+        self.assertTrue(any(row['url'] == url for row in rows))
+        self.assertTrue(any(row['text'] == 'Issue body' for row in rows))
+        self.assertFalse(any(row['text'] == 'Linear unavailable' for row in rows))
+
     def test_popup_keeps_explicit_worktree_context(self):
         with patch.dict(visor.os.environ, {'HERDR_ENV': '1', 'HERDR_WORKSPACE_ID': 'w9'}):
             with patch.object(visor.subprocess, 'run') as run:

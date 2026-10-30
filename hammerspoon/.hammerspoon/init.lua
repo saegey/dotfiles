@@ -36,8 +36,10 @@ for _, binding in ipairs(tileFocusBindings) do
 end
 -- Karabiner's driver is blocked by system policy; use the driver-free fallback.
 capsHyper = require('caps-hyper').new()
-if not capsHyper:start() then
-  hs.alert.show('Caps Lock Hyper could not start; check Hammerspoon Accessibility access and existing key remaps.')
+local hyperStarted, hyperError = capsHyper:start()
+if not hyperStarted then
+  hs.printf('Caps Lock Hyper: %s', hyperError)
+  hs.alert.show('Caps Lock Hyper: ' .. hyperError)
 end
 hs.shutdownCallback = function() capsHyper:stop() end
 

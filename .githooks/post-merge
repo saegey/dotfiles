@@ -1,0 +1,5 @@
+#!/bin/bash
+# Git invokes this after a merge pull, including a fast-forward.
+root=$(git rev-parse --show-toplevel) || exit 0
+"$root/scripts/check-herdr-update" ORIG_HEAD HEAD
+exit 0

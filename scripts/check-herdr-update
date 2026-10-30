@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+
+# Remind only; pulling must not download plugins or run their build hooks.
+changed=$(git diff --name-only "${1:-ORIG_HEAD}" "${2:-HEAD}" -- \
+  herdr scripts/setup-herdr-plugins scripts/update-herdr bootstrap.sh bootstrap.generic.sh 2>/dev/null) || exit 0
+[[ -n $changed ]] || exit 0
+cat >&2 <<'EOF'
+
+Herdr files changed. Update this machine's links and plugin registrations:
+  ./scripts/update-herdr
+Existing GitHub plugins can be updated separately with: herdr plugin update
+
+EOF

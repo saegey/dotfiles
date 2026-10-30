@@ -331,6 +331,22 @@ The generated `~/.config/herdr/plugins.json` contains absolute paths and cached
 metadata, so it stays machine-local. Plugins outside the list are left alone.
 Existing GitHub plugins are not updated by setup; use `herdr plugin update`.
 
+On each machine, enable a reminder after pulling Herdr changes (merge or rebase):
+
+```sh
+./scripts/setup-git-hooks --apply # once per clone
+```
+
+The tracked Git hooks print a reminder only when Herdr files or its setup scripts
+change. They never install anything or prompt for input during a pull. After the
+reminder, run `./scripts/update-herdr` to apply Stow links, register plugins, and
+reload Herdr in one step. This can install missing GitHub plugins and run their
+build hooks; already installed GitHub plugins still use `herdr plugin update`.
+Run `./scripts/update-herdr` once on a fresh machine too, since cloning does not
+run these hooks. Hook setup refuses to replace an existing custom hooks path or
+bypass existing pull hooks. Disable reminders with
+`git config --local --unset core.hooksPath`.
+
 Command+1–9 switches tabs. Control+Option+1–9 switches workspaces, and
 Control+Option+J/K focuses the next/previous agent in the sidebar.
 Command+[ hides or shows the Spaces and Agents sidebar completely.
@@ -524,6 +540,16 @@ the workspace checkout as a fallback. It shows the Linear ticket's title,
 status and description; the matching branch PR and review/check status;
 GitHub Actions for the checkout's current commit; and dev-stack container status.
 
+Linear is preferred when a ticket ID is detected and the lookup succeeds. If
+Linear is missing, unauthenticated, unreachable, or no ticket is detected, the
+visor falls back to GitHub Issues using the existing `gh` login. It first shows
+issues linked to the matching PR with closing references such as `Fixes #123`
+(including cross-repository links). Without linked issues, it looks for an issue
+number in the branch, then the worktree directory: `issue-123-description`,
+`gh-123`, `github-123`, or `123-description`, optionally under a user prefix.
+It shows each issue's title, state, link, and body. Linear IDs such as `SKY-123`
+are never treated as GitHub issue numbers. Without a reference, no issue is guessed.
+
 ```sh
 ./bootstrap.sh --apply --packages herdr
 herdr plugin link "$HOME/.config/herdr/plugins/worktree-visor"
@@ -545,7 +571,8 @@ when the remote PR head differs from the local checkout.
 
 For a noninteractive snapshot, run
 `herdr-worktree-visor --json --cwd /path/to/worktree`. Python 3 with curses,
-GitHub CLI, Linear CLI, and the `dev-stack-status` helper are required.
+GitHub CLI and the `dev-stack-status` helper are required. Linear CLI is optional
+when using GitHub Issues.
 
 ## Local overrides
 
