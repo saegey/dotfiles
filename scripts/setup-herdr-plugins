@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Preview or apply the Herdr plugins required by this checkout."""
+
+import argparse
+import json
+from pathlib import Path
+import shlex
+import subprocess
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--apply", action="store_true",
+        help="install missing GitHub plugins (including build hooks), link local plugins, and reload Herdr",
+    )
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parents[1]
+    config = root / "herdr/.config/herdr"
+    sources = json.loads((config / "plugin-sources.json").read_text())
+    result = subprocess.run(
+        ["herdr", "plugin", "list", "--json"],
+        check=True, capture_output=True, text=True,
+    )
+    installed = {
+        plugin["plugin_id"]
+        for plugin in json.loads(result.stdout)["result"]["plugins"]
+    }
+
+    def run(command):
+        print(shlex.join(command), flush=True)
+        if args.apply:
+            subprocess.run(command, check=True)
+
+    for source in sources:
+        if source["id"] in installed:
+            print("Already registered: " + source["id"], flush=True)
+            continue
+        run(["herdr", "plugin", "install", source["repository"], "--yes"])
+    for manifest in sorted((config / "plugins").glob("*/herdr-plugin.toml")):
+        run(["herdr", "plugin", "link", str(manifest.parent)])
+    run(["herdr", "server", "reload-config"])
+    if not args.apply:
+        print("Preview only; rerun with --apply to execute these commands.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
+        print("setup-herdr-plugins: " + str(error), file=sys.stderr)
+        if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+            print(error.stderr, file=sys.stderr)
+        sys.exit(1)
