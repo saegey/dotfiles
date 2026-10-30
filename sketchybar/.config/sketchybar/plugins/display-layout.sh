@@ -22,13 +22,13 @@ if (( ${#external[@]} )); then
   for anchor in panel_anchor_external_left panel_anchor_external_right; do
     args+=(--set "$anchor" display="$external_ids" drawing=on)
   done
-  for item in brand clock volume audio; do
+  for item in clock volume audio; do
     args+=(--set "$item" display="$external_ids" drawing=on updates=on)
   done
   args+=(--set media display="$external_ids" updates=on)
 else
   args+=(--set '/panel_anchor_external_.*/' drawing=off)
-  for item in brand clock volume audio media; do
+  for item in clock volume audio media; do
     args+=(--set "$item" drawing=off updates=off)
   done
 fi

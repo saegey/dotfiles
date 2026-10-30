@@ -11,18 +11,18 @@ fi
 occupied=$(dinky list-workspaces --all --empty no 2>/dev/null || true)
 args=()
 while IFS='|' read -r workspace visible monitor; do
-  [[ "$workspace" =~ ^[1-9]$ && "$monitor" =~ ^[0-9]+$ ]] || continue
+  [[ "$workspace" =~ ^[1-5]$ && "$monitor" =~ ^[0-9]+$ ]] || continue
   color="$MUTED"
-  background=0x00000000
+  label="$workspace"
   case $'\n'"$occupied"$'\n' in
     *$'\n'"$workspace"$'\n'*) color="$TEXT" ;;
   esac
   if [[ "$visible" == true ]]; then
-    color="$BASE"
-    background="$MAUVE"
+    color="$MAUVE"
+    label='●'
   fi
   args+=(--set "space.$workspace" drawing=on display="$monitor"
-    label.color="$color" background.color="$background")
+    label="$label" label.color="$color" background.drawing=off)
 done <<< "$state"
 
 if (( ${#args[@]} )); then sketchybar "${args[@]}"; fi

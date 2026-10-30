@@ -1,0 +1,14 @@
+id = "dotfiles.music-dock"
+name = "Lounge music dock"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Move the live lounge player with the active tab"
+platforms = ["macos", "linux"]
+
+[[events]]
+on = "workspace.focused"
+command = ["bash", "follow.sh"]
+
+[[events]]
+on = "tab.focused"
+command = ["bash", "follow.sh"]

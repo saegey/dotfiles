@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""One-line lounge status when docked, persistent player terminal when zoomed."""
+import fcntl
+import importlib.machinery
+import importlib.util
+import os
+from pathlib import Path
+import pty
+import re
+import select
+import signal
+import struct
+import subprocess
+import sys
+import termios
+import time
+import tty
+import unicodedata
+
+
+def load_dock():
+    path = Path(__file__).with_name('herdr-music-dock')
+    loader = importlib.machinery.SourceFileLoader('music_dock_api', str(path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+def expanded(api):
+    panes = api('session.snapshot')['snapshot']['panes']
+    music = [p for p in panes if p.get('tokens', {}).get('music_lounge') == '1']
+    if len(music) != 1 or music[0].get('tokens', {}).get('music_hidden') == '1':
+        return False
+    pane = music[0]
+    layout = api('layout.export', tab_id=pane['tab_id'])['layout']
+    return layout['zoomed'] and layout['focused_pane_id'] == pane['pane_id']
+
+
+def status_line(text, width):
+    # One terminal row, including wide Unicode titles. Do not replay terminal
+    # control sequences from the status command in the parent terminal.
+    text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
+    result, cells = [], 0
+    for char in ' '.join(text.splitlines()):
+        if unicodedata.category(char).startswith('C'):
+            continue
+        size = 0 if unicodedata.combining(char) else (2 if unicodedata.east_asian_width(char) in 'WF' else 1)
+        if cells + size > max(0, width - 1):
+            break
+        result.append(char)
+        cells += size
+    return ''.join(result)
+
+
+def resize(fd, rows, cols):
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))
+
+
+class Player:
+    def __init__(self, command, rows, cols):
+        self.pid, self.fd = pty.fork()
+        self.alive = True
+        if self.pid == 0:
+            resize(0, rows, cols)
+            os.execv(str(command), [str(command), '--player'])
+        resize(self.fd, rows, cols)
+
+    def redraw(self, rows, cols):
+        # A real size change prompts Ink to repaint after its output was hidden.
+        resize(self.fd, max(1, rows - 1), cols)
+        time.sleep(0.03)
+        resize(self.fd, rows, cols)
+
+    def close(self):
+        if self.alive:
+            try:
+                group = os.tcgetpgrp(self.fd)
+                if group > 1 and group != os.getpgrp():
+                    os.killpg(group, signal.SIGHUP)
+            except (OSError, ProcessLookupError):
+                pass
+            try:
+                os.kill(self.pid, signal.SIGHUP)
+            except ProcessLookupError:
+                pass
+        os.close(self.fd)
+        try:
+            os.waitpid(self.pid, os.WNOHANG)
+        except ChildProcessError:
+            pass
+
+
+def main():
+    dock = load_dock()
+    cache = dock.status_cache()
+    if '--cached-status' in sys.argv[1:]:
+        try:
+            if time.time() - cache.stat().st_mtime < 10:
+                print(cache.read_text().strip())
+        except OSError:
+            pass
+        return
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    command = Path(__file__).with_name('herdr-music')
+    original = termios.tcgetattr(0)
+    player, poll = None, None
+    full, previous, last_size = False, None, None
+    status = 'Loading lounge…'
+    next_mode = next_status = 0
+    def terminate(*_):
+        raise KeyboardInterrupt
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, terminate)
+    try:
+        tty.setraw(0)
+        os.write(1, b'\x1b[?1049h\x1b[?25l')
+        while True:
+            now = time.monotonic()
+            size = os.get_terminal_size(0)
+            if now >= next_mode:
+                try:
+                    full = expanded(dock.api)
+                except (OSError, RuntimeError, KeyError, ValueError):
+                    full = False
+                next_mode = now + 0.25
+            if full != previous or size != last_size:
+                os.write(1, b'\x1b[?1049h\x1b[2J\x1b[H\x1b[?25l')
+                if full:
+                    if player is None:
+                        player = Player(command, size.lines, size.columns)
+                    elif player.alive:
+                        player.redraw(size.lines, size.columns)
+                previous, last_size = full, size
+            if now >= next_status and poll is None:
+                poll = subprocess.Popen([str(command), '--status'], stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, start_new_session=True)
+                started = now
+                next_status = now + 2
+            if poll is not None:
+                if poll.poll() is not None:
+                    output = poll.communicate()[0].decode('utf-8', 'replace').strip()
+                    status = output if poll.returncode == 0 and output else 'Lounge unavailable'
+                    poll = None
+                elif now - started > 5:
+                    os.killpg(poll.pid, signal.SIGKILL)
+                    poll.communicate()
+                    poll = None
+                    status = 'Lounge unavailable'
+                if poll is None:
+                    temporary = cache.with_suffix('.tmp')
+                    temporary.write_text(status_line(status, 72) + '\n')
+                    temporary.replace(cache)
+            if not full:
+                text = status_line(status, size.columns)
+                os.write(1, ('\x1b[H\x1b[2K\x1b[38;2;205;214;244m' + text + '\x1b[0m\x1b[?25l').encode())
+            inputs = [0] + ([player.fd] if player and player.alive else [])
+            ready, _, _ = select.select(inputs, [], [], 0.1)
+            if 0 in ready:
+                data = os.read(0, 4096)
+                if not data:
+                    break
+                if full and player and player.alive:
+                    os.write(player.fd, data)
+                elif b'\x03' in data or data == b'q':
+                    break
+            if player and player.alive and player.fd in ready:
+                try:
+                    output = os.read(player.fd, 65536)
+                except OSError:
+                    output = b''
+                if not output:
+                    player.alive = False
+                    if full:
+                        subprocess.run([str(command.with_name('herdr-music-dock'))], timeout=15)
+                    player.close()
+                    player = None
+                elif full:
+                    os.write(1, output)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if poll is not None:
+            if poll.poll() is None:
+                os.killpg(poll.pid, signal.SIGKILL)
+            poll.communicate()
+        if player:
+            player.close()
+        cache.unlink(missing_ok=True)
+        os.write(1, b'\x1b[?1049l\x1b[?25h\x1b[0m')
+        termios.tcsetattr(0, termios.TCSADRAIN, original)
+
+
+if __name__ == '__main__':
+    main()
