@@ -222,54 +222,18 @@ preexec() {
   fi
 }
 
-_require_herdr() {
-  if [[ "${HERDR_ENV:-}" != 1 ]]; then
-    echo "error: run this command inside a Herdr terminal" >&2
-    return 1
-  fi
-  local tool
-  for tool in herdr jq; do
-    if ! command -v "$tool" >/dev/null 2>&1; then
-      echo "error: $tool is required" >&2
-      return 1
-    fi
-  done
-}
-
-_herdr_worktree_claude() {
-  local branch="$1" base="$2" prompt="$3"
-  shift 3
-  local -a worktree_args=(--cwd "$PWD" --branch "$branch" --focus)
-  [[ -n "$base" ]] && worktree_args+=(--base "$base")
-
-  local result pane_id
-  result=$(herdr worktree create "${worktree_args[@]}") || {
-    echo "error: failed to create Herdr worktree" >&2
-    return 1
-  }
-  pane_id=$(printf '%s\n' "$result" | jq -er '.result.root_pane.pane_id') || {
-    echo "error: Herdr did not return a worktree pane" >&2
-    return 1
-  }
-
-  herdr agent start "claude-$$-$RANDOM" --kind claude --pane "$pane_id" -- "$@" || return
-  herdr agent prompt "$pane_id" "$prompt"
-}
-
+# Both create a Herdr worktree workspace and start Claude in it through
+# herdr-agent, which runs the repo's own worktree setup first when it has one.
 workon() {
-  local ticket="${1:?usage: workon <TICKET-ID>}"
-  _require_herdr || return
-
+  local ticket="${1:?usage: workon <TICKET-ID> [herdr-agent options]}"
+  shift
   local prefix="${BRANCH_PREFIX:-adam}"
-  local branch="${prefix}/${ticket}"
-
-  _herdr_worktree_claude "$branch" "" \
-    "Lets work on ticket ${ticket} and come up with a plan to implement. Lets discuss."
+  herdr-agent "${prefix}/${ticket}" --preset plan --ticket "$ticket" "$@"
 }
 
 review() {
-  local ticket="${1:?usage: review <TICKET-ID>}"
-  _require_herdr || return
+  local ticket="${1:?usage: review <TICKET-ID> [herdr-agent options]}"
+  shift
 
   local pr_info
   pr_info=$(gh pr list --search "$ticket" --json number,headRefName --jq '.[0]') || {
@@ -290,8 +254,7 @@ review() {
     return 1
   }
 
-  _herdr_worktree_claude "$branch" "origin/${branch}" \
-    "/pr-review ${pr_number}" --model opus
+  herdr-agent "$branch" --base "origin/${branch}" --preset review --pr "$pr_number" "$@"
 }
 
 if (( $+commands[mise] )); then

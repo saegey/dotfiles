@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# Create a Herdr worktree workspace, run the repo's own setup in its first
+# pane, then start a coding agent there. The agent starts only after setup
+# succeeds, so it never works against a half-built checkout or a stack that is
+# not up yet.
+#
+# Setup is the repo's business, found in the new worktree: a `worktree-setup`
+# just recipe, else an executable scripts/worktree-setup.sh, else nothing.
+# --setup CMD overrides that and --no-setup skips it.
+#
+# Which agent runs, and with which model, is personal: --agent and --model, or
+# a --preset that bundles them with a prompt. HERDR_AGENT and HERDR_MODEL set
+# the defaults.
+set -euo pipefail
+
+die() {
+  echo "herdr-agent: $1" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+usage: herdr-agent <branch> [--base REF] [--repo PATH]
+                   [--preset NAME] [--agent KIND] [--model NAME]
+                   [--prompt TEXT | --prompt-file PATH]
+                   [--ticket ID] [--pr N]
+                   [--setup CMD | --no-setup] [--no-agent] [--no-focus] [--dry-run]
+
+  --base REF          branch the worktree from REF (default: Herdr's default)
+  --repo PATH         repo to branch from (default: the current directory; a
+                      linked worktree resolves to its main checkout)
+  --preset NAME       plan  — "work on {ticket}, plan it, let's discuss"
+                      review — opus, "/pr-review {pr}"
+  --agent KIND        claude (default, or $HERDR_AGENT) or codex
+  --model NAME        passed to the agent's --model (default: $HERDR_MODEL)
+  --prompt TEXT       start the agent with this prompt
+  --prompt-file PATH  start the agent with the prompt read from PATH
+  --ticket ID, --pr N fill {ticket} and {pr} in a preset's prompt
+  --setup CMD         run CMD in the worktree instead of the repo's own setup
+  --no-setup          skip setup entirely
+  --no-agent          only create the worktree and run setup
+  --no-focus          don't focus the new workspace
+  --dry-run           print the pane command instead of creating anything
+
+Explicit --agent, --model and --prompt win over a preset's.
+EOF
+}
+
+branch=""
+base=""
+repo="$PWD"
+preset=""
+agent=""
+model=""
+prompt=""
+prompt_file=""
+ticket=""
+pr=""
+setup=""
+setup_mode=auto
+start_agent=1
+focus=1
+dry_run=0
+
+need() {
+  [[ -n "${2:-}" ]] || die "$1 requires a value"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base) need "$1" "${2:-}"; base="$2"; shift 2 ;;
+    --repo) need "$1" "${2:-}"; repo="$2"; shift 2 ;;
+    --preset) need "$1" "${2:-}"; preset="$2"; shift 2 ;;
+    --agent) need "$1" "${2:-}"; agent="$2"; shift 2 ;;
+    --model) need "$1" "${2:-}"; model="$2"; shift 2 ;;
+    --prompt) need "$1" "${2:-}"; prompt="$2"; shift 2 ;;
+    --prompt-file) need "$1" "${2:-}"; prompt_file="$2"; shift 2 ;;
+    --ticket) need "$1" "${2:-}"; ticket="$2"; shift 2 ;;
+    --pr) need "$1" "${2:-}"; pr="$2"; shift 2 ;;
+    --setup) need "$1" "${2:-}"; setup="$2"; setup_mode=explicit; shift 2 ;;
+    --no-setup) setup_mode=none; shift ;;
+    --no-agent) start_agent=0; shift ;;
+    --no-focus) focus=0; shift ;;
+    --dry-run) dry_run=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*) die "unknown argument: $1 (see --help)" ;;
+    *)
+      [[ -z "$branch" ]] || die "only one branch may be given"
+      branch="$1"
+      shift
+      ;;
+  esac
+done
+
+[[ -n "$branch" ]] || { usage >&2; exit 1; }
+[[ -z "$prompt" || -z "$prompt_file" ]] || die "--prompt and --prompt-file are mutually exclusive"
+
+# Presets fill in whatever the flags left unset.
+preset_model=""
+preset_prompt=""
+case "$preset" in
+  "") ;;
+  plan)
+    [[ -n "$ticket" ]] || die "--preset plan needs --ticket"
+    preset_prompt="Lets work on ticket {ticket} and come up with a plan to implement. Lets discuss."
+    ;;
+  review)
+    [[ -n "$pr" ]] || die "--preset review needs --pr"
+    preset_model="opus"
+    preset_prompt="/pr-review {pr}"
+    ;;
+  *) die "unknown preset: $preset (plan, review)" ;;
+esac
+
+agent="${agent:-${HERDR_AGENT:-claude}}"
+model="${model:-${preset_model:-${HERDR_MODEL:-}}}"
+
+if [[ -n "$prompt_file" ]]; then
+  [[ -f "$prompt_file" ]] || die "--prompt-file not found: $prompt_file"
+  prompt="$(cat "$prompt_file")"
+fi
+if [[ -z "$prompt" && -n "$preset_prompt" ]]; then
+  prompt="${preset_prompt//\{ticket\}/$ticket}"
+  prompt="${prompt//\{pr\}/$pr}"
+fi
+
+# Agent profiles: the executable, and how it takes a model and a first prompt.
+# Both current ones take `--model NAME` and the prompt as a positional
+# argument; a CLI that doesn't gets its own branch here.
+case "$agent" in
+  claude|codex) agent_cmd="$agent" ;;
+  *) die "unknown agent: $agent (claude, codex)" ;;
+esac
+
+# The model is interpolated into the pane's shell command, so keep it to the
+# characters model names actually use.
+if [[ -n "$model" && ! "$model" =~ ^[A-Za-z0-9._:/-]+$ ]]; then
+  die "--model may only contain letters, digits and . _ : / -"
+fi
+[[ -n "$model" ]] && agent_cmd+=" --model $model"
+
+# Herdr refuses to branch from a linked worktree, so go to the main checkout,
+# the parent of the shared git dir.
+common_dir="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
+  || die "not in a git checkout: $repo"
+main="$(dirname "$common_dir")"
+
+# The repo's setup, looked up in a checkout: the new worktree once it exists,
+# the main checkout for --dry-run.
+find_setup() {
+  local checkout="$1" justfile
+  for justfile in "$checkout/justfile" "$checkout/Justfile" "$checkout/.justfile"; do
+    if [[ -f "$justfile" ]] && grep -Eq '^@?worktree-setup([[:space:]][^:]*)?:' "$justfile"; then
+      echo "just worktree-setup"
+      return
+    fi
+  done
+  if [[ -x "$checkout/scripts/worktree-setup.sh" ]]; then
+    echo "./scripts/worktree-setup.sh"
+  fi
+}
+
+build_command() {
+  local checkout="$1" steps=()
+  case "$setup_mode" in
+    explicit) steps+=("$setup") ;;
+    auto)
+      local found
+      found="$(find_setup "$checkout")"
+      [[ -z "$found" ]] || steps+=("$found")
+      ;;
+  esac
+  if [[ "$start_agent" -eq 1 ]]; then
+    if [[ -n "$prompt" ]]; then
+      local prompt_tmp
+      if [[ "$dry_run" -eq 1 ]]; then
+        prompt_tmp="<prompt file>"
+      else
+        prompt_tmp="$(mktemp "${TMPDIR:-/tmp}/herdr-agent-prompt.XXXXXX")"
+        printf '%s\n' "$prompt" >"$prompt_tmp"
+      fi
+      steps+=("$agent_cmd \"\$(cat '$prompt_tmp')\"")
+    else
+      steps+=("$agent_cmd")
+    fi
+  fi
+  local joined=""
+  if [[ ${#steps[@]} -gt 0 ]]; then
+    joined="$(printf ' && %s' "${steps[@]}")"
+    joined="${joined:4}"
+  fi
+  printf '%s' "$joined"
+}
+
+if [[ "$dry_run" -eq 1 ]]; then
+  echo "worktree: $branch from ${base:-the default base} in $main"
+  echo "command:  $(build_command "$main")"
+  exit 0
+fi
+
+[[ "${HERDR_ENV:-}" == 1 ]] || die "run this inside a Herdr terminal"
+command -v jq >/dev/null 2>&1 || die "needs jq (brew install jq)"
+binary="${HERDR_BIN_PATH:-herdr}"
+
+create_args=(worktree create --cwd "$main" --branch "$branch" --label "$branch")
+[[ -z "$base" ]] || create_args+=(--base "$base")
+[[ "$focus" -eq 0 ]] || create_args+=(--focus)
+
+created="$("$binary" "${create_args[@]}")" || die "failed to create the Herdr worktree"
+worktree="$(jq -er '.result.worktree.path' <<<"$created")" \
+  || die "Herdr did not return a worktree path"
+pane="$(jq -er '.result.root_pane.pane_id' <<<"$created")" \
+  || die "Herdr did not return a worktree pane"
+echo "Worktree $branch → $worktree"
+
+command="$(build_command "$worktree")"
+if [[ -z "$command" ]]; then
+  exit 0
+fi
+"$binary" pane run "$pane" "$command" >/dev/null
+echo "Started '$command' in pane $pane."
+if [[ "$start_agent" -eq 1 && -n "$prompt" ]]; then
+  echo "$agent is running unattended in pane $pane and may push or open a PR on its own."
+fi
