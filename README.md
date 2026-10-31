@@ -387,12 +387,22 @@ linking this setting. The plugin automatically titles unnamed agent tabs;
 start its watcher in an existing session with
 `herdr plugin action invoke herdr-bar.start-titles`.
 
-The Zsh `workon <TICKET-ID>` and `review <TICKET-ID>` helpers run inside Herdr.
-They create and focus a worktree workspace, then start Claude in its root pane.
-`workon` uses `${BRANCH_PREFIX:-adam}/<TICKET-ID>` and asks for an implementation
-plan; `review` finds the ticket's PR with `gh`, fetches its branch, and runs
-Claude Opus with `/pr-review <PR-number>`. Both require `herdr` and `jq`;
-`review` also requires authenticated GitHub CLI access.
+`herdr-agent <branch>` creates and focuses a Herdr worktree workspace, runs the
+repo's own setup in its root pane (a `worktree-setup` just recipe, else an
+executable `scripts/worktree-setup.sh`), then starts a coding agent there once
+setup succeeds. Choose the agent with `--agent claude|codex` and its model with
+`--model`; `HERDR_AGENT` and `HERDR_MODEL` set the defaults. Give a first prompt
+with `--prompt` or `--prompt-file`, or use a preset: `plan --ticket ID` or
+`review --pr N` (Opus, `/pr-review N`). `--setup CMD` overrides the repo's setup,
+`--no-setup` skips it, and `--dry-run` prints the pane command without creating
+anything. It works from a linked worktree too, branching from the main checkout.
+Run `herdr-agent --help` for every option.
+
+The Zsh `workon <TICKET-ID>` and `review <TICKET-ID>` helpers wrap it, and pass
+any further options through (e.g. `workon ABC-1 --model sonnet`). `workon` uses
+`${BRANCH_PREFIX:-adam}/<TICKET-ID>` with the `plan` preset; `review` finds the
+ticket's PR with `gh`, fetches its branch, and uses the `review` preset. Both
+require `herdr` and `jq`; `review` also requires authenticated GitHub CLI access.
 
 ## Lounge music in Herdr
 
