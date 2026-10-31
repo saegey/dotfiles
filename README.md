@@ -343,7 +343,11 @@ reminder, run `./scripts/update-herdr` to apply Stow links, register plugins, an
 reload Herdr in one step. This can install missing GitHub plugins and run their
 build hooks; already installed GitHub plugins still use `herdr plugin update`.
 Run `./scripts/update-herdr` once on a fresh machine too, since cloning does not
-run these hooks. Hook setup refuses to replace an existing custom hooks path or
+run these hooks. If Stow reports conflicts for absolute symlinks to this checkout,
+run `./scripts/update-herdr --force` to convert those links to relative links.
+This preserves unrelated symlinks and existing files; those still require manual review.
+Python bytecode caches are excluded from Stow.
+Hook setup refuses to replace an existing custom hooks path or
 bypass existing pull hooks. Disable reminders with
 `git config --local --unset core.hooksPath`.
 

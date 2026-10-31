@@ -73,9 +73,9 @@ cd "${SCRIPTDIR}"
 echo "Packages: ${packages[*]}"
 # Always check all requested packages before linking any of them.
 # No --adopt/--override: pre-existing files must be handled explicitly.
-stow --no-folding --simulate --verbose --target="${HOME}" "${packages[@]}"
+stow --no-folding --ignore='(^|/)__pycache__(/|$)' --ignore='\.py[cod]$' --simulate --verbose --target="${HOME}" "${packages[@]}"
 if [[ $apply == true ]]; then
-  stow --no-folding --target="${HOME}" "${packages[@]}"
+  stow --no-folding --ignore='(^|/)__pycache__(/|$)' --ignore='\.py[cod]$' --target="${HOME}" "${packages[@]}"
   echo 'Links installed. Package installation, shell changes and Git/SSH credentials are manual.'
 else
   echo 'Preview only; rerun with --apply to install the listed links.'

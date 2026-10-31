@@ -1,5 +1,39 @@
 #!/bin/bash
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
+case "${1:-}" in
+  --force)
+    if (( $# != 1 )); then
+      echo 'Usage: ./scripts/update-herdr [--force]' >&2
+      exit 2
+    fi
+    # Stow does not recognize manually created absolute links as its own.
+    # Convert only links to the corresponding source in this checkout.
+    python3 - "$root/herdr" "$HOME" <<'PY'
+import os
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1])
+home = Path(sys.argv[2])
+for entry in source.rglob('*'):
+    if '__pycache__' in entry.parts or entry.suffix in {'.pyc', '.pyo', '.pyd'}:
+        continue
+    target = home / entry.relative_to(source)
+    if not target.is_symlink():
+        continue
+    link = os.readlink(target)
+    if not os.path.isabs(link) or os.path.normpath(link) != str(entry):
+        continue
+    relative = os.path.relpath(entry, target.parent)
+    target.unlink()
+    target.symlink_to(relative)
+    print(f'Normalized link: {target} => {relative}', flush=True)
+PY
+    ;;
+  '') ;;
+  --help|-h) echo 'Usage: ./scripts/update-herdr [--force]'; exit 0 ;;
+  *) echo "Unknown option: $1" >&2; exit 2 ;;
+esac
 "$root/bootstrap.sh" --apply --packages herdr
 "$root/scripts/setup-herdr-plugins" --apply
