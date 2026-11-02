@@ -17,9 +17,13 @@ import time
 import tty
 import unicodedata
 
+# Resolve once while the Stow link exists. A running controller must not depend
+# on ~/.local/bin symlinks remaining present throughout a dotfiles update.
+HELPER_DIR = Path(__file__).resolve().parent
+
 
 def load_dock():
-    path = Path(__file__).with_name('herdr-music-dock')
+    path = HELPER_DIR / 'herdr-music-dock'
     loader = importlib.machinery.SourceFileLoader('music_dock_api', str(path))
     spec = importlib.util.spec_from_loader(loader.name, loader)
     module = importlib.util.module_from_spec(spec)
@@ -59,6 +63,8 @@ def resize(fd, rows, cols):
 
 class Player:
     def __init__(self, command, rows, cols):
+        if not command.is_file() or not os.access(command, os.X_OK):
+            raise FileNotFoundError('Music launcher is missing or not executable: ' + str(command))
         self.pid, self.fd = pty.fork()
         self.alive = True
         if self.pid == 0:
@@ -93,6 +99,10 @@ class Player:
 
 def main():
     dock = load_dock()
+    if not os.environ.get('HERDR_SOCKET_PATH'):
+        if '--cached-status' not in sys.argv[1:]:
+            print('Run herdr-music inside Herdr; use --status for a standalone status read.', file=sys.stderr)
+        return
     cache = dock.status_cache()
     if '--cached-status' in sys.argv[1:]:
         try:
@@ -102,7 +112,13 @@ def main():
             pass
         return
     cache.parent.mkdir(parents=True, exist_ok=True)
-    command = Path(__file__).with_name('herdr-music')
+    command = HELPER_DIR / 'herdr-music'
+    if not command.is_file() or not os.access(command, os.X_OK):
+        print('Music launcher is missing or not executable: ' + str(command), file=sys.stderr)
+        return
+    if not os.isatty(0):
+        print('The music view needs an interactive terminal; use --status for plain output.', file=sys.stderr)
+        return
     original = termios.tcgetattr(0)
     player, poll = None, None
     full, previous, last_size = False, None, None
@@ -133,8 +149,11 @@ def main():
                         player.redraw(size.lines, size.columns)
                 previous, last_size = full, size
             if now >= next_status and poll is None:
-                poll = subprocess.Popen([str(command), '--status'], stdout=subprocess.PIPE,
-                                        stderr=subprocess.DEVNULL, start_new_session=True)
+                try:
+                    poll = subprocess.Popen([str(command), '--status'], stdout=subprocess.PIPE,
+                                            stderr=subprocess.DEVNULL, start_new_session=True)
+                except OSError:
+                    status = 'Music launcher unavailable; retrying…'
                 started = now
                 next_status = now + 2
             if poll is not None:
@@ -172,7 +191,7 @@ def main():
                 if not output:
                     player.alive = False
                     if full:
-                        subprocess.run([str(command.with_name('herdr-music-dock'))], timeout=15)
+                        subprocess.run([str(HELPER_DIR / 'herdr-music-dock')], timeout=15)
                     player.close()
                     player = None
                 elif full:
