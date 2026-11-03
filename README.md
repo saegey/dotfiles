@@ -422,11 +422,19 @@ size. Press it again to return to work. Its terminal stays alive in a background
 to another tab or workspace parks an open player. Closing its parked tab ends
 the controller and UI; the next shortcut press starts it again.
 
-`herdr-music` loads the machine-local `groovenet-lounge` and
-`groovenet-lounge-status` aliases from `~/.zshrc.local`, including their proxy and
-credentials. It does not invoke 1Password. Keep actual keys in that local file,
-not in the tracked dotfiles. The interactive player has a private PTY so hiding
-it doesn't stop its session. Only the status text is cached.
+`herdr-music` uses the machine-local `groovenet-lounge` and
+`groovenet-lounge-status` aliases from `~/.zshrc.local` when present, including
+their proxy and credentials. Without those aliases it runs the GrooveNet CLI
+directly using its existing configuration/environment and the `lounge` remote
+(override with `HERDR_MUSIC_REMOTE`). It does not add any 1Password calls.
+Keep actual keys outside the tracked dotfiles. The interactive player has a
+private PTY so hiding it doesn't stop its session. Only status text is cached.
+
+Helpers resolve their Stow links and find siblings in the actual checkout,
+including checkout paths with spaces; they do not assume the repo lives at
+`~/.dotfiles`. Link all entry points on each machine with
+`./bootstrap.sh --apply --packages herdr`. Restart an already-running music
+controller once after updating these scripts so it loads the path fix.
 
 After Stowing the Herdr package, register its focus hooks with
 `herdr plugin link ~/.config/herdr/plugins/music-dock`. Run

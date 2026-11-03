@@ -2,18 +2,47 @@
 set -euo pipefail
 
 # Herdr's server commands do not inherit interactive shell aliases or mise PATH.
-export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
+export PATH="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
 unset NO_COLOR
 export COLORTERM=truecolor
 
+# Follow Stow links portably (macOS readlink has no -f). Sibling helpers stay
+# usable even if ~/.local/bin links are briefly absent during a dotfiles update.
+script_path=${BASH_SOURCE[0]}
+while [[ -L "$script_path" ]]; do
+  script_dir=$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)
+  link=$(readlink "$script_path")
+  if [[ "$link" == /* ]]; then script_path=$link; else script_path=$script_dir/$link; fi
+done
+helper_dir=$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)
+
+run_groovenet() {
+  local action=$1
+  # Existing machine-local aliases take precedence. Nothing reads or copies
+  # their credential values into the repository or a generated command line.
+  if command -v zsh >/dev/null && [[ -f "$HOME/.zshrc.local" ]]; then
+    exec zsh -f -e -c '
+      source "$HOME/.zshrc.local"
+      if [[ "$1" == status && -n ${aliases[groovenet-lounge-status]-} ]]; then
+        eval "groovenet-lounge-status --max-width 42 --bar-width 4"
+      elif [[ "$1" == player && -n ${aliases[groovenet-lounge]-} ]]; then
+        eval groovenet-lounge
+      else
+        command groovenet "$1" --remote "${HERDR_MUSIC_REMOTE:-lounge}" "${@:2}"
+      fi
+    ' herdr-music "$action" "${@:2}"
+  fi
+  if ! command -v groovenet >/dev/null; then
+    printf 'herdr-music: groovenet is missing; install the GrooveNet CLI first.\n' >&2
+    exit 127
+  fi
+  exec groovenet "$action" --remote "${HERDR_MUSIC_REMOTE:-lounge}" "${@:2}"
+}
+
 case "${1:-}" in
-  --cached-status) exec "$HOME/.local/bin/herdr-music-view" --cached-status ;;
-  --status)
-    exec zsh -f -e -c 'source "$HOME/.zshrc.local"; eval "groovenet-lounge-status --max-width 42 --bar-width 4"'
-    ;;
-  --player)
-    exec zsh -f -e -c 'source "$HOME/.zshrc.local"; eval groovenet-lounge'
-    ;;
-  '') exec "$HOME/.local/bin/herdr-music-view" ;;
+  --cached-status) exec "$helper_dir/herdr-music-view" --cached-status ;;
+  --status) run_groovenet status --max-width 42 --bar-width 4 ;;
+  --player) run_groovenet player ;;
+  '') exec "$helper_dir/herdr-music-view" ;;
   *) printf 'Usage: herdr-music [--status|--cached-status|--player]\n' >&2; exit 2 ;;
 esac
