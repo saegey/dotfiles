@@ -61,6 +61,27 @@ def resize(fd, rows, cols):
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))
 
 
+def stop_status(process):
+    """Stop a status request without letting signal errors or pipes block the UI."""
+    if process.poll() is None:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            # The group may have exited or may no longer be signalable. Try
+            # the direct child as well; losing permission must not crash the UI.
+            try:
+                process.kill()
+            except (ProcessLookupError, PermissionError):
+                pass
+    try:
+        process.communicate(timeout=1)
+    except subprocess.TimeoutExpired:
+        # A descendant can retain stdout even after the direct child exits.
+        # Close our pipe rather than waiting indefinitely for that descendant.
+        if process.stdout is not None:
+            process.stdout.close()
+
+
 class Player:
     def __init__(self, command, rows, cols):
         if not command.is_file() or not os.access(command, os.X_OK):
@@ -88,7 +109,7 @@ class Player:
                 pass
             try:
                 os.kill(self.pid, signal.SIGHUP)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
                 pass
         os.close(self.fd)
         try:
@@ -162,8 +183,7 @@ def main():
                     status = output if poll.returncode == 0 and output else 'Lounge unavailable'
                     poll = None
                 elif now - started > 5:
-                    os.killpg(poll.pid, signal.SIGKILL)
-                    poll.communicate()
+                    stop_status(poll)
                     poll = None
                     status = 'Lounge unavailable'
                 if poll is None:
@@ -199,15 +219,17 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        if poll is not None:
-            if poll.poll() is None:
-                os.killpg(poll.pid, signal.SIGKILL)
-            poll.communicate()
-        if player:
-            player.close()
-        cache.unlink(missing_ok=True)
-        os.write(1, b'\x1b[?1049l\x1b[?25h\x1b[0m')
-        termios.tcsetattr(0, termios.TCSADRAIN, original)
+        try:
+            if poll is not None:
+                stop_status(poll)
+            if player:
+                player.close()
+            cache.unlink(missing_ok=True)
+        finally:
+            try:
+                os.write(1, b'\x1b[?1049l\x1b[?25h\x1b[0m')
+            finally:
+                termios.tcsetattr(0, termios.TCSADRAIN, original)
 
 
 if __name__ == '__main__':

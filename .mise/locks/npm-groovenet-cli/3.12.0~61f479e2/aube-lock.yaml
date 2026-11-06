@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@groovenet/cli':
-        specifier: 3.9.1
-        version: 3.9.1(debug@4.4.3)
+        specifier: 3.12.0
+        version: 3.12.0(debug@4.4.3)
 
 packages:
 
@@ -25,19 +25,19 @@ packages:
   '@emnapi/runtime@1.11.3':
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
 
-  '@groovenet/cli@3.9.1':
-    resolution: {integrity: sha512-f0HIahvhZ0zeZfvLdrR1GUtt4EtFP3JFm3wwQzjmnmtI76xSdjfcwNOu9FSigGoRgXJQ/Zms6sqBvc/qjgrLiw==}
+  '@groovenet/cli@3.12.0':
+    resolution: {integrity: sha512-HRsRv3xxLQPDgAmsA4ZlhuwVB05uAsM23xCY82Lq6beEwGx8DmMTLzMSuM7PhvjIaP6voYqNG6yyv08ZshVi1g==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
-  '@groovenet/client@3.8.1':
-    resolution: {integrity: sha512-TdHvKfdu5oe2kP8YETQAom1ZgoDGT1yyD3tw07qOrjoadWzKsVdVlEgpwkWZ9QGWu6E5dWX4KpWihwU8exwDag==}
+  '@groovenet/client@3.11.0':
+    resolution: {integrity: sha512-/JBeu37XJi1+qJMPPznarltaVIcPr/Mb9J/8WyJzgG3xWF9JWm0Xg8+MoUrtnMdElcXL13r2S7C+2yL4xDZ1KA==}
 
-  '@groovenet/contracts@1.4.1':
-    resolution: {integrity: sha512-e+2qfIOx/1gJbeti4F/KxQZY05oRXYls2hzsvICBboZbsq30Z6aURLzcAf8165sMim4SvrAoeS4pZLZT8PWZBA==}
+  '@groovenet/contracts@1.7.0':
+    resolution: {integrity: sha512-l8Md1575YuJ3wa9rqncMYiX/NidTwivcmayp2S5OrgZxvU4stUPooukLeOgTMm+YtLTs9gHkNl9uTgw6D33/bQ==}
 
-  '@groovenet/player@0.1.8':
-    resolution: {integrity: sha512-F+c4mSQvp971JVOV9SGvc4dEHXWLN8RCqPgiGdVqXTAI/c+dbFJjWDilmOvFmOT69UPaVFxKP8nwxvL+1FnMmw==}
+  '@groovenet/player@0.1.11':
+    resolution: {integrity: sha512-LTSj7AhSApgoOXtgmqWbolE8DhxOhrMkqayLEZquQBcyCXRi3nPOlUrKxkyzpVkxpF9dkkNNM5nRATE4LGD0lg==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -310,8 +310,8 @@ packages:
     resolution: {integrity: sha512-+W/5efTR7y5HRD7gACw9yQjqMVvEMLBHmboM/kPWam+H+Hmyrgjh6YncVKK122YZkXrLudzTuAukUw9FnMf7IQ==}
     engines: {node: 10.* || >= 12.*}
 
-  cli-truncate@6.1.1:
-    resolution: {integrity: sha512-06p9vyLahLa4zkGcgsGxU6iEkSOiuI4fhCH6Emhe2lPAcoUv73n72DnODsnHA+5wwXGnV0n9M9/qOQJSjYhFhw==}
+  cli-truncate@6.2.0:
+    resolution: {integrity: sha512-5uyZew3nYoDgyltqSI8OER6DuyecorYOSVDAXl9wQ9Y8Re/HaQ/5qP0HmTUOUQqmvtpB+mlsf1gG/FUS3U1gLQ==}
     engines: {node: '>=22'}
 
   code-excerpt@4.0.0:
@@ -815,8 +815,8 @@ packages:
   scheduler@0.28.0:
     resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
 
-  semver@7.8.5:
-    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+  semver@7.8.6:
+    resolution: {integrity: sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -835,8 +835,8 @@ packages:
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
-  slice-ansi@9.0.1:
-    resolution: {integrity: sha512-aBY19bn/XA+hKOKX0qL7Z0UfdBsbQvc9hn993U8ALUjzxCvDcuZqLoRXjGJrUARWAlwMnsRVD9sw2AFNOYvalA==}
+  slice-ansi@10.0.0:
+    resolution: {integrity: sha512-2rOYDG420YH3p2PbRAu6LdYnGuMZldshqZS2qqFh/WEzAytVo7b8n1HhubLtRunvqjao74MmGfW4sY4ex0YvpQ==}
     engines: {node: '>=22'}
 
   split2@4.2.0:
@@ -905,8 +905,8 @@ packages:
     resolution: {integrity: sha512-nlLsUzgm1kfLXSXfRZMc1KLAugd4hqJHDTvc2hDIwS3mZAfMEuMbc03SujMF+GEcpaX/qboeycw6iO8JwVv2+g==}
     engines: {node: '>=0.8'}
 
-  tslib@2.8.1:
-    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+  tslib@2.9.1:
+    resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
 
   tunnel-agent@0.6.0:
     resolution: {integrity: sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w==}
@@ -987,14 +987,14 @@ snapshots:
 
   '@emnapi/runtime@1.11.3':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
-  '@groovenet/cli@3.9.1(debug@4.4.3)':
+  '@groovenet/cli@3.12.0(debug@4.4.3)':
     dependencies:
-      '@groovenet/client': 3.8.1(debug@4.4.3)
-      '@groovenet/contracts': 1.4.1
-      '@groovenet/player': 0.1.8(debug@4.4.3)
+      '@groovenet/client': 3.11.0(debug@4.4.3)
+      '@groovenet/contracts': 1.7.0
+      '@groovenet/player': 0.1.11(debug@4.4.3)
       chalk: 6.0.1
       cli-table3: 0.6.5
       commander: 15.0.0
@@ -1010,23 +1010,23 @@ snapshots:
       - react-devtools-core
       - supports-color
 
-  '@groovenet/client@3.8.1(debug@4.4.3)':
+  '@groovenet/client@3.11.0(debug@4.4.3)':
     dependencies:
-      '@groovenet/contracts': 1.4.1
+      '@groovenet/contracts': 1.7.0
       axios: 1.21.0(debug@4.4.3)
       zod: 4.6.7
     transitivePeerDependencies:
       - debug
       - supports-color
 
-  '@groovenet/contracts@1.4.1':
+  '@groovenet/contracts@1.7.0':
     dependencies:
       zod: 4.6.7
 
-  '@groovenet/player@0.1.8(debug@4.4.3)':
+  '@groovenet/player@0.1.11(debug@4.4.3)':
     dependencies:
-      '@groovenet/client': 3.8.1(debug@4.4.3)
-      '@groovenet/contracts': 1.4.1
+      '@groovenet/client': 3.11.0(debug@4.4.3)
+      '@groovenet/contracts': 1.7.0
       pg: 8.23.1
       zod: 4.6.7
     optionalDependencies:
@@ -1258,9 +1258,9 @@ snapshots:
     optionalDependencies:
       '@colors/colors': 1.5.0
 
-  cli-truncate@6.1.1:
+  cli-truncate@6.2.0:
     dependencies:
-      slice-ansi: 9.0.1
+      slice-ansi: 10.0.0
       string-width: 8.3.0
 
   code-excerpt@4.0.0:
@@ -1532,7 +1532,7 @@ snapshots:
       chalk: 6.0.1
       cli-boxes: 4.0.1
       cli-cursor: 4.0.0
-      cli-truncate: 6.1.1
+      cli-truncate: 6.2.0
       code-excerpt: 4.0.0
       es-toolkit: 1.53.1
       indent-string: 5.0.0
@@ -1650,7 +1650,7 @@ snapshots:
       npmlog: 4.1.2
       request: 2.88.2
       rimraf: 3.0.2
-      semver: 7.8.5
+      semver: 7.8.6
       tar: 6.2.1
       which: 2.0.2
     optional: true
@@ -1828,7 +1828,7 @@ snapshots:
 
   scheduler@0.28.0: {}
 
-  semver@7.8.5: {}
+  semver@7.8.6: {}
 
   set-blocking@2.0.0:
     optional: true
@@ -1837,7 +1837,7 @@ snapshots:
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
-      semver: 7.8.5
+      semver: 7.8.6
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.35.5
       '@img/sharp-darwin-x64': 0.35.5
@@ -1867,10 +1867,10 @@ snapshots:
 
   signal-exit@3.0.7: {}
 
-  slice-ansi@9.0.1:
+  slice-ansi@10.0.0:
     dependencies:
-      ansi-styles: 6.2.3
-      is-fullwidth-code-point: 5.1.0
+      ansi-styles: 7.0.0
+      string-width: 8.3.0
 
   split2@4.2.0: {}
 
@@ -1960,7 +1960,7 @@ snapshots:
       punycode: 2.3.1
     optional: true
 
-  tslib@2.8.1:
+  tslib@2.9.1:
     optional: true
 
   tunnel-agent@0.6.0:

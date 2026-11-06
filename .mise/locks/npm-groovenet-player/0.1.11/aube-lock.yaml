@@ -9,19 +9,19 @@ importers:
   .:
     dependencies:
       '@groovenet/player':
-        specifier: 0.1.8
-        version: 0.1.8(debug@4.4.3)
+        specifier: 0.1.11
+        version: 0.1.11(debug@4.4.3)
 
 packages:
 
-  '@groovenet/client@3.8.1':
-    resolution: {integrity: sha512-TdHvKfdu5oe2kP8YETQAom1ZgoDGT1yyD3tw07qOrjoadWzKsVdVlEgpwkWZ9QGWu6E5dWX4KpWihwU8exwDag==}
+  '@groovenet/client@3.11.0':
+    resolution: {integrity: sha512-/JBeu37XJi1+qJMPPznarltaVIcPr/Mb9J/8WyJzgG3xWF9JWm0Xg8+MoUrtnMdElcXL13r2S7C+2yL4xDZ1KA==}
 
-  '@groovenet/contracts@1.4.1':
-    resolution: {integrity: sha512-e+2qfIOx/1gJbeti4F/KxQZY05oRXYls2hzsvICBboZbsq30Z6aURLzcAf8165sMim4SvrAoeS4pZLZT8PWZBA==}
+  '@groovenet/contracts@1.7.0':
+    resolution: {integrity: sha512-l8Md1575YuJ3wa9rqncMYiX/NidTwivcmayp2S5OrgZxvU4stUPooukLeOgTMm+YtLTs9gHkNl9uTgw6D33/bQ==}
 
-  '@groovenet/player@0.1.8':
-    resolution: {integrity: sha512-F+c4mSQvp971JVOV9SGvc4dEHXWLN8RCqPgiGdVqXTAI/c+dbFJjWDilmOvFmOT69UPaVFxKP8nwxvL+1FnMmw==}
+  '@groovenet/player@0.1.11':
+    resolution: {integrity: sha512-LTSj7AhSApgoOXtgmqWbolE8DhxOhrMkqayLEZquQBcyCXRi3nPOlUrKxkyzpVkxpF9dkkNNM5nRATE4LGD0lg==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -496,8 +496,8 @@ packages:
     resolution: {integrity: sha512-42tBVwLWnaQvW5zc4HbZrTuWccECCZfBi92FDuwtqxasH+JbPB3/FOKb1m222K42R4WxuxzzMsTswfzgtSu64Q==}
     engines: {node: '>=11.0.0'}
 
-  semver@7.8.5:
-    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+  semver@7.8.6:
+    resolution: {integrity: sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -599,23 +599,23 @@ packages:
 
 snapshots:
 
-  '@groovenet/client@3.8.1(debug@4.4.3)':
+  '@groovenet/client@3.11.0(debug@4.4.3)':
     dependencies:
-      '@groovenet/contracts': 1.4.1
+      '@groovenet/contracts': 1.7.0
       axios: 1.21.0(debug@4.4.3)
       zod: 4.6.7
     transitivePeerDependencies:
       - debug
       - supports-color
 
-  '@groovenet/contracts@1.4.1':
+  '@groovenet/contracts@1.7.0':
     dependencies:
       zod: 4.6.7
 
-  '@groovenet/player@0.1.8(debug@4.4.3)':
+  '@groovenet/player@0.1.11(debug@4.4.3)':
     dependencies:
-      '@groovenet/client': 3.8.1(debug@4.4.3)
-      '@groovenet/contracts': 1.4.1
+      '@groovenet/client': 3.11.0(debug@4.4.3)
+      '@groovenet/contracts': 1.7.0
       pg: 8.23.1
       zod: 4.6.7
     optionalDependencies:
@@ -1041,7 +1041,7 @@ snapshots:
       npmlog: 4.1.2
       request: 2.88.2
       rimraf: 3.0.2
-      semver: 7.8.5
+      semver: 7.8.6
       tar: 6.2.1
       which: 2.0.2
     optional: true
@@ -1197,7 +1197,7 @@ snapshots:
   sax@1.6.1:
     optional: true
 
-  semver@7.8.5:
+  semver@7.8.6:
     optional: true
 
   set-blocking@2.0.0:

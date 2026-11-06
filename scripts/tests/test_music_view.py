@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 
 path = Path(__file__).resolve().parents[2] / 'herdr/.local/bin/herdr-music-view'
 loader = importlib.machinery.SourceFileLoader('music_view', str(path))
@@ -15,6 +16,60 @@ loader.exec_module(view)
 
 
 class MusicViewTests(unittest.TestCase):
+    def test_status_cleanup_falls_back_to_child_when_group_signal_is_denied(self):
+        process = subprocess.Popen(
+            [os.sys.executable, '-c', 'import time; time.sleep(60)'],
+            stdout=subprocess.PIPE, start_new_session=True)
+        try:
+            with patch.object(view.os, 'killpg', side_effect=PermissionError):
+                view.stop_status(process)
+            self.assertIsNotNone(process.returncode)
+            self.assertTrue(process.stdout.closed)
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.communicate()
+
+    def test_status_cleanup_handles_signal_races_and_denied_child_signals(self):
+        for error in (ProcessLookupError, PermissionError):
+            with self.subTest(error=error):
+                process = Mock(pid=123, returncode=None)
+                process.poll.return_value = None
+                process.kill.side_effect = error
+                process.communicate.side_effect = subprocess.TimeoutExpired('status', 1)
+                with patch.object(view.os, 'killpg', side_effect=error):
+                    view.stop_status(process)
+                process.kill.assert_called_once_with()
+                process.communicate.assert_called_once_with(timeout=1)
+                process.stdout.close.assert_called_once_with()
+
+    def test_status_cleanup_bounds_wait_for_inherited_pipe_after_child_exits(self):
+        process = Mock(pid=123)
+        process.poll.return_value = 0
+        process.communicate.side_effect = subprocess.TimeoutExpired('status', 1)
+        with patch.object(view.os, 'killpg') as killpg:
+            view.stop_status(process)
+        killpg.assert_not_called()
+        process.kill.assert_not_called()
+        process.stdout.close.assert_called_once_with()
+
+    def test_terminal_is_restored_even_if_cache_cleanup_fails(self):
+        dock = Mock()
+        dock.status_cache.return_value.unlink.side_effect = PermissionError('cache')
+        with patch.dict(os.environ, HERDR_SOCKET_PATH='/test/socket'), \
+                patch.object(view, 'load_dock', return_value=dock), \
+                patch.object(view.sys, 'argv', ['herdr-music-view']), \
+                patch.object(view.os, 'isatty', return_value=True), \
+                patch.object(view.os, 'get_terminal_size', side_effect=KeyboardInterrupt), \
+                patch.object(view.os, 'write'), \
+                patch.object(view.signal, 'signal'), \
+                patch.object(view.tty, 'setraw'), \
+                patch.object(view.termios, 'tcgetattr', return_value=['original']), \
+                patch.object(view.termios, 'tcsetattr') as restore:
+            with self.assertRaises(PermissionError):
+                view.main()
+        restore.assert_called_once_with(0, view.termios.TCSADRAIN, ['original'])
+
     def test_symlinked_view_finds_real_siblings_after_link_is_removed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
