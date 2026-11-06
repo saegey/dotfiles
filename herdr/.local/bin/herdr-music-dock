@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import shlex
 import signal
 import subprocess
 import sys
@@ -14,6 +15,7 @@ import time
 
 DOCK_ROWS = 3
 STATUS_BAR = True
+MUSIC_LAUNCHER = Path(__file__).resolve().with_name('herdr-music')
 
 
 def status_cache():
@@ -113,7 +115,7 @@ def dock(toggle=False, follow=False, visibility=False):
         metadata(pane, music_lounge='1', music_return=target, music_zoom='0', music_hidden='0')
         api('pane.rename', pane_id=pane, label='Lounge')
         subprocess.run([os.environ.get('HERDR_BIN_PATH', 'herdr'), 'pane', 'run', pane,
-                        '"$HOME/.local/bin/herdr-music"'], check=True, timeout=15)
+                        shlex.quote(str(MUSIC_LAUNCHER))], check=True, timeout=15)
         refresh_work_pane(target, tab)
         if STATUS_BAR:
             dock(toggle=toggle, visibility=not toggle)

@@ -4,7 +4,7 @@ lockfile_version = 3
 
 [[tools."npm:@groovenet/cli"]]
 version = "3.12.0"
-aube = { path = ".mise/locks/npm-groovenet-cli/3.12.0~61f479e2", digest = "sha256:6fdeaa4623b08475e04a4d439eeb655742c77721f4a77995a7f7f4abda1fd2ee" }
+aube = { path = ".mise/locks/npm-groovenet-cli/3.12.0~61f479e2", digest = "sha256:95123749554cf9c59380b841a13b4ad0a28e09bc35020ad423876154afa3ce62" }
 backend = "npm:@groovenet/cli"
 specifiers = ["latest"]
 
