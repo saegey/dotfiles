@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Install the GUI visor and merge Cmd-I without changing legacy Herdr files."""
+import argparse
+from datetime import datetime
+import json
+import os
+from pathlib import Path
+import shutil
+
+
+SOURCE = Path(__file__).resolve().parents[1] / 'herdr-app/.config/herdr-app/mods/worktree-visor'
+ACTION = 'mod.open:worktree-visor'
+
+
+def install(app_home, apply=False):
+    app_home = Path(app_home).expanduser()
+    keys_path = app_home / 'keys.json'
+    # Require the app's existing configuration; don't replace its platform defaults.
+    keys = json.loads(keys_path.read_text())
+    if not isinstance(keys, dict) or not isinstance(keys.get('global'), dict):
+        raise ValueError('Expected an existing keys.json with a global section')
+    for section, bindings in keys.items():
+        if not isinstance(bindings, dict):
+            raise ValueError(f'Invalid key section: {section}')
+        existing = bindings.get('cmd-i')
+        if existing is not None and existing != ACTION:
+            raise ValueError(f'Cmd-I already has another binding in {section}: {existing!r}')
+    target = app_home / 'mods/worktree-visor'
+    files = ('main.js', 'model.js', 'mod.json')
+    unchanged = keys['global'].get('cmd-i') == ACTION and all(
+        (target / name).is_file() and (target / name).read_bytes() == (SOURCE / name).read_bytes()
+        for name in files)
+    if unchanged:
+        print('GUI visor and Cmd-I are already up to date.')
+        return
+    print(f'Install {SOURCE} -> {target}')
+    print(f'Merge global Cmd-I -> {ACTION} in {keys_path}')
+    if not apply:
+        print('Preview only; rerun with --apply to install. Legacy Herdr stays unchanged.')
+        return
+    backup = app_home / ('visor-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
+    backup.mkdir()
+    shutil.copy2(keys_path, backup / 'keys.json')
+    if target.exists():
+        shutil.copytree(target, backup / 'worktree-visor', symlinks=True)
+    target.mkdir(parents=True, exist_ok=True)
+    for name in files:
+        shutil.copy2(SOURCE / name, target / name)
+    keys['global']['cmd-i'] = ACTION
+    temporary = keys_path.with_name('keys.json.visor-tmp')
+    temporary.write_text(json.dumps(keys, indent=2) + '\n')
+    temporary.replace(keys_path)
+    print(f'Installed. Backup: {backup}')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true', help='install; default is preview')
+    parser.add_argument('--app-home', type=Path,
+                        default=Path(os.environ.get('HERDR_APP_HOME', '~/.config/herdr-app')).expanduser())
+    args = parser.parse_args()
+    install(args.app_home, args.apply)

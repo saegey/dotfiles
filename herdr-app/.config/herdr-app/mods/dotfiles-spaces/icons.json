@@ -1,0 +1,13 @@
+{
+  "show_icons": false,
+  "repos": [
+    { "path": "~", "icon": { "emoji": "🏠" } },
+    { "path": "~/.dotfiles", "icon": { "emoji": "⚙️" } },
+    { "path": "~/Projects/skysafe-cloud", "icon": { "emoji": "☁️" } },
+    { "path": "~/Projects/skysafe-infra", "icon": { "emoji": "🏗️" } },
+    { "path": "~/Projects/skysafe-msi-integration", "icon": { "emoji": "🔌" } },
+    { "path": "~/Projects/tf-ecs-modules", "icon": { "emoji": "🧱" } },
+    { "path": "~/Projects/skysafe-skydio-integration", "icon": { "emoji": "🚁" } },
+    { "path": "~/Projects/personal/groovenet", "icon": { "emoji": "🎵" } }
+  ]
+}

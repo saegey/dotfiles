@@ -1,0 +1,5 @@
+{
+  "place": "none",
+  "title": "Worktree visor",
+  "overlay": { "kind": "dialog", "modal": true, "width": 0.9, "height": 0.85 }
+}

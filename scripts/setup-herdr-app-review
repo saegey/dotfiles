@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Install GUI Review actions without changing the legacy dashboard or helpers."""
+import argparse
+from copy import deepcopy
+from datetime import datetime
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+ROOT = Path(__file__).resolve().parents[1]
+ACTION = 'mod.open:review-launcher'
+
+
+def merged_keys(keys):
+    if not isinstance(keys, dict) or not isinstance(keys.get('global'), dict):
+        raise ValueError('Expected existing keys.json with a global section')
+    result = deepcopy(keys)
+    for section, bindings in keys.items():
+        if not isinstance(bindings, dict):
+            raise ValueError('Invalid key section: ' + section)
+        existing = bindings.get('cmd-shift-r')
+        if existing is not None and existing != ACTION:
+            raise ValueError(f'Cmd-Shift-R already has a different binding in {section}: {existing!r}')
+    result['global']['cmd-shift-r'] = ACTION
+    return result
+
+
+def install(app_home, apply=False):
+    keys_path = app_home / 'keys.json'
+    keys = merged_keys(json.loads(keys_path.read_text()))
+    env = dict(os.environ, HERDR_APP_HOME=str(app_home))
+    status = json.loads(subprocess.run(['herdr-app', 'status'], env=env,
+                                      check=True, text=True, capture_output=True).stdout)
+    layout_path = app_home / 'layouts' / (status['layout'] + '.json')
+    layout = json.loads(layout_path.read_text())
+    def has_sidebar(node):
+        return node.get('content', {}).get('mod') == 'dotfiles-spaces' or any(has_sidebar(n) for n in node.get('children', []))
+    if not has_sidebar(layout):
+        raise ValueError('Install the personal Spaces sidebar in this layout first (setup-herdr-app-spaces).')
+    home = Path.home()
+    helper = home / '.local/bin/herdr-gui-review'
+    config = home / '.config/gh-dash/review-gui.yml'
+    for dependency in ('herdr-pr-open',):
+        if not (home / '.local/bin' / dependency).is_file():
+            raise ValueError('Install the herdr helpers first: missing ' + dependency)
+    if not (config.parent / 'config.yml').is_file():
+        raise ValueError('Install the gh-dash package first: config.yml is missing')
+    print('Install GUI Review launcher and gh-dash config; update the personal sidebar and merge Cmd-Shift-R.')
+    if not apply:
+        print('Preview only; rerun with --apply.')
+        return
+    backup = app_home / ('review-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
+    backup.mkdir()
+    shutil.copy2(keys_path, backup / keys_path.name)
+    source = ROOT / 'herdr-app/.config/herdr-app/mods/dotfiles-spaces'
+    target = app_home / 'mods/dotfiles-spaces'
+    shutil.copytree(target, backup / 'dotfiles-spaces', symlinks=True)
+    launcher = app_home / 'mods/review-launcher'
+    if launcher.exists():
+        shutil.copytree(launcher, backup / launcher.name, symlinks=True)
+    for path, origin in (
+        (helper, ROOT / 'herdr/.local/bin/herdr-gui-review'),
+        (config, ROOT / 'gh-dash/.config/gh-dash/review-gui.yml'),
+    ):
+        if path.is_symlink() and path.resolve() == origin.resolve():
+            continue
+        if path.exists() or path.is_symlink():
+            shutil.copy2(path, backup / path.name, follow_symlinks=True)
+            path.unlink()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.symlink_to(origin)
+    for name in ('main.js', 'model.js'):
+        shutil.copy2(source / name, target / name)
+    launcher.mkdir(parents=True, exist_ok=True)
+    for name in ('main.js', 'mod.json'):
+        shutil.copy2(source.parent / 'review-launcher' / name, launcher / name)
+    subprocess.run(['herdr-app', 'check', str(target)], check=True, env=env)
+    subprocess.run(['herdr-app', 'check', str(launcher)], check=True, env=env)
+    temporary = keys_path.with_name('keys.json.review-tmp')
+    temporary.write_text(json.dumps(keys, indent=2) + '\n')
+    temporary.replace(keys_path)
+    print('Installed. Backup: ' + str(backup))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--app-home', type=Path, default=Path(os.environ.get('HERDR_APP_HOME', '~/.config/herdr-app')).expanduser())
+    args = parser.parse_args()
+    install(args.app_home.expanduser().resolve(), args.apply)

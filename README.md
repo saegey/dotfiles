@@ -442,6 +442,34 @@ After Stowing the Herdr package, register its focus hooks with
 full player. `herdr-music --status` performs an on-demand status read, and
 `herdr-music --cached-status` reads the cached text without a network request.
 
+Herdr GUI has a separate music strip and overlay, using the same
+`herdr-music --status` / `--player` launchers and machine-local credentials.
+With the Herdr helpers installed and the GUI running:
+
+```sh
+python3 scripts/setup-herdr-app-music          # preview
+python3 scripts/setup-herdr-app-music --apply  # install; backs up GUI keys/layout
+herdr-app check ~/.config/herdr-app/mods/music-dock
+```
+
+The installer clones the shown layout to `<name>-music`, then adds a now-playing
+strip beside its existing tab bar. It merges **Cmd-Shift-M**, **Cmd-Option-M**,
+**Ctrl-Option-Shift-M**, and **Ctrl-Option-Shift-N** to toggle the player.
+Clicking the strip does the same. Conflicting bindings are refused. It honors
+`HERDR_APP_HOME` / `--app-home`; rerun the installer on the music layout to update it.
+The terminal setup and its focus hooks remain unchanged.
+
+The GUI polls status every two seconds, but starts the full GrooveNet TUI only
+when you open it. The TUI runs in one local Herdr Core terminal, reused across
+openings and kept alive when hidden or when the GUI closes. The same shortcut or
+the overlay's **Hide** button returns to work; Escape belongs to the player's
+own controls. Switching work tabs/spaces hides the overlay. Closing the UI with
+the player's quit command ends that terminal; opening it again starts a fresh
+UI. Hiding never pauses playback. No play/pause/skip commands are sent during
+installation or checks. The lounge stays local even when working in a remote
+space, and the terminal stays outside your work tabs. Switch back to the
+original layout to remove the strip from view.
+
 ## PR review dashboard
 
 In Herdr, **Command+Shift+R** (or `herdr-review`) opens the persistent review
@@ -493,6 +521,54 @@ checkouts remain available to reopen. `herdr-wt-done` is for final teardown and
 also removes stack resources. The general `gh dash` configuration is unchanged;
 this work queue uses the separate `~/.config/gh-dash/review.yml` configuration.
 Both dashboards use the shared Catppuccin Mocha palette with mauve accents.
+
+### GUI Review space
+
+The GUI uses the same gh-dash queues in a persistent **Review** space, with a
+separate launcher and config. The terminal version above stays unchanged.
+After installing the `herdr` and `gh-dash` packages and the personal GUI Spaces
+sidebar, run:
+
+```sh
+python3 scripts/setup-herdr-app-review          # preview
+python3 scripts/setup-herdr-app-review --apply  # back up and install
+herdr-gui-review                               # open/focus the GUI dashboard
+```
+
+**Cmd-Shift-R** opens or focuses the dashboard, including after renaming its
+space. The shortcut works with the sidebar hidden. **w** on a PR reuses its
+existing local checkout/GUI space or creates the missing worktree and space.
+**Ctrl-R** opens the checkout and starts Claude Opus with `/pr-review NUMBER`
+in a dedicated tab. Repeated Ctrl-R focuses any live review session without
+sending another prompt, including idle, busy and blocked sessions. No agents
+or setup scripts start when simply opening a checkout. If gh-dash or the agent
+has exited back to a shell, the next action opens a fresh program tab in the
+same space and leaves that shell alone. **R** retains normal gh-dash refresh.
+
+The dashboard reads `~/.config/gh-dash/review-gui.yml`, uses the existing
+`adam-skysafe` authentication, and refreshes queues every two minutes. It never
+switches GitHub accounts automatically. The GUI launcher uses the same verified
+local repository discovery and safe worktree planning as `herdr-pr-open`; local
+branches, dirty files, and differing local commits are preserved. It doesn't
+update an existing checkout to the latest PR head.
+
+PR checkouts opened through the GUI review workflow get a `review #NUMBER`
+subtitle in the personal Spaces sidebar. A collapsed parent shows how many
+review worktrees are inside. Markers refresh within 15 seconds, survive space
+renames, and apply only while that checkout remains on its recorded branch;
+they identify local review work, not GitHub approval status. State lives in
+`$HERDR_APP_HOME/data/dotfiles-review.json` (default GUI home). Existing tmux
+workspaces and agents aren't adopted or altered.
+
+The installer backs up GUI keys and both custom mods, links the new helper and
+GUI gh-dash config, and merges Cmd-Shift-R. Existing keys, icon preferences,
+folded groups, and the music strip are preserved. It honors `HERDR_APP_HOME`
+and `--app-home`; rerun after editing the GUI Review code.
+For a read-only plan, use:
+
+```sh
+herdr-gui-review --repo skysafe/skysafe-cloud --pr 3585 --dry-run
+```
 
 ## Dev stack status
 
@@ -595,6 +671,86 @@ For a noninteractive snapshot, run
 `herdr-worktree-visor --json --cwd /path/to/worktree`. Python 3 with curses,
 GitHub CLI and the `dev-stack-status` helper are required. Linear CLI is optional
 when using GitHub Issues.
+
+The Herdr GUI has a separate native visor in
+`herdr-app/.config/herdr-app/mods/worktree-visor/`. It uses the same JSON
+collector, leaving the terminal plugin, popup, and legacy Cmd-I binding intact.
+After starting Herdr GUI once and installing the `herdr` helpers above, run:
+
+```sh
+python3 scripts/setup-herdr-app-visor          # preview
+python3 scripts/setup-herdr-app-visor --apply  # install and merge GUI Cmd-I
+herdr-app check ~/.config/herdr-app/mods/worktree-visor
+```
+
+The installer copies only the custom mod and merges Cmd-I into the existing
+GUI `keys.json`; it backs up any previous mod and keys, preserves unrelated
+settings, and refuses conflicting Cmd-I bindings. It honors `HERDR_APP_HOME`
+or `--app-home`. Rerun it after editing the repository's mod files.
+It does not install a whole GUI settings file or require linking a new Stow package.
+
+In the GUI, Cmd-I toggles a dialog for the focused terminal's repo (the space's
+folder is the fallback). Click a link or use Up/Down or j/k then Enter; R
+refreshes and Escape or q closes. The dialog refreshes every 15 seconds while
+open, uses the current theme, and shows ticket descriptions, PR checks, Actions,
+dev-stack status, and app links. It runs the existing collector and CLIs with
+their saved logins; no GitHub or Linear data is changed. For a remote space,
+the same helper and dependencies must be installed and authenticated on that
+machine; remote paths never fall back to a local repo. URLs open in your local
+browser. Reopen the visor after switching repos to inspect a different checkout.
+
+### GUI Spaces icons and metadata
+
+
+`dotfiles-spaces` is a personal clone of the shipped Spaces mod. It adds optional
+repo icons, Linear ticket subtitles, and read-only dev-stack container counts while
+keeping machine grouping, worktree nesting, drag ordering, and the compact rail.
+Click the disclosure/count beside a parent repo to collapse or expand its
+worktrees. Fold state is remembered per repo and machine across restarts;
+collapsing only hides sidebar rows. A parent stays highlighted when its active
+worktree is hidden inside the group.
+The terminal sidebar and its plugins are unchanged. With Herdr GUI running and
+the `herdr` helpers installed:
+
+```sh
+python3 scripts/setup-herdr-app-spaces          # preview
+python3 scripts/setup-herdr-app-spaces --apply  # back up and install
+```
+
+The installer connects the mod to your current personal layout (including
+`main-music`), or clones a shipped layout first. It preserves keys, music,
+sidebar sizing and your existing `icons.json`. It honors `HERDR_APP_HOME` and
+`--app-home`. Rerun after changing the mod source.
+
+The sidebar shows names without repo icons by default. To enable custom icons,
+set `show_icons` to true in
+`~/.config/herdr-app/mods/dotfiles-spaces/icons.json`:
+
+```json
+{
+  "show_icons": true,
+  "repos": [
+    { "path": "~/Projects/skysafe-cloud", "icon": { "emoji": "☁️" } },
+    { "path": "~/Projects/my-repo", "icon": { "svg": "mods/dotfiles-spaces/assets/my-repo.svg" } },
+    { "path": "~/Projects/another-repo", "icon": { "image": "mods/dotfiles-spaces/assets/logo.png" } }
+  ]
+}
+```
+
+Paths match the repo's common Git directory, so worktrees inherit icons and
+renaming a space keeps its icon. Non-repo folders can also match by folder path.
+An optional `"machine": "name"` scopes a mapping to a remote machine; use its
+absolute repo path. Asset paths are local to the GUI home; SVGs are tinted with
+the theme foreground. Unmapped repos retain letter avatars. The compact rail
+uses numbers when icons are hidden, with space names and titles in tooltips.
+
+Icon edits appear within 15 seconds; invalid JSON retains the last valid map.
+Linear titles use branch ticket IDs and the existing five-minute helper cache.
+Subtitles truncate with the full title on hover. Docker is polled every 30
+seconds: `[N]` counts running containers for that exact checkout, with unhealthy
+containers in red, partial/starting stacks in amber, and a `?` when unavailable.
+Hover for running/total counts. No containers are started or stopped. Metadata
+is currently local only; remote spaces still get icons and normal Git info.
 
 ## Local overrides
 
