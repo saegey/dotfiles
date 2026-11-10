@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""Persistent gh-dash and safe PR worktree/review actions for Herdr GUI."""
+import argparse
+from contextlib import contextmanager
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+DASHBOARD = 'dotfiles.review.dashboard'
+AGENT = 'dotfiles.review.agent'
+
+
+def call(args, cwd=None, timeout=120):
+    return subprocess.run(args, cwd=cwd, capture_output=True, text=True,
+                          check=True, timeout=timeout).stdout.strip()
+
+
+def app(*args):
+    return json.loads(call(['herdr-app', *args], timeout=30))
+
+
+def core(*args):
+    return json.loads(call(['hc', *args, '--json'], timeout=30))
+
+
+def app_do(command, **args):
+    return app('do', command, json.dumps(args))
+
+
+def legacy():
+    # Reuse the proven repository verification and worktree planner, not its tmux API.
+    return runpy.run_path(str((Path(__file__).resolve().parent / 'herdr-pr-open').resolve()))
+
+
+def load_state(app_home):
+    path = app_home / 'data/dotfiles-review.json'
+    if not path.exists():
+        return {'checkouts': {}}
+    data = json.loads(path.read_text())
+    if not isinstance(data, dict) or not isinstance(data.get('checkouts'), dict):
+        raise RuntimeError('Invalid GUI review state; leaving it untouched: ' + str(path))
+    return data
+
+
+def save_state(app_home, state):
+    directory = app_home / 'data'
+    directory.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode='w', dir=directory, delete=False) as output:
+        json.dump(state, output, indent=2)
+        temporary = Path(output.name)
+    temporary.replace(directory / 'dotfiles-review.json')
+
+
+@contextmanager
+def action_lock(app_home):
+    directory = app_home / 'data'
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / 'dotfiles-review.lock').open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RuntimeError('Another GUI review action is still running. Try again when it finishes.')
+        yield
+
+
+def require_work_login():
+    if call(['gh', 'api', 'user', '--jq', '.login'], timeout=20) != 'adam-skysafe':
+        raise RuntimeError('Review expects adam-skysafe. Switch your gh login to adam-skysafe and retry.')
+
+
+def live_with_label(key, value):
+    terminals = core('ls', '--label', key + '=' + value).get('terminals', [])
+    live = [t for t in terminals if t.get('state') == 'live' and '/' not in t['address']]
+    if len(live) > 1:
+        raise RuntimeError('More than one matching review terminal exists; leaving them untouched.')
+    return live[0]['address'] if live else None
+
+
+def root_shell(data):
+    """Herdr's app launcher returns to its own shell when the program exits."""
+    front = data.get('foreground') or {}
+    argv = front.get('argv') or []
+    shell = Path(str(front.get('name') or '')).name in ('sh', 'bash', 'zsh', 'fish', 'nu', 'pwsh')
+    launching = any(arg.startswith('-') and 'c' in arg for arg in argv[1:])
+    return shell and front.get('pid') == data.get('pid') and not launching
+
+
+def location(terminal, spaces):
+    for space in spaces:
+        if space.get('machine'):
+            continue
+        for tab in space.get('tabs', []):
+            if any(t.get('terminal') == terminal for t in tab.get('terminals', [])):
+                return space, tab
+    return None
+
+
+def show_terminal(terminal, tab_name=None):
+    # Adoption is asynchronous; wait only for the window's document echo.
+    for _ in range(20):
+        found = location(terminal, app('ls')['spaces'])
+        if found:
+            space, tab = found
+            if tab_name and tab['name'] != tab_name:
+                app_do('tab.rename', id=tab['id'], name=tab_name)
+            app_do('space.select', id=space['id'])
+            app_do('tab.select', id=tab['id'])
+            app_do('pane.focus', terminal=terminal)
+            return space['id'], tab['id']
+        time.sleep(0.1)
+    raise RuntimeError('The terminal is running but its pane is not visible yet. Retry the shortcut; it will reuse the terminal.')
+
+
+def launch_argv(app_home, *args):
+    return [sys.executable, str(Path(__file__).resolve()), '--app-home', str(app_home), *map(str, args)]
+
+
+def open_dashboard(app_home):
+    terminal = live_with_label(DASHBOARD, str(app_home))
+    if terminal and root_shell(core('get', terminal)):
+        core('label', terminal, DASHBOARD + '=')
+        terminal = None
+    if terminal:
+        show_terminal(terminal)
+        print('Focused the existing Review dashboard.')
+        return
+    state = load_state(app_home)
+    spaces = app('ls')['spaces']
+    saved = state.get('dashboard', {})
+    space = next((s for s in spaces if not s.get('machine') and s['id'] == saved.get('space')), None)
+    require_work_login()
+    config = Path.home() / '.config/gh-dash/review-gui.yml'
+    if not config.is_file():
+        raise RuntimeError('Missing gh-dash/review-gui.yml. Run setup-herdr-app-review first.')
+    argv = launch_argv(app_home, '--dashboard')
+    if space:
+        result = app_do('tab.new', space=space['id'], name='PR queues', folder=str(Path.home() / 'Projects'), argv=argv)
+    else:
+        result = app_do('space.new', name='Review', folder=str(Path.home() / 'Projects'), tab='PR queues', argv=argv, machine='')
+    terminal = result.get('terminal')
+    if not isinstance(terminal, str):
+        raise RuntimeError('Review launch returned no terminal ID: ' + json.dumps(result))
+    sid, tid = show_terminal(terminal)
+    # Also label from the opener so a fast second shortcut reuses a booting dashboard.
+    core('label', terminal, DASHBOARD + '=' + str(app_home))
+    state['dashboard'] = {'space': sid, 'tab': tid, 'terminal': terminal}
+    save_state(app_home, state)
+    print('Opened Review dashboard: ' + sid)
+
+
+def run_dashboard(app_home):
+    require_work_login()
+    terminal = os.environ.get('HC_TERMINAL_ID')
+    if not terminal:
+        raise RuntimeError('The dashboard must run in a Herdr Core terminal.')
+    core('label', terminal, DASHBOARD + '=' + str(app_home))
+    config = Path.home() / '.config/gh-dash/review-gui.yml'
+    os.execvp('gh', ['gh', 'dash', '--config', str(config)])
+
+
+def worktrees(root):
+    raw = subprocess.run(['git', 'worktree', 'list', '--porcelain', '-z'], cwd=root,
+                         check=True, capture_output=True, text=True, timeout=10).stdout
+    records = []
+    for record in raw.split('\0\0'):
+        fields = dict(item.split(' ', 1) if ' ' in item else (item, True)
+                      for item in record.split('\0') if item)
+        if not fields.get('worktree'):
+            continue
+        records.append({'path': fields['worktree'],
+                        'branch': str(fields.get('branch', '')).removeprefix('refs/heads/'),
+                        'is_linked_worktree': len(records) > 0,
+                        'is_prunable': 'prunable' in fields})
+    return records
+
+
+def build_plan(repo, number, explicit=None):
+    old = legacy()
+    root = old['find_repo'](repo, explicit)
+    pr = json.loads(call(['gh', 'pr', 'view', str(number), '--repo', repo, '--json',
+                         'number,title,headRefName,headRefOid,baseRefName,isCrossRepository']))
+    if pr['number'] != number or not re.fullmatch(r'[0-9a-f]{40,64}', pr['headRefOid']):
+        raise RuntimeError('Invalid PR metadata returned by GitHub.')
+    if pr['headRefName'].startswith('-'):
+        raise RuntimeError('Invalid PR branch name.')
+    call(['git', 'check-ref-format', '--branch', pr['headRefName']])
+    plan = old['plan_open'](repo, number, pr, {'repo_root': str(root)}, worktrees(root))
+    return plan, pr
+
+
+def ensure_checkout(plan, pr):
+    root, path = Path(plan['repo_root']), Path(plan['path'])
+    if plan['operation'] == 'create':
+        if path.exists():
+            raise RuntimeError('Destination exists; leaving it untouched: ' + str(path))
+        ref = 'refs/herdr/pr/' + str(plan['pr'])
+        call(['git', 'fetch', '--no-recurse-submodules', '--no-write-fetch-head', 'origin',
+              '+refs/pull/{}/head:{}'.format(plan['pr'], ref)], root)
+        if call(['git', 'rev-parse', ref], root) != pr['headRefOid']:
+            raise RuntimeError('The PR changed while fetching. Refresh and retry.')
+        exists = subprocess.run(['git', 'show-ref', '--verify', '--quiet', 'refs/heads/' + plan['branch']],
+                                cwd=root, capture_output=True).returncode
+        if exists not in (0, 1):
+            raise RuntimeError('Could not inspect local branch; no checkout created.')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        args = ['git', 'worktree', 'add']
+        args += ['-b', plan['branch'], str(path), ref] if exists == 1 else [str(path), plan['branch']]
+        call(args, root)
+    if call(['git', 'rev-parse', 'HEAD'], path) != pr['headRefOid']:
+        print('Local HEAD differs from the PR. Local changes and commits were preserved.', file=sys.stderr)
+
+
+def agent_identity(app_home, repo, number):
+    return str(app_home) + ':' + repo.lower() + '#' + str(number)
+
+
+def run_agent(app_home, repo, number, checkout):
+    terminal = os.environ.get('HC_TERMINAL_ID')
+    if not terminal:
+        raise RuntimeError('The review agent must run in a Herdr Core terminal.')
+    if Path.cwd().resolve() != Path(checkout).resolve():
+        raise RuntimeError('Review launcher is in a different checkout; no agent started.')
+    core('label', terminal, AGENT + '=' + agent_identity(app_home, repo, number))
+    os.execvp('claude', ['claude', '--model', 'opus', '/pr-review ' + str(number)])
+
+
+def start_review(app_home, plan, space):
+    identity = agent_identity(app_home, plan['repo'], plan['pr'])
+    terminal = live_with_label(AGENT, identity)
+    if terminal:
+        data = core('get', terminal)
+        if Path(data.get('cwd', '')).resolve() != Path(plan['path']).resolve():
+            raise RuntimeError('Existing review terminal is in another checkout; leaving it untouched.')
+        if root_shell(data):
+            core('label', terminal, AGENT + '=')
+        else:
+            show_terminal(terminal)
+            print('Focused existing review terminal; no new prompt sent.')
+            return terminal
+    if not shutil.which('claude'):
+        raise RuntimeError('Claude CLI is required for Ctrl-R reviews.')
+    result = app_do('tab.new', space=space, name='Review #' + str(plan['pr']), folder=plan['path'],
+                    argv=launch_argv(app_home, '--agent', '--repo', plan['repo'], '--pr', plan['pr'], '--checkout', plan['path']))
+    terminal = result.get('terminal')
+    if not isinstance(terminal, str):
+        raise RuntimeError('Review launch returned no terminal ID: ' + json.dumps(result))
+    core('label', terminal, AGENT + '=' + identity)
+    show_terminal(terminal)
+    return terminal
+
+
+def open_pr(app_home, plan, pr, review=False):
+    ensure_checkout(plan, pr)
+    spaces = app('ls')['spaces']
+    path = str(Path(plan['path']).resolve())
+    space = next((s for s in spaces if not s.get('machine') and s.get('folder')
+                  and str(Path(s['folder']).resolve()) == path), None)
+    if space:
+        sid = space['id']
+        app_do('space.select', id=sid)
+    else:
+        result = app_do('space.new', name='PR #' + str(plan['pr']), folder=path, machine='')
+        sid = result.get('space')
+        if not isinstance(sid, str):
+            raise RuntimeError('Worktree launch returned no space ID: ' + json.dumps(result))
+    branch = subprocess.run(['git', 'symbolic-ref', '--quiet', '--short', 'HEAD'], cwd=path,
+                            capture_output=True, text=True, timeout=3).stdout.strip() or '(detached)'
+    state = load_state(app_home)
+    state['checkouts'][path] = {'repo': plan['repo'], 'pr': plan['pr'], 'branch': branch, 'space': sid}
+    save_state(app_home, state)
+    if review:
+        start_review(app_home, plan, sid)
+    print('Opened PR #{}: {}'.format(plan['pr'], path))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--app-home', type=Path, default=Path(os.environ.get('HERDR_APP_HOME', '~/.config/herdr-app')).expanduser())
+    parser.add_argument('--dashboard', action='store_true')
+    parser.add_argument('--agent', action='store_true')
+    parser.add_argument('--repo')
+    parser.add_argument('--pr', type=int)
+    parser.add_argument('--repo-path')
+    parser.add_argument('--checkout')
+    parser.add_argument('--review', action='store_true')
+    parser.add_argument('--dry-run', action='store_true')
+    args = parser.parse_args()
+    try:
+        app_home = args.app_home.expanduser().resolve()
+        os.environ['HERDR_APP_HOME'] = str(app_home)
+        os.environ['PATH'] = ':'.join([str(Path.home() / '.local/share/mise/shims'), str(Path.home() / '.local/bin'), '/opt/homebrew/bin', '/usr/local/bin', os.environ.get('PATH', '')])
+        if args.dashboard:
+            run_dashboard(app_home)
+        elif args.repo or args.pr or args.agent:
+            if (not args.repo or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', args.repo)
+                    or any(p in ('.', '..') for p in args.repo.split('/')) or not args.pr or args.pr < 1):
+                raise RuntimeError('Expected OWNER/REPO and a positive PR number.')
+            if args.agent:
+                if not args.checkout:
+                    raise RuntimeError('Missing review checkout.')
+                run_agent(app_home, args.repo, args.pr, args.checkout)
+            require_work_login()
+            if args.dry_run:
+                plan, _ = build_plan(args.repo, args.pr, args.repo_path)
+                if args.review:
+                    plan['review'] = {'model': 'opus', 'prompt': '/pr-review ' + str(args.pr)}
+                print(json.dumps(plan, indent=2))
+            else:
+                with action_lock(app_home):
+                    plan, pr = build_plan(args.repo, args.pr, args.repo_path)
+                    open_pr(app_home, plan, pr, args.review)
+        else:
+            if args.dry_run:
+                raise RuntimeError('--dry-run requires --repo and --pr.')
+            with action_lock(app_home):
+                open_dashboard(app_home)
+    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+        print('GUI Review: ' + (getattr(error, 'stderr', '') or str(error)).strip(), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

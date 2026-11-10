@@ -39,8 +39,8 @@ sketchybar --add bracket panel_left panel_anchor_laptop_left panel_anchor_laptop
   --set panel_external background.height=36
 for panel in panel_left panel_right panel_external; do
   sketchybar --set "$panel" background.drawing=on \
-    background.color=0xee1e1e2e background.border_color="$SURFACE" \
-    background.border_width=1 background.corner_radius=12 background.shadow.drawing=on \
+    background.color=0xcc1e1e2e background.border_color="$SURFACE" \
+    background.border_width=1 background.corner_radius=6 background.shadow.drawing=on \
     background.padding_left=0 background.padding_right=0
 done
 # Offset shadows form a dark crescent beyond the rounded notebook panels.

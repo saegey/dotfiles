@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Install a GUI music strip and player overlay, preserving legacy Herdr."""
+import argparse
+from copy import deepcopy
+from datetime import datetime
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+
+SOURCE = Path(__file__).resolve().parents[1] / 'herdr-app/.config/herdr-app/mods/music-dock'
+ACTION = 'music-dock.toggle'
+SHORTCUTS = ('cmd-shift-m', 'cmd-alt-m', 'ctrl-alt-shift-m', 'ctrl-alt-shift-n')
+
+
+def music_layout(layout):
+    """Wrap the existing tab bar; preserve the sidebar, pane tree and all mods."""
+    result = deepcopy(layout)
+    def find(node, predicate):
+        if predicate(node):
+            return node
+        for child in node.get('children', []):
+            found = find(child, predicate)
+            if found is not None:
+                return found
+        return None
+    if find(result, lambda n: n.get('content', {}).get('mod') == 'music-dock'):
+        return result
+    for reserved in ('music-tabbar', 'lounge-music'):
+        if find(result, lambda n: n.get('id') == reserved):
+            raise ValueError(f'Layout node {reserved} already exists')
+    tabs = find(result, lambda n: n.get('content', {}).get('mod') == 'tabs')
+    if tabs is None:
+        raise ValueError('This layout has no tabs mod to place the music strip beside')
+    original = deepcopy(tabs)
+    height = original.pop('size', {'px': 42})
+    original['min'] = 0
+    tabs.clear()
+    tabs.update({'id': 'music-tabbar', 'type': 'row', 'size': height,
+                 'children': [original, {'id': 'lounge-music', 'type': 'block',
+                 'size': {'px': 340}, 'min': 140, 'max': 500,
+                 'content': {'mod': 'music-dock'}}]})
+    return result
+
+
+def merged_keys(keys):
+    if not isinstance(keys, dict) or not isinstance(keys.get('global'), dict):
+        raise ValueError('Expected an existing keys.json with a global section')
+    result = deepcopy(keys)
+    for section, bindings in keys.items():
+        if not isinstance(bindings, dict):
+            raise ValueError(f'Invalid key section: {section}')
+        for key in SHORTCUTS:
+            if key in bindings and bindings[key] != ACTION:
+                raise ValueError(f'{key} already has another binding in {section}: {bindings[key]!r}')
+    result['global'].update({key: ACTION for key in SHORTCUTS})
+    return result
+
+
+def command(app_home, *args):
+    result = subprocess.run(['herdr-app', *args], check=True, text=True, capture_output=True,
+                            env=dict(os.environ, HERDR_APP_HOME=str(app_home)))
+    return json.loads(result.stdout)
+
+
+def install(app_home, apply=False):
+    app_home = Path(app_home).expanduser()
+    keys_path = app_home / 'keys.json'
+    keys = merged_keys(json.loads(keys_path.read_text()))
+    status = command(app_home, 'status')
+    name = status['layout']
+    layout_path = app_home / 'layouts' / (name + '.json')
+    existing = json.loads(layout_path.read_text())
+    layout = music_layout(existing)  # Validate before changing anything.
+    installed = layout == existing
+    target_name = name if installed else name + '-music'
+    target_path = app_home / 'layouts' / (target_name + '.json')
+    if not installed and target_path.exists():
+        raise ValueError(f'{target_path} already exists; switch to it before updating')
+    print(f'Install music-dock in {app_home / "mods"}; merge {", ".join(SHORTCUTS)}')
+    print(f'Layout: {name} -> {target_name}; existing terminal/music helpers stay unchanged')
+    if not apply:
+        print('Preview only; rerun with --apply to install.')
+        return
+    backup = app_home / ('music-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
+    backup.mkdir()
+    shutil.copy2(keys_path, backup / 'keys.json')
+    shutil.copy2(layout_path, backup / layout_path.name)
+    target = app_home / 'mods/music-dock'
+    if target.exists():
+        shutil.copytree(target, backup / 'music-dock', symlinks=True)
+    target.mkdir(parents=True, exist_ok=True)
+    for name in ('main.js', 'model.js', 'mod.json'):
+        shutil.copy2(SOURCE / name, target / name)
+    if not installed:
+        # Herdr's clone API copies the current look and click state and switches
+        # to the personal layout. Never edit or replace a shipped layout.
+        command(app_home, 'do', 'layout.clone', '--name', status['layout'], '--as', target_name)
+        layout = music_layout(json.loads(target_path.read_text()))
+        temporary = target_path.with_suffix('.json.music-tmp')
+        temporary.write_text(json.dumps(layout, indent=2) + '\n')
+        temporary.replace(target_path)
+    temporary = keys_path.with_name('keys.json.music-tmp')
+    temporary.write_text(json.dumps(keys, indent=2) + '\n')
+    temporary.replace(keys_path)
+    print(f'Installed. Backup: {backup}')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true', help='install; default is preview')
+    parser.add_argument('--app-home', type=Path,
+                        default=Path(os.environ.get('HERDR_APP_HOME', '~/.config/herdr-app')).expanduser())
+    args = parser.parse_args()
+    install(args.app_home, args.apply)

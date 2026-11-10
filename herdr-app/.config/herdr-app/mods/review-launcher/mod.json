@@ -1,0 +1,5 @@
+{
+  "place": "none",
+  "title": "Open Review dashboard",
+  "overlay": { "kind": "dialog", "modal": true, "width": 320, "height": 96 }
+}

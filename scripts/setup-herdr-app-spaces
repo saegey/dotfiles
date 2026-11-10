@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Install the personal Spaces sidebar, preserving existing icons and layout state."""
+import argparse
+from copy import deepcopy
+from datetime import datetime
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+SOURCE = Path(__file__).resolve().parents[1] / 'herdr-app/.config/herdr-app/mods/dotfiles-spaces'
+
+
+def spaces_layout(layout):
+    result = deepcopy(layout)
+    count = 0
+    def visit(node):
+        nonlocal count
+        if node.get('content', {}).get('mod') in ('spaces', 'dotfiles-spaces'):
+            node['content']['mod'] = 'dotfiles-spaces'
+            count += 1
+        for child in node.get('children', []):
+            visit(child)
+    visit(result)
+    if count != 1:
+        raise ValueError('Expected exactly one Spaces mod in the active layout')
+    return result
+
+
+def install(app_home, apply=False):
+    def command(*args):
+        return json.loads(subprocess.run(['herdr-app', *args], check=True,
+            capture_output=True, text=True, env=dict(os.environ, HERDR_APP_HOME=str(app_home))).stdout)
+    name = command('status')['layout']
+    path = app_home / 'layouts' / (name + '.json')
+    original = json.loads(path.read_text())
+    updated = spaces_layout(original)
+    target = app_home / 'mods/dotfiles-spaces'
+    print(f'Install personal Spaces sidebar in {app_home}; preserve icons.json if present.')
+    if not apply:
+        print('Preview only; rerun with --apply.')
+        return
+    backup = app_home / ('spaces-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
+    backup.mkdir()
+    shutil.copy2(path, backup / path.name)
+    if target.exists():
+        shutil.copytree(target, backup / target.name, symlinks=True)
+    else:
+        command('do', 'mod.clone', '--name', 'spaces', '--as', 'dotfiles-spaces')
+    for source in SOURCE.iterdir():
+        if source.is_file() and not (source.name == 'icons.json' and (target / source.name).exists()):
+            shutil.copy2(source, target / source.name)
+    # Validate code before connecting the sidebar to the layout.
+    subprocess.run(['herdr-app', 'check', str(target)], check=True,
+                   env=dict(os.environ, HERDR_APP_HOME=str(app_home)))
+    if not original.get('cloned_from'):
+        personal = name + '-sidebar'
+        if (app_home / 'layouts' / (personal + '.json')).exists():
+            raise ValueError(f'Layout {personal} exists; switch to it before installing')
+        command('do', 'layout.clone', '--name', name, '--as', personal)
+        path = app_home / 'layouts' / (personal + '.json')
+        updated = spaces_layout(json.loads(path.read_text()))
+    temporary = path.with_suffix('.json.spaces-tmp')
+    temporary.write_text(json.dumps(updated, indent=2) + '\n')
+    temporary.replace(path)
+    print(f'Installed. Backup: {backup}')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--app-home', type=Path,
+                        default=Path(os.environ.get('HERDR_APP_HOME', '~/.config/herdr-app')).expanduser())
+    args = parser.parse_args()
+    install(args.app_home.expanduser(), args.apply)
