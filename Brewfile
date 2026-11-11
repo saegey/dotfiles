@@ -4,6 +4,7 @@ cask_args appdir: '/Applications'
 # taps
 tap 'cloudflare/cloudflare', trusted: true
 tap 'felixkratz/formulae', trusted: true
+tap 'henrygd/beszel', trusted: true
 tap 'mikker/tap', trusted: true
 tap 'modem-dev/tap', trusted: true
 tap 'nikitabobko/tap', trusted: true
@@ -47,6 +48,8 @@ brew 'colima'
 brew 'docker'
 brew 'docker-credential-helper-ecr'
 brew 'modem-dev/tap/hunk'
+# Opt in on personal machines with INSTALL_BESZEL=1 ./bootstrap.brew.sh
+brew 'henrygd/beszel/beszel-agent' if ENV['INSTALL_BESZEL'] == '1'
 
 # additional CLI tools
 brew 'ansible'
