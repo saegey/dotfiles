@@ -40,6 +40,11 @@ cd ~/.dotfiles
 
 `./bootstrap.sh` previews the safe starter set (`zsh`, `npm`, `hunk`, `gh-dash`) without changing anything. `./bootstrap.sh --apply` links only those packages. GNU Stow must already be installed; any conflicting existing file aborts the entire operation. Bootstrap does **not** install software, change your login shell, or run the macOS/Homebrew or Linux package scripts.
 
+`./bootstrap.brew.sh` installs the standard Homebrew bundle. The Beszel Agent
+from the `henrygd/beszel` tap is opt-in: run
+`INSTALL_BESZEL=1 ./bootstrap.brew.sh` on the personal Mac you want to monitor.
+Running the script without that variable leaves the agent off the work laptop.
+
 Select additional packages explicitly after reviewing their configs and existing files:
 
 ```sh
