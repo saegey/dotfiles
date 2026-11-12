@@ -1,7 +1,7 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
-$username$hostname$directory$git_branch$git_status$cmd_duration
+$username$hostname$directory$git_branch$git_status$aws${env_var.AWS_CONFIG_FILE}$cmd_duration
 $character"""
 
 add_newline = false
@@ -50,6 +50,23 @@ deleted = '✘${count}'
 [cmd_duration]
 min_time = 2_000
 format = 'took [$duration](bold yellow) '
+
+# AWS_PROFILE (shown only when set, e.g. by a repo's mise.toml). Terraform
+# blocks with an explicit profile ignore it; `awho` asks AWS directly.
+[aws]
+format = '[$symbol$profile]($style) '
+symbol = '☁ '
+style = 'bold yellow'
+
+[aws.profile_aliases]
+infra-root-administrator = 'ROOT-ADMIN'
+infra-dev-administrator = 'dev-admin'
+
+# A non-default AWS config is active (e.g. a test config that remaps profile
+# names), so profile names may not mean what they usually do.
+[env_var.AWS_CONFIG_FILE]
+format = '[⚠ AWS_CONFIG_FILE ]($style)'
+style = 'bold red'
 
 [package]
 disabled = true
