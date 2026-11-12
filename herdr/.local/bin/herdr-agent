@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Create a Herdr worktree workspace, run the repo's own setup in its first
-# pane, then start a coding agent there. The agent starts only after setup
-# succeeds, so it never works against a half-built checkout or a stack that is
-# not up yet.
+# Create a git worktree, open it as a Herdr app space, run the repo's own
+# setup in its first tab, then start a coding agent there. The agent starts
+# only after setup succeeds, so it never works against a half-built checkout
+# or a stack that is not up yet.
+#
+# Checkouts go where the app's worktree mod puts them:
+# ~/.herdr/worktrees/<repo>/<branch slug>, so the spaces sidebar nests them
+# under their repo.
 #
 # Setup is the repo's business, found in the new worktree: a `worktree-setup`
 # just recipe, else an executable scripts/worktree-setup.sh, else nothing.
@@ -26,7 +30,14 @@ usage: herdr-agent <branch> [--base REF] [--repo PATH]
                    [--ticket ID] [--pr N]
                    [--setup CMD | --no-setup] [--no-agent] [--no-focus] [--dry-run]
 
-  --base REF          branch the worktree from REF (default: Herdr's default)
+Creates ~/.herdr/worktrees/<repo>/<branch slug> with `git worktree add` and
+opens it as a Herdr app space named <branch>. An existing local branch is
+checked out as is; a branch that exists only on origin is tracked. A branch
+already checked out in a linked worktree reuses that worktree (and its space).
+
+  --base REF          branch a new branch from REF (default: origin/<branch>
+                      if it exists, else origin's default branch, else HEAD);
+                      origin/* refs are fetched first
   --repo PATH         repo to branch from (default: the current directory; a
                       linked worktree resolves to its main checkout)
   --preset NAME       plan  — "work on {ticket}, plan it, let's discuss"
@@ -38,11 +49,13 @@ usage: herdr-agent <branch> [--base REF] [--repo PATH]
   --ticket ID, --pr N fill {ticket} and {pr} in a preset's prompt
   --setup CMD         run CMD in the worktree instead of the repo's own setup
   --no-setup          skip setup entirely
-  --no-agent          only create the worktree and run setup
-  --no-focus          don't focus the new workspace
-  --dry-run           print the pane command instead of creating anything
+  --no-agent          only create the worktree and run setup; the tab stays
+                      at a shell
+  --no-focus          keep the current space in front
+  --dry-run           print the path, git command and tab argv; change nothing
 
 Explicit --agent, --model and --prompt win over a preset's.
+Run it from any Herdr app terminal (it needs `herdr-app ls` to work).
 EOF
 }
 
@@ -94,6 +107,7 @@ done
 
 [[ -n "$branch" ]] || { usage >&2; exit 1; }
 [[ -z "$prompt" || -z "$prompt_file" ]] || die "--prompt and --prompt-file are mutually exclusive"
+git check-ref-format --branch "$branch" >/dev/null 2>&1 || die "not a valid branch name: $branch"
 
 # Presets fill in whatever the flags left unset.
 preset_model=""
@@ -128,24 +142,91 @@ fi
 # Both current ones take `--model NAME` and the prompt as a positional
 # argument; a CLI that doesn't gets its own branch here.
 case "$agent" in
-  claude|codex) agent_cmd="$agent" ;;
+  claude|codex) agent_argv=("$agent") ;;
   *) die "unknown agent: $agent (claude, codex)" ;;
 esac
 
-# The model is interpolated into the pane's shell command, so keep it to the
-# characters model names actually use.
+# The model travels as its own argv element, never through a shell, but keep
+# it to the characters model names actually use.
 if [[ -n "$model" && ! "$model" =~ ^[A-Za-z0-9._:/-]+$ ]]; then
   die "--model may only contain letters, digits and . _ : / -"
 fi
-[[ -n "$model" ]] && agent_cmd+=" --model $model"
+[[ -z "$model" ]] || agent_argv+=(--model "$model")
+[[ -z "$prompt" ]] || agent_argv+=("$prompt")
 
-# Herdr refuses to branch from a linked worktree, so go to the main checkout,
-# the parent of the shared git dir.
+command -v jq >/dev/null 2>&1 || die "needs jq (brew install jq)"
+
+# Branch from the main checkout (the parent of the shared git dir), so a
+# linked worktree's own HEAD never leaks into the new one.
 common_dir="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
   || die "not in a git checkout: $repo"
-main="$(dirname "$common_dir")"
+main="$(cd "$(dirname "$common_dir")" && pwd -P)"
+g() { git -C "$main" "$@"; }
 
-# The repo's setup, looked up in a checkout: the new worktree once it exists,
+# The app's worktree mod: <root>/<repo>/<branch, runs of other characters as
+# one dash>. Lowercased to match the checkouts already there (adam-sky-6830).
+slug="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+[[ -n "$slug" ]] || die "branch name gives an empty folder name: $branch"
+# The repo folder drops leading dots (~/.dotfiles → dotfiles), as the
+# existing checkouts do.
+repo_name="$(basename "$main")"
+repo_name="${repo_name#"${repo_name%%[!.]*}"}"
+path="$HOME/.herdr/worktrees/${repo_name:-repo}/$slug"
+
+# Where the branch is checked out now, if anywhere.
+checked_out="$(g worktree list --porcelain | awk -v ref="branch refs/heads/$branch" '
+  /^worktree / { wt = substr($0, 10) }
+  $0 == ref { print wt; exit }')"
+
+ref_exists() { g show-ref --verify --quiet "$1"; }
+
+# origin/x style refs: the remote, and the branch on it.
+remote_of() {
+  local remote
+  for remote in $(g remote); do
+    if [[ "$1" == "$remote/"* ]]; then
+      echo "$remote"
+      return
+    fi
+  done
+}
+
+mode=create
+start=""
+git_args=()
+fetch=()
+if [[ -n "$checked_out" ]]; then
+  [[ "$(cd "$checked_out" 2>/dev/null && pwd -P)" != "$main" ]] \
+    || die "$branch is checked out in the main checkout ($main); switch it off there first"
+  mode=reuse
+  path="$checked_out"
+elif [[ -e "$path" || -L "$path" ]]; then
+  die "$path already exists and is not a worktree of $branch; leaving it untouched"
+elif ref_exists "refs/heads/$branch"; then
+  [[ -z "$base" ]] || echo "Branch $branch already exists; checking it out as is (ignoring --base $base)." >&2
+  git_args=(worktree add "$path" "$branch")
+else
+  if [[ -n "$base" ]]; then
+    start="$base"
+  elif ref_exists "refs/remotes/origin/$branch"; then
+    start="origin/$branch"
+  elif default="$(g symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+    start="$default"
+  else
+    start="HEAD"
+  fi
+  remote="$(remote_of "$start")"
+  [[ -z "$remote" ]] || fetch=(fetch --quiet "$remote" "${start#"$remote"/}")
+  # Track a branch of the same name on a remote (review's --base origin/<branch>);
+  # never let a new branch track the base it was cut from.
+  if [[ -n "$remote" && "${start#"$remote"/}" == "$branch" ]]; then
+    git_args=(worktree add --track -b "$branch" "$path" "$start")
+  else
+    git_args=(worktree add --no-track -b "$branch" "$path" "$start")
+  fi
+fi
+
+# The repo's setup, looked up in a checkout: the worktree once it exists,
 # the main checkout for --dry-run.
 find_setup() {
   local checkout="$1" justfile
@@ -160,65 +241,98 @@ find_setup() {
   fi
 }
 
-build_command() {
-  local checkout="$1" steps=()
+# The first tab's argv. The app runs it inside the login shell and leaves that
+# shell open when it ends, so a failed setup or an exited agent lands at a
+# prompt. Setup and the agent's argv (model, prompt) are separate arguments to
+# the script: the prompt is never parsed by a shell.
+# shellcheck disable=SC2016
+launch='if [ -n "$1" ]; then eval "$1" || { s=$?; echo "herdr-agent: setup failed (exit $s); the agent was not started." >&2; exit "$s"; }; fi
+shift
+[ "$#" -eq 0 ] || "$@"'
+
+tab_argv() {
+  local checkout="$1" step=""
   case "$setup_mode" in
-    explicit) steps+=("$setup") ;;
-    auto)
-      local found
-      found="$(find_setup "$checkout")"
-      [[ -z "$found" ]] || steps+=("$found")
-      ;;
+    explicit) step="$setup" ;;
+    auto) step="$(find_setup "$checkout")" ;;
   esac
-  if [[ "$start_agent" -eq 1 ]]; then
-    if [[ -n "$prompt" ]]; then
-      local prompt_tmp
-      if [[ "$dry_run" -eq 1 ]]; then
-        prompt_tmp="<prompt file>"
-      else
-        prompt_tmp="$(mktemp "${TMPDIR:-/tmp}/herdr-agent-prompt.XXXXXX")"
-        printf '%s\n' "$prompt" >"$prompt_tmp"
-      fi
-      steps+=("$agent_cmd \"\$(cat '$prompt_tmp')\"")
-    else
-      steps+=("$agent_cmd")
-    fi
+  local run=()
+  [[ "$start_agent" -eq 0 ]] || run=("${agent_argv[@]}")
+  if [[ -z "$step" && ${#run[@]} -eq 0 ]]; then
+    echo '[]'
+  else
+    local json arg
+    json="$(jq -cn --arg s "$launch" '["/bin/bash", "-c", $s, "herdr-agent"]')"
+    for arg in "$step" ${run[@]+"${run[@]}"}; do
+      json="$(jq -c --arg a "$arg" '. + [$a]' <<<"$json")"
+    done
+    printf '%s\n' "$json"
   fi
-  local joined=""
-  if [[ ${#steps[@]} -gt 0 ]]; then
-    joined="$(printf ' && %s' "${steps[@]}")"
-    joined="${joined:4}"
-  fi
-  printf '%s' "$joined"
 }
 
+tab_name="shell"
+[[ "$start_agent" -eq 0 ]] || tab_name="$agent"
+
 if [[ "$dry_run" -eq 1 ]]; then
-  echo "worktree: $branch from ${base:-the default base} in $main"
-  echo "command:  $(build_command "$main")"
+  echo "worktree: $path"
+  if [[ "$mode" == reuse ]]; then
+    echo "git:      (none: $branch is already checked out there)"
+  else
+    [[ ${#fetch[@]} -eq 0 ]] || echo "fetch:    git -C $(printf '%q' "$main") ${fetch[*]}"
+    echo "git:      git -C $(printf '%q' "$main")$(printf ' %q' "${git_args[@]}")"
+  fi
+  checkout="$main"
+  [[ "$mode" == create ]] || checkout="$path"
+  echo "argv:     $(tab_argv "$checkout")"
   exit 0
 fi
 
-[[ "${HERDR_ENV:-}" == 1 ]] || die "run this inside a Herdr terminal"
-command -v jq >/dev/null 2>&1 || die "needs jq (brew install jq)"
-binary="${HERDR_BIN_PATH:-herdr}"
-
-create_args=(worktree create --cwd "$main" --branch "$branch" --label "$branch")
-[[ -z "$base" ]] || create_args+=(--base "$base")
-[[ "$focus" -eq 0 ]] || create_args+=(--focus)
-
-created="$("$binary" "${create_args[@]}")" || die "failed to create the Herdr worktree"
-worktree="$(jq -er '.result.worktree.path' <<<"$created")" \
-  || die "Herdr did not return a worktree path"
-pane="$(jq -er '.result.root_pane.pane_id' <<<"$created")" \
-  || die "Herdr did not return a worktree pane"
-echo "Worktree $branch → $worktree"
-
-command="$(build_command "$worktree")"
-if [[ -z "$command" ]]; then
-  exit 0
+command -v herdr-app >/dev/null 2>&1 || die "needs the Herdr app's herdr-app on PATH"
+if ! spaces="$(herdr-app ls 2>/dev/null)" || ! jq -e '.spaces' >/dev/null 2>&1 <<<"$spaces"; then
+  die "can't reach the Herdr app (herdr-app ls failed); run this from a Herdr terminal"
 fi
-"$binary" pane run "$pane" "$command" >/dev/null
-echo "Started '$command' in pane $pane."
+previous="$(jq -r '[.spaces[] | select(.active)][0].id // empty' <<<"$spaces")"
+
+app_do() {
+  local result
+  result="$(herdr-app "do" "$1" "$2")" || die "herdr-app do $1 failed: $result"
+  printf '%s' "$result"
+}
+
+restore_focus() {
+  [[ "$focus" -eq 1 || -z "$previous" ]] \
+    || app_do space.select "$(jq -cn --arg id "$previous" '{id: $id}')" >/dev/null
+}
+
+if [[ "$mode" == reuse ]]; then
+  echo "Worktree $branch → $path (already checked out; reusing it)"
+  real="$(cd "$path" && pwd -P)"
+  existing="$(jq -r --arg p "$path" --arg r "$real" \
+    '[.spaces[] | select((.machine // "") == "" and (.folder == $p or .folder == $r))][0].id // empty' <<<"$spaces")"
+  if [[ -n "$existing" ]]; then
+    [[ "$focus" -eq 0 ]] || app_do space.select "$(jq -cn --arg id "$existing" '{id: $id}')" >/dev/null
+    echo "Its space $existing is already open; nothing started."
+    exit 0
+  fi
+else
+  if [[ ${#fetch[@]} -gt 0 ]]; then
+    g "${fetch[@]}" || echo "herdr-agent: git ${fetch[*]} failed; using the local $start" >&2
+  fi
+  [[ "$start" == "" ]] || g rev-parse --verify --quiet "$start^{commit}" >/dev/null \
+    || die "base $start does not exist"
+  mkdir -p "$(dirname "$path")"
+  g "${git_args[@]}" || die "git worktree add failed"
+  echo "Worktree $branch → $path"
+fi
+
+argv="$(tab_argv "$path")"
+space_args="$(jq -cn --arg name "$branch" --arg folder "$path" --arg tab "$tab_name" --argjson argv "$argv" \
+  '{name: $name, folder: $folder, tab: $tab, machine: ""} + (if $argv == [] then {} else {argv: $argv} end)')"
+result="$(app_do space.new "$space_args")"
+space="$(jq -r '.space // empty' <<<"$result")"
+[[ -n "$space" ]] || die "space.new returned no space: $result"
+restore_focus
+echo "Opened space $space."
 if [[ "$start_agent" -eq 1 && -n "$prompt" ]]; then
-  echo "$agent is running unattended in pane $pane and may push or open a PR on its own."
+  echo "$agent is running unattended in space $branch and may push or open a PR on its own."
 fi

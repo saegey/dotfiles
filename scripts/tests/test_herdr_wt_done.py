@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 
@@ -23,17 +24,24 @@ class WorktreeDoneTests(unittest.TestCase):
         self.worktree = self.root / 'review worktree'
         self.git('worktree', 'add', '-b', 'review', str(self.worktree))
         self.log = self.root / 'herdr.log'
-        binary = self.root / 'herdr'
-        binary.write_text('''#!/bin/bash
+        # herdr-app: `ls` answers from TEST_SPACES; everything else is logged.
+        app = self.root / 'herdr-app'
+        app.write_text('''#!/bin/bash
 set -eu
-if [[ "$*" == "workspace list" ]]; then
-  printf '%s\\n' "$TEST_WORKSPACES"
+if [[ "$1" == ls ]]; then
+  printf '%s\\n' "$TEST_SPACES"
 else
-  printf '%s\\n' "$*" >> "$TEST_LOG"
-  exit "${TEST_REMOVE_STATUS:-0}"
+  printf 'app %s\\n' "$*" >> "$TEST_LOG"
 fi
 ''')
-        binary.chmod(0o755)
+        app.chmod(0o755)
+        # hc: records the detached worker it was asked to start.
+        hc = self.root / 'hc'
+        hc.write_text('''#!/bin/bash
+printf 'hc %s\\n' "$*" >> "$TEST_LOG"
+exit "${TEST_HC_STATUS:-0}"
+''')
+        hc.chmod(0o755)
         docker = self.root / 'docker'
         docker.write_text('''#!''' + sys.executable + '''
 import json, os, pathlib, sys
@@ -56,12 +64,17 @@ elif len(args) > 1 and args[1] == 'ls':
     print('resource-' + args[0])
 ''')
         docker.chmod(0o755)
-        self.env = dict(os.environ, HERDR_ENV='1', HERDR_WORKSPACE_ID='w2',
-                        PATH=str(self.root) + os.pathsep + os.environ['PATH'],
-                        HERDR_BIN_PATH=str(binary), HERDR_ACTIVE_PANE_CWD=str(self.worktree),
-                        TEST_LOG=str(self.log), TEST_WORKSPACES=json.dumps({'result': {
-                            'workspaces': [{'workspace_id': 'w2', 'worktree': {
-                                'checkout_path': str(self.worktree)}}]}}))
+        self.env = {k: v for k, v in os.environ.items() if k not in ('HERDR_ENV', 'HERDR_WORKSPACE_ID')}
+        self.env.update(HC_TERMINAL_ID='t7', PATH=str(self.root) + os.pathsep + os.environ['PATH'],
+                        HERDR_ACTIVE_PANE_CWD=str(self.worktree), TEST_LOG=str(self.log))
+        self.spaces(self.worktree)
+
+    def spaces(self, folder, terminal='t7'):
+        self.env['TEST_SPACES'] = json.dumps({'spaces': [
+            {'id': 'spMAIN', 'folder': str(self.main), 'machine': None, 'tabs': [
+                {'id': 'tb1', 'terminals': [{'terminal': 't1'}]}]},
+            {'id': 'sp2', 'folder': str(folder), 'machine': None, 'tabs': [
+                {'id': 'tb2', 'terminals': [{'terminal': terminal}]}]}]})
 
     def git(self, *args, cwd=None):
         return subprocess.run(['git', '-C', str(cwd or self.main), *args],
@@ -74,20 +87,67 @@ elif len(args) > 1 and args[1] == 'ls':
     def calls(self):
         return self.log.read_text() if self.log.exists() else ''
 
-    def test_generic_repo_uses_native_removal(self):
+    CLOSE = ('hc run --bg --rm --no-notify --outlive-parent --cwd {main} -- '
+             'herdr-app do space.close {{"id":"sp2","confirmed":true}}\n')
+
+    def closed(self):
+        return self.CLOSE.format(main=self.main)
+
+    def test_generic_repo_uses_git_removal_then_closes_the_space(self):
         result = self.run_helper()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls(), 'worktree remove --workspace w2\n')
+        self.assertFalse(self.worktree.exists())
+        self.assertEqual(self.calls(), self.closed())
 
-    def test_force_is_forwarded_to_native_removal(self):
+    def test_force_removes_a_dirty_worktree(self):
+        (self.worktree / 'new-file').write_text('unsaved')
         result = self.run_helper('-f')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls(), 'worktree remove --workspace w2 --force\n')
+        self.assertFalse(self.worktree.exists())
+        self.assertEqual(self.calls(), self.closed())
 
-    def test_native_refusal_does_not_close_workspace(self):
-        self.env['TEST_REMOVE_STATUS'] = '1'
+    def test_git_refusal_does_not_close_the_space(self):
+        self.git('worktree', 'lock', str(self.worktree))
         self.assertNotEqual(self.run_helper().returncode, 0)
-        self.assertNotIn('workspace close', self.calls())
+        self.assertEqual(self.calls(), '')
+        self.assertTrue(self.worktree.exists())
+
+    def test_space_is_found_by_folder_outside_its_terminals(self):
+        self.env.pop('HC_TERMINAL_ID')
+        self.spaces(self.worktree, terminal='t8')
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Without hc, the close runs detached under nohup.
+        for _ in range(50):
+            if self.calls():
+                break
+            time.sleep(0.05)
+        self.assertEqual(self.calls(), 'app do space.close {"id":"sp2","confirmed":true}\n')
+
+    def test_falls_back_to_nohup_when_hc_fails(self):
+        self.env['TEST_HC_STATUS'] = '1'
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for _ in range(50):
+            if 'app do' in self.calls():
+                break
+            time.sleep(0.05)
+        self.assertIn('app do space.close {"id":"sp2","confirmed":true}\n', self.calls())
+
+    def test_missing_space_is_refused(self):
+        self.env.pop('HC_TERMINAL_ID')
+        self.spaces(self.root, terminal='t8')
+        result = self.run_helper()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Could not find the Herdr space', result.stderr)
+        self.assertTrue(self.worktree.exists())
+
+    def test_refuses_without_the_app(self):
+        self.env['PATH'] = os.pathsep.join(p for p in self.env['PATH'].split(os.pathsep)
+                                           if p != str(self.root) and not Path(p, 'herdr-app').exists())
+        result = self.run_helper()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Not inside Herdr', result.stderr)
         self.assertTrue(self.worktree.exists())
 
     def test_main_checkout_is_refused(self):
@@ -97,25 +157,27 @@ elif len(args) > 1 and args[1] == 'ls':
         self.assertIn('main checkout', result.stderr)
         self.assertEqual(self.calls(), '')
 
-    def test_workspace_mismatch_is_refused(self):
-        self.env['TEST_WORKSPACES'] = json.dumps({'result': {'workspaces': [
-            {'workspace_id': 'w2', 'worktree': {'checkout_path': str(self.main)}}]}})
+    def test_space_mismatch_is_refused(self):
+        self.spaces(self.main)
         result = self.run_helper('--force')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('belongs to', result.stderr)
         self.assertEqual(self.calls(), '')
+        self.assertTrue(self.worktree.exists())
 
-    def test_cleanup_failure_preserves_workspace(self):
+    def test_cleanup_failure_preserves_space(self):
         for checkout in [self.main, self.worktree]:
             with self.subTest(checkout=checkout):
                 scripts = checkout / 'scripts'
                 scripts.mkdir()
                 cleanup = scripts / 'worktree-rm.sh'
-                cleanup.write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$TEST_LOG"\nexit 9\n')
+                cleanup.write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$TEST_LOG.cleanup"\nexit 9\n')
                 cleanup.chmod(0o755)
                 result = self.run_helper('--force')
                 self.assertEqual(result.returncode, 9, result.stderr)
-                self.assertEqual(self.calls(), '--force\n' + str(self.worktree) + '\n')
+                self.assertEqual(Path(str(self.log) + '.cleanup').read_text(),
+                                 '--force\n' + str(self.worktree) + '\n')
+                self.assertEqual(self.calls(), '')
                 self.assertTrue(self.worktree.exists())
 
     def test_unpushed_commits_require_force(self):
@@ -147,7 +209,8 @@ elif len(args) > 1 and args[1] == 'ls':
         self.assertIn(['rm', '--force', '--volumes', 'container-1'], calls)
         self.assertIn(['volume', 'rm', 'resource-volume'], calls)
         self.assertIn(['network', 'rm', 'resource-network'], calls)
-        self.assertIn('worktree remove', self.calls())
+        self.assertFalse(self.worktree.exists())
+        self.assertIn('space.close', self.calls())
 
     def test_stack_failure_keeps_worktree_even_with_force(self):
         self.env['TEST_DOCKER_RECORDS'] = json.dumps([self.stack(self.worktree)])
