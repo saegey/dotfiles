@@ -64,7 +64,7 @@ def install(app_home, apply=False):
         (helper, ROOT / 'herdr/.local/bin/herdr-gui-review'),
         (config, ROOT / 'gh-dash/.config/gh-dash/review-gui.yml'),
     ):
-        if path.is_symlink() and path.resolve() == origin.resolve():
+        if path.resolve() == origin.resolve():
             continue
         if path.exists() or path.is_symlink():
             shutil.copy2(path, backup / path.name, follow_symlinks=True)

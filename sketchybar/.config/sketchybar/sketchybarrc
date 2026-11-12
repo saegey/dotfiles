@@ -10,7 +10,7 @@ sketchybar --bar position=top height=36 notch_display_height=24 \
   margin=10 y_offset=6 notch_offset=0 notch_width=220 \
   color=0x00000000 border_width=0 \
   corner_radius=0 blur_radius=0 shadow=off \
-  padding_left=8 padding_right=8 display=all topmost=off
+  padding_left=0 padding_right=0 display=all topmost=off
 
 sketchybar --default icon.drawing=off \
   label.font="JetBrains Mono:Medium:12.0" label.color="$TEXT" \
@@ -39,19 +39,16 @@ sketchybar --add bracket panel_left panel_anchor_laptop_left panel_anchor_laptop
   --set panel_external background.height=36
 for panel in panel_left panel_right panel_external; do
   sketchybar --set "$panel" background.drawing=on \
-    background.color=0xcc1e1e2e background.border_color="$SURFACE" \
-    background.border_width=1 background.corner_radius=6 background.shadow.drawing=on \
+    background.color=0xa61e1e2e background.border_color="$SURFACE" \
+    background.border_width=1 background.corner_radius=6 background.shadow.drawing=off \
     background.padding_left=0 background.padding_right=0
 done
-# Offset shadows form a dark crescent beyond the rounded notebook panels.
-sketchybar --set panel_left background.shadow.drawing=off \
-  --set panel_right background.shadow.drawing=off
 
 sketchybar --add event dinky_workspace_change \
   --add event dinky_focus_change
 
 sketchybar --add item brand left \
-  --set brand icon='' icon.drawing=on icon.color=0xffffffff \
+  --set brand icon='' icon.drawing=on icon.color=0xffffffff padding_left=10 \
   icon.font="0xProto Nerd Font Mono:Regular:15.0" \
   icon.padding_left=6 icon.padding_right=8 label.drawing=off
 
@@ -86,7 +83,7 @@ sketchybar --add item media center \
   --subscribe media mouse.clicked system_woke
 
 sketchybar --add item clock right \
-  --set clock update_freq=30 label.color="$LAVENDER" \
+  --set clock update_freq=30 label.color="$LAVENDER" padding_right=10 \
   script="$plugin_dir/clock.sh" click_script="open -a Calendar" \
   --subscribe clock system_woke
 

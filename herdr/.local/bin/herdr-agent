@@ -198,8 +198,51 @@ if [[ "$dry_run" -eq 1 ]]; then
   exit 0
 fi
 
-[[ "${HERDR_ENV:-}" == 1 ]] || die "run this inside a Herdr terminal"
 command -v jq >/dev/null 2>&1 || die "needs jq (brew install jq)"
+
+if [[ "${HERDR_ENV:-}" == 1 ]]; then
+  backend=tui
+elif command -v herdr-app >/dev/null 2>&1 && command -v hc >/dev/null 2>&1 \
+  && herdr-app status >/dev/null 2>&1; then
+  backend=app
+else
+  die "run this inside a Herdr terminal (or with the Herdr app open)"
+fi
+
+if [[ "$backend" == app ]]; then
+  # The app has no worktree command, so make the checkout where the TUI would
+  # (~/.herdr/worktrees/<repo>/<branch with / as ->), then open a space on it
+  # and type the command into its shell, as `pane run` does for the TUI.
+  worktree="$HOME/.herdr/worktrees/$(basename "$main")/${branch//\//-}"
+  [[ ! -e "$worktree" ]] || die "worktree path already exists: $worktree"
+  mkdir -p "$(dirname "$worktree")"
+  if git -C "$main" show-ref --verify --quiet "refs/heads/$branch"; then
+    git -C "$main" worktree add "$worktree" "$branch" >/dev/null 2>&1 \
+      || die "failed to create the worktree for existing branch $branch"
+  else
+    git -C "$main" worktree add -b "$branch" "$worktree" ${base:+"$base"} >/dev/null 2>&1 \
+      || die "failed to create the worktree (is --base ${base:-HEAD} valid?)"
+  fi
+  echo "Worktree $branch → $worktree"
+
+  previous="$(herdr-app status | jq -r '.space // empty')"
+  created="$(herdr-app do space.new "$(jq -nc --arg name "$branch" --arg folder "$worktree" \
+    '{name: $name, folder: $folder, machine: ""}')")" || die "failed to open a Herdr space"
+  terminal="$(jq -er '.terminal' <<<"$created")" || die "Herdr did not return a terminal"
+  if [[ "$focus" -eq 0 && -n "$previous" ]]; then
+    herdr-app do space.select "$(jq -nc --arg id "$previous" '{id: $id}')" >/dev/null
+  fi
+
+  command="$(build_command "$worktree")"
+  [[ -n "$command" ]] || exit 0
+  hc send "$terminal" "$command" >/dev/null
+  echo "Started '$command' in terminal $terminal."
+  if [[ "$start_agent" -eq 1 && -n "$prompt" ]]; then
+    echo "$agent is running unattended in terminal $terminal and may push or open a PR on its own."
+  fi
+  exit 0
+fi
+
 binary="${HERDR_BIN_PATH:-herdr}"
 
 create_args=(worktree create --cwd "$main" --branch "$branch" --label "$branch")

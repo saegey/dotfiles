@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Copy custom GUI mods: Herdr's import sandbox rejects Stow file symlinks."""
+from pathlib import Path
+import os
+import shutil
+
+root = Path(__file__).resolve().parents[1]
+source = root / "herdr-app/.config/herdr-app/mods"
+home = Path(os.environ.get("HERDR_APP_HOME", "~/.config/herdr-app")).expanduser()
+for mod in source.iterdir():
+    if not mod.is_dir():
+        continue
+    for item in mod.iterdir():
+        if not item.is_file() or item.name in {"gpui-kit.d.ts", "herdr.d.ts", "jsconfig.json"}:
+            continue
+        target = home / "mods" / mod.name / item.name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Keep machine-local icon customizations, unless this is a Stow link.
+        if item.name == "icons.json" and target.exists() and not target.is_symlink():
+            continue
+        if target.is_symlink():
+            target.unlink()
+        shutil.copy2(item, target)
+print("Personal Herdr mods synced from dotfiles.")
