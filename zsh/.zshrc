@@ -53,6 +53,9 @@ alias gco='git checkout'
 alias gf='git fetch'
 alias gpl='git pull'
 alias v='zed .'
+# The role AWS actually resolves for a profile (pass --profile NAME); the prompt
+# only shows $AWS_PROFILE, which explicit profiles in Terraform ignore.
+alias awho='aws sts get-caller-identity --query Arn --output text'
 if [[ "$OSTYPE" == darwin* ]]; then
   alias chrome-tailscale='open -na "Google Chrome" --args --user-data-dir="$HOME/Library/Application Support/Chrome-Tailscale" --proxy-server="socks5://127.0.0.1:1055"'
 fi
@@ -67,6 +70,7 @@ shortcuts() {
   print -r -- '  gc/gp         git commit / push'
   print -r -- '  gco           git checkout <branch>'
   print -r -- '  gf/gpl        git fetch / pull'
+  print -r -- '  awho          AWS role in use (--profile NAME to check one)'
   if [[ "$OSTYPE" == darwin* ]]; then
     print -r -- '  chrome-tailscale  Chrome profile using SOCKS proxy at 127.0.0.1:1055'
   fi
