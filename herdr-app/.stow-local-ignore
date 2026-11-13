@@ -1,0 +1,7 @@
+\.gitignore$
+(^|/)gpui-kit\.d\.ts$
+(^|/)herdr\.d\.ts$
+(^|/)jsconfig\.json$
+(^|/)__pycache__(/|$)
+\.py[cod]$
+(^|/)mods(/|$)

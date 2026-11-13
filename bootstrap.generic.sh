@@ -58,7 +58,7 @@ fi
 
 for package in "${packages[@]}"; do
   case "$package" in
-    zsh|bash|git|npm|starship|ghostty|hunk|gh-dash|zed|tools|ssh|claude|ttt|btop|ghzinga|herdr) ;;
+    zsh|bash|git|npm|starship|ghostty|hunk|gh-dash|zed|tools|ssh|claude|ttt|btop|ghzinga|herdr|herdr-app) ;;
     aerospace|dinky|hammerspoon|karabiner|sketchybar|smb-archive)
       if [[ $(uname -s) != Darwin ]]; then
         echo "$package is only available on macOS" >&2
@@ -76,6 +76,11 @@ echo "Packages: ${packages[*]}"
 stow --no-folding --ignore='(^|/)__pycache__(/|$)' --ignore='\.py[cod]$' --simulate --verbose --target="${HOME}" "${packages[@]}"
 if [[ $apply == true ]]; then
   stow --no-folding --ignore='(^|/)__pycache__(/|$)' --ignore='\.py[cod]$' --target="${HOME}" "${packages[@]}"
+  for package in "${packages[@]}"; do
+    if [[ "$package" == herdr-app ]]; then
+      python3 "$SCRIPTDIR/scripts/sync-herdr-app-mods"
+    fi
+  done
   echo 'Links installed. Package installation, shell changes and Git/SSH credentials are manual.'
 else
   echo 'Preview only; rerun with --apply to install the listed links.'

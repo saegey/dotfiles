@@ -1,0 +1,16 @@
+{
+  "zoom": 1.1,
+  "sounds": {
+    "enabled": true
+  },
+  "font": "JetBrains Mono",
+  "font_size": 13.0,
+  "font_ligatures": false,
+  "ui_font": "JetBrains Mono",
+  "minimum_contrast": 1.0,
+  "option_as_alt": "on",
+  "theme": {
+    "light": "catppuccin-latte",
+    "dark": "catppuccin-frappe"
+  }
+}

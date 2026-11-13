@@ -818,3 +818,33 @@ To update the committed preferences from this machine, run the following and rev
 ## License
 
 MIT
+
+### Stowed personal Herdr GUI configuration
+
+Start the Herdr GUI once, then install the personal configuration:
+
+```sh
+./bootstrap.sh --packages herdr herdr-app gh-dash
+./bootstrap.sh --apply --packages herdr herdr-app gh-dash
+herdr-app do layout.switch --name main-music
+```
+
+On an existing machine, back up conflicting regular files before Stowing; never
+use `--adopt` or overwrite them blindly. The `herdr-app` package owns personal
+keys, settings, Catppuccin Frappe/Latte themes, the `main-music` layout and custom
+mods. Mods are copied by bootstrap from the checkout because Herdr rejects
+relative imports through Stow file symlinks; rerun bootstrap to deploy mod edits. Generated app files, shipped mods/layouts, layout click state, terminals,
+credentials and window/session state remain machine-local. Use Stow for this
+setup rather than rerunning the copy-based GUI installers, which can replace
+links. Changes made in GUI Settings may also replace a settings link; check
+`./bootstrap.sh --packages herdr-app` afterward and reconcile with the checkout.
+
+The theme follows system appearance; terminals use JetBrains Mono for both UI and terminals at 13px (100% zoom) with
+Option acting as Alt. Cmd-[ toggles the sidebar; Ctrl-Option-1..9 selects spaces;
+Ctrl-Option-J/K visits agents; Cmd-K (or Ctrl-Option-Shift-K) opens the picker;
+Cmd-P opens repo tasks in a split at the focused terminal's directory. Cmd-I,
+Cmd-Shift-R and the music shortcuts keep their GUI actions. Cmd-Shift-P opens the
+native command palette. Legacy prefix sequences and plugin-only refresh actions
+are not translated; the personal sidebar refreshes metadata automatically.
+Transparency/blur, Ghostty cursor settings and its scrollback byte limit have
+no documented matching GUI setting and are not copied.
