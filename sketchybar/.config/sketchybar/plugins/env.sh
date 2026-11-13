@@ -2,11 +2,14 @@
 # Homebrew services and Dinky hooks do not inherit an interactive shell's PATH.
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
 
-BASE=0xff1e1e2e
-TEXT=0xffcdd6f4
-MUTED=0xff6c7086
-SURFACE=0xff45475a
-MAUVE=0xffcba6f7
-LAVENDER=0xffb4befe
-GREEN=0xffa6e3a1
-RED=0xfff38ba8
+# Monochrome palette. Keep the existing accent names for the status plugins;
+# brightness distinguishes active/attention, normal, and inactive states.
+BASE=0xff181818
+PANEL=0xcc181818
+TEXT=0xffd8d8d8
+MUTED=0xff808080
+SURFACE=0xff404040
+MAUVE=0xffffffff
+LAVENDER=0xffe5e5e5
+GREEN=0xffbfbfbf
+RED=0xffffffff

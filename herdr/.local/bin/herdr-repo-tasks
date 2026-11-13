@@ -9,6 +9,9 @@ set -euo pipefail
 
 CONFIG_FILE="${HERDR_REPO_SCRIPTS_CONFIG:-$HOME/.config/herdr/repo-scripts.json}"
 cwd="${HERDR_ACTIVE_PANE_CWD:-$PWD}"
+# Tasks run from the main checkout; keep where the picker was opened (the Herdr
+# app opens it in the focused terminal's folder) for tasks such as herdr-wt-done.
+export HERDR_ACTIVE_PANE_CWD="$cwd"
 
 die() {
   echo "$1"

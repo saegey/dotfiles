@@ -365,18 +365,21 @@ to select repository tasks. Machine-specific task definitions live in
 `~/.config/herdr/repo-scripts.json`; otherwise it discovers Makefile targets and
 npm scripts.
 
-Run `herdr-wt-done` inside a linked worktree (or choose **Done (teardown
-worktree)** from configured repository tasks) to remove it and close its Herdr
-workspace. It uses that repository's executable `scripts/worktree-rm.sh`, falling
-back to the same repository's main checkout for older worktrees. Repositories
-without this script use Herdr's native removal, which refuses dirty worktrees;
-the helper also refuses commits ahead of an upstream when one is configured.
-Before removing either kind of worktree, it removes that checkout's Docker
-Compose containers, volumes, and networks using their Compose labels. It leaves
-other checkouts' stacks alone and refuses shared Compose projects or Docker
-failures, even with `--force`, so a failed teardown keeps the worktree available.
-`--force` overrides dirty-worktree and unpushed-commit checks. Main checkouts and mismatched workspace paths
-are refused.
+Run `herdr-wt-done` inside a linked worktree's Herdr space (or choose **Done
+(teardown worktree)** from its repository tasks) to remove the worktree and close
+the space. It finds the space that holds its terminal (else the one open on the
+worktree's folder) and refuses unless that space's folder is the worktree. It
+uses that repository's executable `scripts/worktree-rm.sh`, falling back to the
+same repository's main checkout for older worktrees. Repositories without this
+script use `git worktree remove`, which refuses dirty or locked worktrees; the
+helper also refuses unsaved work and commits ahead of an upstream when one is
+configured. Before removing either kind of worktree, it removes that checkout's
+Docker Compose containers, volumes, and networks using their Compose labels. It
+leaves other checkouts' stacks alone and refuses shared Compose projects or
+Docker failures, even with `--force`, so a failed teardown keeps the worktree
+available. `--force` overrides the dirty-worktree and unpushed-commit checks.
+Main checkouts and mismatched spaces are refused. The space closes last, from a
+detached `hc` worker, since closing it ends the terminal the helper runs in.
 
 Install the Herdr command palette plugin after installing Herdr and the Brewfile
 dependencies (Rust/Cargo is required to build it):
@@ -396,22 +399,33 @@ linking this setting. The plugin automatically titles unnamed agent tabs;
 start its watcher in an existing session with
 `herdr plugin action invoke herdr-bar.start-titles`.
 
-`herdr-agent <branch>` creates and focuses a Herdr worktree workspace, runs the
-repo's own setup in its root pane (a `worktree-setup` just recipe, else an
-executable `scripts/worktree-setup.sh`), then starts a coding agent there once
-setup succeeds. Choose the agent with `--agent claude|codex` and its model with
-`--model`; `HERDR_AGENT` and `HERDR_MODEL` set the defaults. Give a first prompt
-with `--prompt` or `--prompt-file`, or use a preset: `plan --ticket ID` or
-`review --pr N` (Opus, `/pr-review N`). `--setup CMD` overrides the repo's setup,
-`--no-setup` skips it, and `--dry-run` prints the pane command without creating
-anything. It works from a linked worktree too, branching from the main checkout.
+`herdr-agent <branch>` creates a git worktree at
+`~/.herdr/worktrees/<repo>/<branch slug>` (where the app's worktree mod puts
+them, e.g. `adam/SKY-123` → `adam-sky-123`), opens it as a Herdr app space named
+after the branch, runs the repo's own setup in its first tab (a `worktree-setup`
+just recipe, else an executable `scripts/worktree-setup.sh`), then starts a
+coding agent there once setup succeeds; a failed setup or an exited agent leaves
+the tab at a shell. New branches start from `--base`, else `origin/<branch>` if
+it exists, else origin's default branch (`origin/*` bases are fetched first); an
+existing local branch is checked out as is, and one already in a linked worktree
+reuses that worktree and its space. An existing folder is never overwritten.
+Choose the agent with `--agent claude|codex` and its model with `--model`;
+`HERDR_AGENT` and `HERDR_MODEL` set the defaults. Give a first prompt with
+`--prompt` or `--prompt-file`, or use a preset: `plan --ticket ID` or
+`review --pr N` (Opus, `/pr-review N`); the prompt is passed as its own
+argument, never through a shell. `--setup CMD` overrides the repo's setup,
+`--no-setup` skips it, `--no-focus` keeps the current space in front, and
+`--dry-run` prints the path, git command and tab argv without creating anything.
+It works from a linked worktree too, branching from the main checkout, and from
+any Herdr app terminal (it needs `herdr-app ls` to work).
 Run `herdr-agent --help` for every option.
 
 The Zsh `workon <TICKET-ID>` and `review <TICKET-ID>` helpers wrap it, and pass
 any further options through (e.g. `workon ABC-1 --model sonnet`). `workon` uses
 `${BRANCH_PREFIX:-adam}/<TICKET-ID>` with the `plan` preset; `review` finds the
 ticket's PR with `gh`, fetches its branch, and uses the `review` preset. Both
-require `herdr` and `jq`; `review` also requires authenticated GitHub CLI access.
+require the Herdr app and `jq`; `review` also requires authenticated GitHub CLI
+access.
 
 ## Lounge music in Herdr
 

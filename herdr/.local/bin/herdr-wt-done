@@ -1,22 +1,19 @@
 #!/usr/bin/env bash
-# Finish a worktree task from inside its herdr workspace: run the repo's own
+# Finish a worktree task from inside its Herdr app space: run the repo's own
 # scripts/worktree-rm.sh (unsaved-work guard, docker stack, caddy route, ports,
-# git worktree removal), then close the herdr workspace. Other repos use
-# Herdr's native worktree removal. --force bypasses unsaved-work checks.
+# git worktree removal), then close the space. Other repos use
+# `git worktree remove`. --force bypasses unsaved-work checks.
 # Wired up per repo in
 # ~/.config/herdr/repo-scripts.json, so the repo itself needs no herdr glue.
 #
 # herdr-repo-tasks runs commands from the *main* checkout, so the worktree is
-# resolved from the focused pane's cwd, not $PWD.
+# resolved from HERDR_ACTIVE_PANE_CWD (the folder it was opened in), not $PWD.
 set -euo pipefail
 
 die() {
   echo "$1" >&2
   exit 1
 }
-
-[[ "${HERDR_ENV:-}" == 1 ]] || die "Not inside herdr."
-command -v jq >/dev/null 2>&1 || die "herdr-wt-done needs jq (brew install jq)"
 
 force=0
 for arg in "$@"; do
@@ -27,23 +24,40 @@ for arg in "$@"; do
   esac
 done
 
-binary="${HERDR_BIN_PATH:-herdr}"
+command -v jq >/dev/null 2>&1 || die "herdr-wt-done needs jq (brew install jq)"
+command -v herdr-app >/dev/null 2>&1 || die "Not inside Herdr: herdr-app is not on PATH."
+spaces="$(herdr-app ls 2>/dev/null)" || die "Not inside Herdr: herdr-app ls failed."
+jq -e '.spaces' >/dev/null 2>&1 <<<"$spaces" || die "Not inside Herdr: herdr-app ls returned no spaces."
+
 cwd="${HERDR_ACTIVE_PANE_CWD:-$PWD}"
 wt="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" || die "Not in a git checkout: $cwd"
 [[ -f "$wt/.git" ]] || die "Refusing: $wt is the main checkout, not a linked worktree."
+wt="$(cd "$wt" && pwd -P)"
 
-ws="${HERDR_WORKSPACE_ID:-}"
-if [[ -z "$ws" ]]; then
-  ws="$("$binary" pane current --current | jq -r '.result.pane.workspace_id // empty')"
+resolve() { (cd "$1" 2>/dev/null && pwd -P); }
+
+# The space to close: the one holding this terminal, else the only local space
+# opened on this worktree. Either way its folder must be this worktree before
+# anything is removed or closed.
+space=""
+folder=""
+if [[ -n "${HC_TERMINAL_ID:-}" ]]; then
+  IFS=$'\t' read -r space folder < <(jq -r --arg t "$HC_TERMINAL_ID" '
+    [.spaces[] | select(any(.tabs[]?.terminals[]?; .terminal == $t))][0]
+    | select(. != null) | [.id, (.folder // "")] | @tsv' <<<"$spaces") || true
 fi
-[[ -n "$ws" ]] || die "Could not determine the current herdr workspace id."
-
-# Verify that this workspace owns the target before removing or closing anything.
-registered="$("$binary" workspace list | jq -er --arg ws "$ws" \
-  '.result.workspaces[] | select(.workspace_id == $ws) | .worktree.checkout_path // empty')" \
-  || die "Workspace $ws is not a Herdr worktree workspace."
-registered="$(cd "$registered" && pwd -P)" || die "Worktree path is unavailable: $registered"
-[[ "$registered" == "$wt" ]] || die "Refusing: workspace $ws belongs to $registered, not $wt."
+if [[ -z "$space" ]]; then
+  matches=()
+  while IFS=$'\t' read -r id dir; do
+    [[ -n "$id" && "$(resolve "$dir")" == "$wt" ]] && matches+=("$id")
+  done < <(jq -r '.spaces[] | select((.machine // "") == "") | [.id, (.folder // "")] | @tsv' <<<"$spaces")
+  [[ ${#matches[@]} -gt 0 ]] || die "Could not find the Herdr space for $wt."
+  [[ ${#matches[@]} -eq 1 ]] || die "Refusing: more than one Herdr space is open on $wt."
+  space="${matches[0]}"
+  folder="$wt"
+fi
+registered="$(resolve "$folder")" || die "Space $space's folder is unavailable: $folder"
+[[ "$registered" == "$wt" ]] || die "Refusing: space $space belongs to ${registered:-$folder}, not $wt."
 
 # Use cleanup helpers from this repository's main checkout if the linked
 # worktree is older and does not contain them yet.
@@ -124,26 +138,37 @@ try:
     if any(belongs(c, checkout) for c in containers()):
         raise RuntimeError('Worktree still has Compose containers after teardown')
 except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
-    print('Stack teardown failed; leaving worktree and Herdr workspace intact: ' + str(error),
+    print('Stack teardown failed; leaving worktree and Herdr space intact: ' + str(error),
           file=sys.stderr)
     sys.exit(1)
 PY
 
+# Closing the space kills the terminal this runs in, so it goes last and runs
+# outside it: as an hc worker that outlives this terminal, else under nohup.
+close_space() {
+  local args
+  args="$(jq -cn --arg id "$space" '{id: $id, confirmed: true}')"
+  echo "Closing Herdr space $space ..."
+  if [[ -n "${HC_TERMINAL_ID:-}" ]] && command -v hc >/dev/null 2>&1 \
+    && hc run --bg --rm --no-notify --outlive-parent --cwd "$main" -- herdr-app "do" space.close "$args" >/dev/null 2>&1; then
+    return
+  fi
+  nohup herdr-app "do" space.close "$args" >/dev/null 2>&1 &
+  disown
+}
+
 if [[ ! -x "$cleanup" ]]; then
-  args=(worktree remove --workspace "$ws")
+  args=(worktree remove)
   [[ "$force" -eq 0 ]] || args+=(--force)
-  echo "Removing worktree $wt and its Herdr workspace ..."
-  # Herdr checks for dirty files and removes/closes the linked workspace itself.
-  exec "$binary" "${args[@]}"
+  echo "Removing worktree $wt ..."
+  # git refuses dirty or locked worktrees unless --force; then nothing is closed.
+  git -C "$main" "${args[@]}" "$wt"
+else
+  # Resolve everything above before this runs: it deletes the checkout. It
+  # refuses (non-zero, nothing removed) on unsaved work unless --force.
+  args=("$wt")
+  [[ "$force" -eq 0 ]] || args=(--force "$wt")
+  "$cleanup" "${args[@]}"
 fi
 
-# Resolve everything above before this runs: it deletes the checkout. It
-# refuses (non-zero, nothing removed) on unsaved work unless --force.
-args=("$wt")
-[[ "$force" -eq 0 ]] || args=(--force "$wt")
-"$cleanup" "${args[@]}"
-
-# Closing the workspace kills the pane this runs in, so detach it as the last step.
-echo "Closing herdr workspace $ws ..."
-nohup "$binary" workspace close "$ws" >/dev/null 2>&1 &
-disown
+close_space
