@@ -14,7 +14,8 @@
     "cmd-]": "agent.next",
     "cmd-[": "layout.toggle:sidebar",
     "cmd-shift-l": "layout.switch",
-    "cmd-n": "space.new",
+    "cmd-n": "mod.open:project-picker",
+    "cmd-shift-j": "mod.open:attn-next",
     "cmd-p": "mod.open:tasks-launcher",
     "cmd-shift-p": "app.palette",
     "cmd-,": "app.settings",
@@ -67,6 +68,10 @@
     "ctrl-alt-7": "space.select:7",
     "ctrl-alt-8": "space.select:8",
     "ctrl-alt-9": "space.select:9"
+  },
+  "mod:attn-next": {
+    "cmd-shift-j": "attn-next.next",
+    "cmd-shift-k": "attn-next.prev"
   },
   "terminal": {
     "cmd-f": "terminal.search",

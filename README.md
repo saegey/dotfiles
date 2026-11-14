@@ -842,6 +842,10 @@ links. Changes made in GUI Settings may also replace a settings link; check
 The theme follows system appearance; terminals use JetBrains Mono for both UI and terminals at 13px (100% zoom) with
 Option acting as Alt. Cmd-[ toggles the sidebar; Ctrl-Option-1..9 selects spaces;
 Ctrl-Option-J/K visits agents; Cmd-K (or Ctrl-Option-Shift-K) opens the picker;
+Cmd-N opens sisimomo's Project Picker to focus or create a space for a Git repo
+(Settings in the picker controls its scan folder and depth);
+Cmd-Shift-J opens Attn next: tap to jump to an agent needing attention, or hold
+Cmd-Shift and tap J/K to select an agent, then release Cmd to jump (Esc cancels).
 Cmd-P opens repo tasks in a split at the focused terminal's directory. Cmd-I,
 Cmd-Shift-R and the music shortcuts keep their GUI actions. Cmd-Shift-P opens the
 native command palette. Legacy prefix sequences and plugin-only refresh actions
