@@ -1,0 +1,40 @@
+{
+  "selected": "maple-mono",
+  "fonts": {
+    "jetbrains-mono": {
+      "family": "JetBrains Mono",
+      "bar_style": "Medium",
+      "cask": "font-jetbrains-mono"
+    },
+    "iosevka": {
+      "family": "Iosevka",
+      "bar_style": "Medium",
+      "cask": "font-iosevka"
+    },
+    "space-mono": {
+      "family": "Space Mono",
+      "bar_style": "Regular",
+      "cask": "font-space-mono"
+    },
+    "commit-mono": {
+      "family": "CommitMono",
+      "bar_style": "Regular",
+      "cask": "font-commit-mono"
+    },
+    "monaspace-argon": {
+      "family": "Monaspace Argon",
+      "bar_style": "Medium",
+      "cask": "font-monaspace"
+    },
+    "maple-mono": {
+      "family": "Maple Mono",
+      "bar_style": "Medium",
+      "cask": "font-maple-mono"
+    },
+    "0xproto": {
+      "family": "0xProto",
+      "bar_style": "Regular",
+      "cask": "font-0xproto"
+    }
+  }
+}
