@@ -4,6 +4,8 @@ include:
 prSections:
     - title: Needs My Review
       filters: is:open is:pr org:skysafe review-requested:@me -is:draft
+    - title: Cloud Needs Review
+      filters: is:open is:pr repo:skysafe/skysafe-cloud review:required -is:draft sort:updated-desc
     - title: Previously Reviewed
       filters: is:open is:pr org:skysafe reviewed-by:@me -author:@me -is:draft sort:updated-desc
     - title: Changes Requested

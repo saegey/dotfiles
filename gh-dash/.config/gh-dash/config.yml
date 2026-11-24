@@ -3,6 +3,8 @@ prSections:
       filters: is:open author:@me
     - title: Needs My Review
       filters: is:open review-requested:@me
+    - title: Cloud Needs Review
+      filters: is:open is:pr repo:skysafe/skysafe-cloud review:required -is:draft sort:updated-desc
     - title: Involved
       filters: is:open involves:@me -author:@me
 issuesSections:

@@ -498,6 +498,10 @@ requested on your PRs, failing CI, approved PRs with passing CI, and all your op
 PRs. Queues refresh every two minutes; use gh-dash's refresh keys for an immediate
 update.
 
+The **Cloud Needs Review** tab shows open, non-draft PRs in
+`skysafe/skysafe-cloud` that require review, regardless of reviewer assignment,
+sorted by latest update. It is available in the default and both review dashboards.
+
 The **Previously Reviewed** queue keeps open PRs you reviewed visible even when
 the author hasn't requested another review. It sorts by latest update; updates
 can include comments and other activity, so this isn't an exact list of PRs
@@ -570,6 +574,9 @@ switches GitHub accounts automatically. The GUI launcher uses the same verified
 local repository discovery and safe worktree planning as `herdr-pr-open`; local
 branches, dirty files, and differing local commits are preserved. It doesn't
 update an existing checkout to the latest PR head.
+
+The zsh alias `ghdash` opens this GUI review configuration in the current
+terminal. Run it inside the Herdr app to use **w** and **Ctrl-R** actions.
 
 PR checkouts opened through the GUI review workflow get a `review #NUMBER`
 subtitle in the personal Spaces sidebar. A collapsed parent shows how many
