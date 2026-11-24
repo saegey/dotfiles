@@ -30,6 +30,54 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `btop/` | `~/.config/btop/themes/catppuccin_mocha.theme` | Catppuccin Mocha theme for btop |
 | `supacode/settings.shared.json` | applied to `~/.supacode/settings.json` | Shared Supacode global preferences |
 
+## Shared monospace font
+
+`fonts/monospace.json` defines the selected font and the available families:
+JetBrains Mono, Iosevka, Space Mono, Commit Mono, Monaspace Argon, Maple Mono,
+and 0xProto. Maple Mono is currently selected. Their Homebrew casks are included
+in `Brewfile`. To install just the trial fonts:
+
+```sh
+brew install --cask font-iosevka font-space-mono font-commit-mono
+brew install --cask font-monaspace font-maple-mono font-0xproto
+```
+
+The `zsh` Stow package installs `mono-font` in `~/.local/bin`. From this checkout
+you can also run `./zsh/.local/bin/mono-font` directly.
+
+```sh
+mono-font                       # list choices; * marks the selection
+mono-font iosevka --dry-run      # preview
+mono-font iosevka
+mono-font space-mono
+mono-font commit-mono
+mono-font monaspace-argon
+mono-font maple-mono
+mono-font 0xproto
+mono-font jetbrains-mono         # switch back to JetBrains Mono
+mono-font --check               # exit nonzero if app configs have drifted
+```
+
+Switching updates the selection and the source configs for Ghostty, Zed
+(UI, editor, terminal), Herdr app (UI and terminal), Hammerspoon's shortcut
+visor, and SketchyBar. Comments, sizes, and unrelated settings are preserved.
+SketchyBar uses Medium where available and Regular for Space Mono, Commit
+Mono, and 0xProto. Nerd Font icons stay separate. The command does not install fonts.
+
+Stowed configs follow these edits immediately. Existing regular config copies
+in your home directory are updated too; Herdr's local settings keep their other
+fields. Missing configs are skipped, and symlinks pointing outside this checkout
+are refused. Use `--source-only` to update or check only the checkout.
+Reload Ghostty's configuration,
+Hammerspoon, and SketchyBar after switching; restart Zed or Herdr if they do
+not pick up the changes. After editing the catalog directly, run `mono-font --dry-run`
+to preview and `mono-font <selected-id>` to apply it. Changes are ordinary
+Git diffs; commit the catalog and updated configs together.
+
+If you installed a font while Herdr was running, fully quit and reopen the app
+so it can discover the new family. Its core terminals keep running while the
+window is closed. Opening a new tab alone may still use the cached font list.
+
 ## Installation
 
 ```sh

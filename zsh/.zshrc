@@ -72,6 +72,7 @@ shortcuts() {
   print -r -- '  gco           git checkout <branch>'
   print -r -- '  gf/gpl        git fetch / pull'
   print -r -- '  ghdash        GH Dash with PR review actions (Herdr app)'
+  print -r -- '  mono-font     list fonts; mono-font <id> switches app configs'
   print -r -- '  awho          AWS role in use (--profile NAME to check one)'
   if [[ "$OSTYPE" == darwin* ]]; then
     print -r -- '  chrome-tailscale  Chrome profile using SOCKS proxy at 127.0.0.1:1055'

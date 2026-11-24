@@ -172,7 +172,7 @@ local shortcutsStyle = {
   strokeColor = { red = 203 / 255, green = 166 / 255, blue = 247 / 255, alpha = 1 }, -- Mauve
   strokeWidth = 2,
   textColor = { red = 205 / 255, green = 214 / 255, blue = 244 / 255, alpha = 1 }, -- Text
-  textFont = 'JetBrains Mono',
+  textFont = 'Maple Mono',
   textSize = 14,
   radius = 18,
   padding = 24,
