@@ -80,11 +80,7 @@
   "base_keymap": "VSCode",
   "ui_font_size": 15.0,
   "buffer_font_size": 13.0,
-  "theme": {
-    "mode": "dark",
-    "light": "Catppuccin Latte",
-    "dark": "Catppuccin Mocha"
-  },
+  "theme": "Dotfiles Desktop",
   "autosave": "on_focus_change",
   "restore_on_startup": "last_session",
   "seed_search_query_from_cursor": "always",

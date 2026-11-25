@@ -31,6 +31,98 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `btop/` | `~/.config/btop/themes/catppuccin_mocha.theme` | Catppuccin Mocha theme for btop |
 | `supacode/settings.shared.json` | applied to `~/.supacode/settings.json` | Shared Supacode global preferences |
 
+## Shared desktop themes
+
+`desktop-theme` works like `mono-font`, with Catppuccin Mocha, Catppuccin
+Frappé, Nord, and Solarized Dark palettes. Nord is currently selected; the
+catalog and generated app configs record that selection together.
+
+```sh
+desktop-theme                           # list palettes and enabled apps
+desktop-theme nord --dry-run             # preview changes
+desktop-theme nord                       # apply Nord
+desktop-theme solarized-dark
+desktop-theme frappe
+desktop-theme mocha                      # return to Mocha
+desktop-theme --check                    # check selected palette for drift
+desktop-theme --slack                    # print selected palette for Slack import
+desktop-theme mocha --slack              # print Mocha without changing the desktop
+```
+
+The `zsh` Stow package installs the command in `~/.local/bin`. You can also
+run `./zsh/.local/bin/desktop-theme` directly. Edit `themes/catalog.json` to
+enable or disable targets. The initial list covers standalone Ghostty,
+Herdr app, Herdr TUI, Zed, Dinky borders, SketchyBar, Hammerspoon's shortcut
+overlay, GH Dash, Hunk, and Starship. Ghzinga, Micro, btop, TTT, AeroSpace,
+and Kiri are outside this list. Zed's icon theme stays independent.
+Chrome receives a theme export in `browser/themes/chrome`, with a manual
+load/reapply step in Chrome; see [browser appearance](browser/README.md).
+For Slack, `desktop-theme --slack` prints four import colors: navigation,
+selected items, presence, and notifications. Normal theme-switch output also
+includes the import string, ready to copy. Paste them into Slack's
+**Preferences → Appearance → Custom theme → Import theme**. On macOS,
+`desktop-theme --slack | pbcopy` copies them. This mode only prints colors;
+it does not change files or apply a desktop theme. Slack adapts imported
+colors for contrast, so the result may differ from the exact source palette.
+
+The command generates native Ghostty, Herdr app, and Zed theme files from
+one palette, updates the other apps' color settings, and puts Hunk in
+`terminal` theme mode. Starship's existing named ANSI colors follow the
+terminal palette without needing separate color settings. These are shared
+palette adaptations, rather than exact copies of every app's upstream port.
+All presets currently use dark appearance; this does not change macOS appearance.
+
+Fonts, bindings, opacity, sizes, app assignments, and other settings are
+preserved. Source configs and existing local copies are updated; generated
+theme assets are installed for apps with existing local configs. Symlinks
+outside this checkout are refused. All targets are rendered and checked
+before writing; a write failure rolls earlier files back. Use `--source-only`
+to work on checkout files alone. Changes are ordinary Git diffs; commit the
+palette selection and generated files together.
+
+After switching, the command runs `sketchybar --reload`, explicitly applies
+the theme to the running Herdr app, and asks running standalone Ghostty
+processes to reload with SIGUSR2.
+Ghostty's existing native macOS config in
+`~/Library/Application Support/com.mitchellh.ghostty/` is updated too, so its
+theme setting cannot override the shared selection; fonts and other fields
+are preserved. Use `--no-reload` to save changes without applying them live.
+Preview, check, and source-only modes never send live commands.
+
+Reload Dinky with Option-Shift-R and Hammerspoon with its Reload Config action.
+Zed watches its settings. Reopen
+GH Dash and Hunk; reload Herdr TUI's config or restart its UI when convenient.
+The switcher does not restart apps or interrupt running terminals.
+
+To experiment with your own theme:
+
+```sh
+desktop-theme --create my-theme --from mocha
+# Edit themes/palettes/my-theme.json, then:
+desktop-theme my-theme --dry-run
+desktop-theme my-theme
+```
+
+A custom palette inherits unchanged colors, so only a few overrides are needed:
+
+```json
+{
+  "name": "My Theme",
+  "extends": "mocha",
+  "colors": {
+    "accent": "#89b4fa",
+    "background": "#171723"
+  }
+}
+```
+
+See `themes/palettes/mocha.json` for the complete set of color roles. Each
+color must be `#rrggbb`; unknown keys and inheritance cycles fail before
+anything changes. Custom palette JSON is data, with no shell commands or code.
+Palette references: [Catppuccin](https://catppuccin.com/palette/),
+[Nord](https://www.nordtheme.com/docs/colors-and-palettes/), and
+[Solarized](https://ethanschoonover.com/solarized/).
+
 ## Shared monospace font
 
 `fonts/monospace.json` defines the selected font and the available families:
@@ -157,6 +249,27 @@ cd ~/.dotfiles
 from the `henrygd/beszel` tap is opt-in: run
 `INSTALL_BESZEL=1 ./bootstrap.brew.sh` on the personal Mac you want to monitor.
 Running the script without that variable leaves the agent off the work laptop.
+
+OpenLogi replaces Logitech Options+ for supported Logitech peripherals and is
+included in `Brewfile` (`brew install --cask openlogi`). Quit and uninstall
+Options+ before running OpenLogi so the two do not compete for the device.
+On first launch, grant **OpenLogi Agent** Accessibility and Input Monitoring
+in System Settings → Privacy & Security. See the
+[OpenLogi installation guide](https://openlogi.org/docs/installation).
+
+The initial MX Master 3S / MX Keys S setup is stored in the machine-local
+`~/.config/openlogi/config.toml` so device identities and app-managed state stay
+local. It uses SmartShift in ratchet mode with release threshold 16, native
+horizontal thumb scrolling, and a thumb-button click for Mission Control.
+Back/Forward retain browser navigation by default; with Herdr focused they
+send Cmd-Option-[ / Cmd-Option-] to switch spaces. Profiles follow the focused
+application. The keyboard keeps the Mac layout; function-row behavior and
+backlight settings remain unchanged. Mouse DPI remains at the user's setting.
+
+Use OpenLogi's API or GUI for device settings: version 0.9 requires a
+`tunable_torque` field even for the MX Master 3S, which has no tunable torque.
+The API saves this as `0`. If scrolling stops after replacing Options+, switch
+the mouse off and back on to clear temporary device reporting modes.
 
 Select additional packages explicitly after reviewing their configs and existing files:
 
@@ -940,7 +1053,27 @@ To update the committed preferences from this machine, run the following and rev
 - `colima-start` defaults to `--cpu 4 --memory 8 --disk 100` unless you pass your own values.
 - Override the defaults with `COLIMA_CPU`, `COLIMA_MEMORY`, or `COLIMA_DISK` in `~/.zshrc.local`.
 - Use `colima-stop` to stop Colima and switch Docker back to `orbstack` when that context exists.
-- Use `docker-orbstack`, `docker-colima`, or `docker-use <context>` for manual context switching.
+  If another context is selected, it stays selected.
+- Kiri is included for trials alongside OrbStack and Colima. Install with
+  `brew install --cask libracoder/kiri/kiri`, then open Kiri once to create its
+  `kiri` context. Choose localhost names for setup without system DNS changes.
+- Use `docker-orbstack`, `docker-colima`, `docker-kiri`, or `docker-use <context>`
+  to select the default for subsequent Docker commands, Compose, lazydocker,
+  and the dev-stack status helpers. These commands select a context; they do
+  not start or stop engines. Start OrbStack/Kiri from their apps, or use
+  `colima-start` for Colima. Run `docker context show` to see the selection.
+- For a single command without changing the default, use `dorb ps`, `dcol ps`,
+  or `dkiri ps`. Arguments pass through, for example `dkiri compose up -d`.
+- `docker-use` rejects switches while `DOCKER_HOST` or `DOCKER_CONTEXT` is set;
+  unset those overrides first. Explicit `--context` shortcuts take precedence.
+- Each engine has separate containers, images, and named volumes. Switching
+  does not migrate data or stop running workloads. Running the same Compose
+  stack in two engines can conflict on published host ports; stop the first
+  stack before bringing up the second. Bind mounts still use host files.
+- Leave Kiri's build setting on Docker's context-following builder
+  (`kiri build-with docker`), rather than pinning all builds to Kiri. Tools
+  using `/var/run/docker.sock` directly need their own runtime configuration.
+- Reload shell helpers with `source ~/.zshrc`, or open a new terminal.
 
 ## Notes
 

@@ -73,6 +73,7 @@ shortcuts() {
   print -r -- '  gf/gpl        git fetch / pull'
   print -r -- '  ghdash        GH Dash with PR review actions (Herdr app)'
   print -r -- '  mono-font     list fonts; mono-font <id> switches app configs'
+  print -r -- '  desktop-theme list themes; desktop-theme <id> switches app colors'
   print -r -- '  awho          AWS role in use (--profile NAME to check one)'
   if [[ "$OSTYPE" == darwin* ]]; then
     print -r -- '  chrome-tailscale  Chrome profile using SOCKS proxy at 127.0.0.1:1055'
@@ -81,6 +82,9 @@ shortcuts() {
   print -r -- 'Helpers:'
   print -r -- '  tfplan [args] page a Terraform plan with color and retained output'
   print -r -- '  gmove <name>  move the last unpushed main commit to a new branch'
+  print -r -- '  docker-use <context>  switch Docker runtime (orbstack, colima, kiri)'
+  print -r -- '  dorb/dcol/dkiri <args>  Docker command on one runtime without switching'
+  print -r -- '  colima-start  start Colima and select it; colima-stop stops it'
   print -r -- ''
   print -r -- 'Also: git aliases lists Git-config aliases; alias lists shell aliases.'
 }
@@ -145,11 +149,16 @@ docker-use() {
   local context="$1"
 
   if [[ -z "$context" ]]; then
-    echo "usage: docker-use <orbstack|colima|default>" >&2
+    echo "usage: docker-use <orbstack|colima|kiri|default>" >&2
     return 1
   fi
 
-  docker context use "$context"
+  if [[ -n "${DOCKER_HOST:-}" || -n "${DOCKER_CONTEXT:-}" ]]; then
+    echo 'DOCKER_HOST or DOCKER_CONTEXT overrides the saved context. Unset it before switching.' >&2
+    return 1
+  fi
+
+  command docker context use "$context"
 }
 
 colima-start() {
@@ -174,18 +183,25 @@ colima-start() {
   (( has_disk )) || args+=(--disk "${COLIMA_DISK:-100}")
 
   command colima start "${args[@]}" || return $?
-  docker context use colima >/dev/null 2>&1 || true
-  docker context show
+  docker-use colima
 }
 
 colima-stop() {
   command colima stop "$@" || return $?
-  docker context inspect orbstack >/dev/null 2>&1 && docker context use orbstack >/dev/null 2>&1
-  docker context show
+  if [[ "$(command docker context show)" == colima ]]; then
+    command docker context inspect orbstack >/dev/null 2>&1 && docker-use orbstack
+  fi
+  command docker context show
 }
 
 alias docker-orbstack='docker-use orbstack'
 alias docker-colima='docker-use colima'
+alias docker-kiri='docker-use kiri'
+
+# Explicit contexts apply to this command only, including Compose subcommands.
+alias dorb='docker --context orbstack'
+alias dcol='docker --context colima'
+alias dkiri='docker --context kiri'
 
 [ -x "$(which bat)" ] && alias cat='bat'
 [ -x "$(which lsd)" ] && alias tree='lsd --tree'
@@ -272,3 +288,6 @@ if (( $+commands[atuin] )); then
   eval "$(atuin init zsh)"
 fi
 export PATH="$HOME/development/flutter/bin:$PATH"
+
+# Added by Kiri: its docker and kiri commands (kiri setup --uninstall removes this)
+case ":$PATH:" in *":$HOME/.kiri/bin:"*) ;; *) export PATH="$PATH:$HOME/.kiri/bin" ;; esac

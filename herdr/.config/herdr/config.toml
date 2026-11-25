@@ -17,7 +17,7 @@ tab_bar_right = [
 ]
 
 [ui.sidebar.spaces]
-rows = [["state_icon", { token = "$review", fg = "#f9e2af", bold = true }, "workspace", "$dev_stack", "git_status"], ["$linear_title"]]
+rows = [["state_icon", { token = "$review", fg = "#ebcb8b", bold = true }, "workspace", "$dev_stack", "git_status"], ["$linear_title"]]
 
 [theme]
 name = "catppuccin"
@@ -95,3 +95,23 @@ key = "cmd+i"
 type = "plugin_action"
 description = "Worktree ticket, PR, Actions and app links"
 command = "dotfiles.worktree-visor.open"
+
+# BEGIN desktop-theme
+[theme.custom]
+accent = "#88c0d0"
+panel_bg = "#2e3440"
+surface0 = "#3b4252"
+surface1 = "#434c5e"
+surface_dim = "#2e3440"
+overlay0 = "#4c566a"
+overlay1 = "#e5e9f0"
+text = "#d8dee9"
+subtext0 = "#e5e9f0"
+mauve = "#88c0d0"
+green = "#a3be8c"
+yellow = "#ebcb8b"
+red = "#bf616a"
+blue = "#81a1c1"
+teal = "#8fbcbb"
+peach = "#d08770"
+# END desktop-theme

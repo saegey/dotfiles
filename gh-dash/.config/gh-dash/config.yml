@@ -89,19 +89,19 @@ theme:
     # Catppuccin Mocha / Mauve: https://github.com/catppuccin/gh-dash
     colors:
         text:
-            primary: "#cdd6f4"
-            secondary: "#cba6f7"
-            inverted: "#11111b"
-            faint: "#bac2de"
-            warning: "#f9e2af"
-            success: "#a6e3a1"
-            error: "#f38ba8"
+            primary: "#d8dee9"
+            secondary: "#88c0d0"
+            inverted: "#2e3440"
+            faint: "#e5e9f0"
+            warning: "#ebcb8b"
+            success: "#a3be8c"
+            error: "#bf616a"
         background:
-            selected: "#313244"
+            selected: "#3b4252"
         border:
-            primary: "#cba6f7"
-            secondary: "#45475a"
-            faint: "#313244"
+            primary: "#88c0d0"
+            secondary: "#434c5e"
+            faint: "#3b4252"
     ui:
         sectionsShowCount: true
         table:

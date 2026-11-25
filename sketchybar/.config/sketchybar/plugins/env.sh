@@ -4,12 +4,12 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin${PAT
 
 # Monochrome palette. Keep the existing accent names for the status plugins;
 # brightness distinguishes active/attention, normal, and inactive states.
-BASE=0xff181818
-PANEL=0xcc181818
-TEXT=0xffd8d8d8
-MUTED=0xff808080
-SURFACE=0xff404040
-MAUVE=0xffffffff
-LAVENDER=0xffe5e5e5
-GREEN=0xffbfbfbf
-RED=0xffffffff
+BASE=0xff2e3440
+PANEL=0xcc2e3440
+TEXT=0xffd8dee9
+MUTED=0xff4c566a
+SURFACE=0xff434c5e
+MAUVE=0xff88c0d0
+LAVENDER=0xff81a1c1
+GREEN=0xffa3be8c
+RED=0xffbf616a

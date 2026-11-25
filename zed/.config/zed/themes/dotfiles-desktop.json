@@ -1,0 +1,108 @@
+{
+  "$schema": "https://zed.dev/schema/themes/v0.2.0.json",
+  "name": "Dotfiles Desktop",
+  "author": "dotfiles",
+  "themes": [
+    {
+      "name": "Dotfiles Desktop",
+      "appearance": "dark",
+      "style": {
+        "background": "#2e3440",
+        "surface.background": "#2e3440",
+        "elevated_surface.background": "#3b4252",
+        "border": "#434c5e",
+        "border.focused": "#88c0d0",
+        "text": "#d8dee9",
+        "text.muted": "#4c566a",
+        "text.accent": "#88c0d0",
+        "icon": "#d8dee9",
+        "icon.muted": "#4c566a",
+        "editor.background": "#2e3440",
+        "editor.foreground": "#d8dee9",
+        "editor.gutter.background": "#2e3440",
+        "editor.line_number": "#4c566a",
+        "editor.active_line_number": "#88c0d0",
+        "editor.active_line.background": "#3b4252",
+        "panel.background": "#2e3440",
+        "toolbar.background": "#2e3440",
+        "tab_bar.background": "#2e3440",
+        "tab.active_background": "#2e3440",
+        "tab.inactive_background": "#2e3440",
+        "status_bar.background": "#2e3440",
+        "title_bar.background": "#2e3440",
+        "title_bar.inactive_background": "#2e3440",
+        "terminal.background": "#2e3440",
+        "terminal.foreground": "#d8dee9",
+        "terminal.bright_foreground": "#e5e9f0",
+        "error": "#bf616a",
+        "warning": "#ebcb8b",
+        "success": "#a3be8c",
+        "info": "#81a1c1",
+        "created": "#a3be8c",
+        "deleted": "#bf616a",
+        "modified": "#ebcb8b",
+        "terminal.ansi.black": "#3b4252",
+        "terminal.ansi.bright_black": "#4c566a",
+        "terminal.ansi.red": "#bf616a",
+        "terminal.ansi.bright_red": "#bf616a",
+        "terminal.ansi.green": "#a3be8c",
+        "terminal.ansi.bright_green": "#a3be8c",
+        "terminal.ansi.yellow": "#ebcb8b",
+        "terminal.ansi.bright_yellow": "#ebcb8b",
+        "terminal.ansi.blue": "#81a1c1",
+        "terminal.ansi.bright_blue": "#81a1c1",
+        "terminal.ansi.magenta": "#b48ead",
+        "terminal.ansi.bright_magenta": "#b48ead",
+        "terminal.ansi.cyan": "#8fbcbb",
+        "terminal.ansi.bright_cyan": "#8fbcbb",
+        "terminal.ansi.white": "#e5e9f0",
+        "terminal.ansi.bright_white": "#eceff4",
+        "players": [
+          {
+            "cursor": "#d8dee9",
+            "background": "#88c0d0",
+            "selection": "#434c5e80"
+          }
+        ],
+        "syntax": {
+          "comment": {
+            "color": "#4c566a"
+          },
+          "string": {
+            "color": "#a3be8c"
+          },
+          "keyword": {
+            "color": "#88c0d0"
+          },
+          "number": {
+            "color": "#d08770"
+          },
+          "boolean": {
+            "color": "#d08770"
+          },
+          "function": {
+            "color": "#81a1c1"
+          },
+          "type": {
+            "color": "#ebcb8b"
+          },
+          "operator": {
+            "color": "#8fbcbb"
+          },
+          "variable": {
+            "color": "#d8dee9"
+          },
+          "punctuation": {
+            "color": "#e5e9f0"
+          },
+          "property": {
+            "color": "#81a1c1"
+          },
+          "tag": {
+            "color": "#bf616a"
+          }
+        }
+      }
+    }
+  ]
+}

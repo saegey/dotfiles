@@ -7,7 +7,7 @@ font-thicken = true
 font-thicken-strength = 70
 
 # Theme
-theme = dark:Catppuccin Frappe,light:Catppuccin Latte
+theme = dotfiles-desktop
 background-opacity = 0.96
 background-blur-radius = 20
 
