@@ -23,7 +23,19 @@ if ! current=$(SwitchAudioSource -c -t output -f json 2>/dev/null); then
 fi
 label=$(printf '%s' "$current" | jq -r '.name')
 current_uid=$(printf '%s' "$current" | jq -r '.uid')
-sketchybar --set audio label="$label" icon.color="$GREEN"
+icon='󰓃'
+case "$label" in
+  *AirPods*) icon='󰋋' ;;
+  *Headphones*|*Headset*|*headphones*|*headset*) icon='' ;;
+  'Mac mini Speakers'|'Mac Studio Speakers'|'MacBook Pro Speakers'|'MacBook Air Speakers'|'Built-in Output'|'Internal Speakers')
+    label=Speakers ;;
+  *HDMI*|*DisplayPort*|*Display\ Audio*) icon='󰍹' ;;
+esac
+if [[ -z "$label" || -z "$current_uid" ]]; then
+  sketchybar --set audio label=Unavailable icon.color="$MUTED" popup.drawing=off
+  exit 0
+fi
+sketchybar --set audio label="$label" icon="$icon" icon.color="$GREEN"
 
 if [[ "${1:-}" == --select || "${SENDER:-}" != mouse.clicked ]]; then
   exit 0
