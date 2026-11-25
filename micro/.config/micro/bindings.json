@@ -1,0 +1,8 @@
+{
+  "Ctrl-d": "SpawnMultiCursor",
+  "Ctrl-l": "SelectLine",
+  "Ctrl-g": "JumpLine",
+  "Alt-D": "DuplicateLine",
+  "Ctrl-r": "command-edit:replace ",
+  "F1": "ToggleHelp"
+}

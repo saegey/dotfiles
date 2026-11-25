@@ -27,7 +27,7 @@
   },
   "proxy": "",
   "ui_font_weight": 400.0,
-  "ui_font_family": "Maple Mono",
+  "ui_font_family": "Maple Mono NF",
   "icon_theme": {
     "mode": "dark",
     "light": "Zed (Default)",
@@ -56,7 +56,7 @@
     "minimum_contrast": 47.0,
     "shell": "system",
     "font_size": 13.0,
-    "font_family": "Maple Mono",
+    "font_family": "Maple Mono NF",
     "font_fallbacks": ["Fira Code", "monospace"],
     "line_height": {
       "custom": 1.2,
@@ -71,7 +71,7 @@
   "cursor_shape": "bar",
   "cursor_blink": false,
   "buffer_font_fallbacks": ["SF Mono", "Menlo", "monospace"],
-  "buffer_font_family": "Maple Mono",
+  "buffer_font_family": "Maple Mono NF",
   "colorize_brackets": true,
   "show_whitespaces": "all",
   "semantic_tokens": "full",

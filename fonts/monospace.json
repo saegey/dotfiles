@@ -1,5 +1,5 @@
 {
-  "selected": "maple-mono",
+  "selected": "maple-mono-nf",
   "fonts": {
     "jetbrains-mono": {
       "family": "JetBrains Mono",
@@ -30,6 +30,11 @@
       "family": "Maple Mono",
       "bar_style": "Medium",
       "cask": "font-maple-mono"
+    },
+    "maple-mono-nf": {
+      "family": "Maple Mono NF",
+      "bar_style": "Medium",
+      "cask": "font-maple-mono-nf"
     },
     "0xproto": {
       "family": "0xProto",

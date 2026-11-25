@@ -21,6 +21,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `herdr/` | `~/.config/herdr/config.toml`, `~/.local/bin/herdr-repo-tasks` | Herdr config and repository task picker |
 | `hunk/` | `~/.config/hunk/config.toml` | Hunk diff viewer |
 | `zed/` | `~/.config/zed/` | Zed editor settings and keymaps |
+| `micro/` | `~/.config/micro/` | Micro trial: mouse, Sublime-style editing keys, Catppuccin Frappe |
 | `ssh/` | `~/.ssh/config` | SSH config with per-machine 1Password agent selection for Home Assistant |
 | `tools/` | `~/.config/mise/config.toml` | Global mise tool versions |
 | `npm/` | `~/.npmrc` | npm config |
@@ -34,12 +35,13 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 
 `fonts/monospace.json` defines the selected font and the available families:
 JetBrains Mono, Iosevka, Space Mono, Commit Mono, Monaspace Argon, Maple Mono,
-and 0xProto. Maple Mono is currently selected. Their Homebrew casks are included
+Maple Mono NF, and 0xProto. Maple Mono NF is currently selected. Their Homebrew casks are included
 in `Brewfile`. To install just the trial fonts:
 
 ```sh
 brew install --cask font-iosevka font-space-mono font-commit-mono
 brew install --cask font-monaspace font-maple-mono font-0xproto
+brew install --cask font-maple-mono-nf
 ```
 
 The `zsh` Stow package installs `mono-font` in `~/.local/bin`. From this checkout
@@ -53,6 +55,7 @@ mono-font space-mono
 mono-font commit-mono
 mono-font monaspace-argon
 mono-font maple-mono
+mono-font maple-mono-nf          # Maple Mono with prompt icons
 mono-font 0xproto
 mono-font jetbrains-mono         # switch back to JetBrains Mono
 mono-font --check               # exit nonzero if app configs have drifted
@@ -77,6 +80,68 @@ Git diffs; commit the catalog and updated configs together.
 If you installed a font while Herdr was running, fully quit and reopen the app
 so it can discover the new family. Its core terminals keep running while the
 window is closed. Opening a new tab alone may still use the cached font list.
+
+The Starship prompt uses Nerd Font folder, read-only lock, Git branch, AWS,
+and command-duration icons. Select `mono-font maple-mono-nf` for the patched
+Maple Mono family. The two-line layout, Git status counts, AWS profile aliases,
+AWS config warning, and green/red prompt indicator stay in place. Starship
+reads its config on each prompt; press Enter after an edit to see the change.
+
+## Micro editor trial
+
+Micro is included in `Brewfile`. Install and link its settings with:
+
+```sh
+brew install micro
+./bootstrap.sh --apply --packages micro
+micro path/to/file.py
+micro path/to/file.py:42
+```
+
+It inherits the terminal's font (currently Maple Mono NF in Herdr), supports
+mouse selection and scrolling, and uses the macOS clipboard via pbcopy/pbpaste.
+The configuration adds a few Sublime-style actions using Ctrl rather than
+Command, so Herdr's existing Command shortcuts keep working:
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+S / Ctrl+Q | Save / close file (quit when last file closes) |
+| Ctrl+O | Open another file |
+| Ctrl+F | Find; Ctrl+N / Ctrl+P for next / previous match |
+| Ctrl+D | Add a cursor at the next matching occurrence |
+| Ctrl+L | Select line |
+| Ctrl+G | Go to line |
+| Option+Shift+D | Duplicate line |
+| Ctrl+R | Open replace command; enter `old new` or quoted strings |
+| Ctrl+Z / Ctrl+Y | Undo / redo |
+| Ctrl+E | Command bar; try `vsplit file.py` or `help` |
+| F1 | Toggle help |
+
+Zed remains `EDITOR`/`VISUAL` while Micro is on trial. Micro stores backups,
+cursor locations, and other runtime state locally; only its settings, bindings,
+and color scheme are Stowed.
+
+## macOS file associations
+
+`macos/file-associations.json` assigns common text and code files (including
+Markdown, JSON, XML, YAML, Python, and shell scripts) to Zed instead of Xcode.
+Finder requires a GUI application; this is separate from the Micro terminal
+trial. Xcode project files, Swift files, and browser URL handlers are not listed.
+
+```sh
+brew install duti
+./scripts/set-file-associations          # preview
+./scripts/set-file-associations --apply  # save previous handlers, then apply
+./scripts/set-file-associations --check  # detect drift
+```
+
+If installing/updating another app changes your defaults, rerun `--apply`.
+Previous handlers are saved under `~/.local/state/dotfiles/file-associations-*.json`.
+To restore a particular entry, run `duti -s <previous-bundle-id> .<extension> all`.
+Extensions with no previous handler are recorded as null. The list covers
+registered types supported by macOS; dynamically registered or unknown file
+types may be rejected by duti and are reported without blocking other types.
+Use `--app <bundle-id>` to try another installed GUI editor later.
 
 ## Installation
 
@@ -526,9 +591,21 @@ Clicking the strip does the same. Conflicting bindings are refused. It honors
 `HERDR_APP_HOME` / `--app-home`; rerun the installer on the music layout to update it.
 The terminal setup and its focus hooks remain unchanged.
 
+The committed `main-music` layout hides the status strip to leave room for tabs;
+music shortcuts remain available. Show it with
+`herdr-app do layout.show --id lounge-music`, or hide it again with
+`herdr-app do layout.hide --id lounge-music`.
+Shortcuts use `mod.open:music-dock`, which loads the player launcher on demand
+even when the strip is hidden or the current layout does not contain it.
+
+This machine's GrooveNet endpoint is `https://groovenet.home.arpa/api`.
+The local Lounge aliases connect directly without the old localhost Tailscale
+proxy. Endpoint settings and API keys remain machine-local.
+
 The GUI polls status every two seconds, but starts the full GrooveNet TUI only
-when you open it. The TUI runs in one local Herdr Core terminal, reused across
-openings and kept alive when hidden or when the GUI closes. The same shortcut or
+when you open it. Each opening replaces the previous app-owned UI terminal with
+a fresh session so album art is loaded again. This restarts only the client;
+the remote Lounge player and playback continue. The same shortcut or
 the overlay's **Hide** button returns to work; Escape belongs to the player's
 own controls. Switching work tabs/spaces hides the overlay. Closing the UI with
 the player's quit command ends that terminal; opening it again starts a fresh

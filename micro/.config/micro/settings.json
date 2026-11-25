@@ -1,0 +1,11 @@
+{
+  "colorscheme": "catppuccin-frappe",
+  "mouse": true,
+  "clipboard": "external",
+  "diffgutter": true,
+  "ruler": true,
+  "scrollbar": true,
+  "savecursor": true,
+  "parsecursor": true,
+  "autosave": 0
+}

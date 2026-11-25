@@ -41,6 +41,12 @@ class GuiMusicInstallTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'terminal'):
             setup.merged_keys(original)
 
+    def test_shortcut_migrates_to_launcher_that_works_without_visible_strip(self):
+        original = {'global': {'cmd-alt-m': 'music-dock.toggle'}}
+        merged = setup.merged_keys(original)
+        self.assertEqual(merged['global']['cmd-alt-m'], 'mod.open:music-dock')
+        self.assertEqual(setup.merged_keys(merged), merged)
+
     def test_install_clones_layout_and_backs_up_keys_without_touching_shipped_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

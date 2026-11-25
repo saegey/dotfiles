@@ -11,7 +11,7 @@ import subprocess
 
 
 SOURCE = Path(__file__).resolve().parents[1] / 'herdr-app/.config/herdr-app/mods/music-dock'
-ACTION = 'music-dock.toggle'
+ACTION = 'mod.open:music-dock'
 SHORTCUTS = ('cmd-shift-m', 'cmd-alt-m', 'ctrl-alt-shift-m', 'ctrl-alt-shift-n')
 
 
@@ -53,7 +53,7 @@ def merged_keys(keys):
         if not isinstance(bindings, dict):
             raise ValueError(f'Invalid key section: {section}')
         for key in SHORTCUTS:
-            if key in bindings and bindings[key] != ACTION:
+            if key in bindings and bindings[key] not in (ACTION, 'music-dock.toggle'):
                 raise ValueError(f'{key} already has another binding in {section}: {bindings[key]!r}')
     result['global'].update({key: ACTION for key in SHORTCUTS})
     return result
@@ -94,6 +94,12 @@ def install(app_home, apply=False):
     target.mkdir(parents=True, exist_ok=True)
     for name in ('main.js', 'model.js', 'mod.json'):
         shutil.copy2(SOURCE / name, target / name)
+    header = app_home / 'mods/music-header'
+    if header.exists():
+        shutil.copytree(header, backup / 'music-header', symlinks=True)
+    header.mkdir(parents=True, exist_ok=True)
+    for name in ('main.js', 'mod.json'):
+        shutil.copy2(SOURCE.parent / 'music-header' / name, header / name)
     if not installed:
         # Herdr's clone API copies the current look and click state and switches
         # to the personal layout. Never edit or replace a shipped layout.
