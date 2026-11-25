@@ -1,0 +1,39 @@
+/* ==UserStyle==
+@name         Dotfiles monospace — GitHub and Linear
+@namespace    saegey.dotfiles
+@version      1.0.0
+@description  Maple Mono for code, diffs, and code editors on GitHub and Linear.
+==/UserStyle== */
+
+@-moz-document domain("github.com"), domain("linear.app") {
+  :root {
+    --dotfiles-mono: "Maple Mono", ui-monospace, monospace;
+  }
+
+  code,
+  pre,
+  pre code,
+  code span,
+  .cm-content,
+  .cm-line,
+  .cm-gutters,
+  .cm-editor .cm-scroller {
+    font-family: var(--dotfiles-mono) !important;
+  }
+}
+
+@-moz-document domain("github.com") {
+  :root {
+    --fontStack-monospace: var(--dotfiles-mono) !important;
+  }
+
+  .blob-code,
+  .blob-code-inner,
+  .blob-num,
+  .react-code-text,
+  .react-code-lines,
+  .text-mono,
+  textarea.comment-form-textarea {
+    font-family: var(--dotfiles-mono) !important;
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "application": "dev.zed.Zed",
+  "extensions": [
+    "md", "markdown", "txt",
+    "json", "xml",
+    "yaml", "yml", "toml", "ini",
+    "py", "js", "jsx", "ts", "tsx", "mjs",
+    "sh", "bash", "zsh", "rb", "go", "rs",
+    "c", "h", "cc", "cpp", "hpp", "java", "css", "sql"
+  ]
+}

@@ -1,1 +1,1 @@
-{ "place": "none", "title": "Lounge music" }
+{ "place": "none", "title": "Lounge music", "overlay": { "kind": "dialog", "width": 320, "height": 80 } }

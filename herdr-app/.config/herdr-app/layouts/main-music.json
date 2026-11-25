@@ -94,6 +94,7 @@
             {
               "id": "lounge-music",
               "type": "block",
+              "hidden": true,
               "size": {
                 "px": 340
               },

@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""Switch the shared monospace font in the Stow source configs."""
+
+import argparse
+import json
+from pathlib import Path
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[3]
+CATALOG = Path('fonts/monospace.json')
+
+
+def replace(text, pattern, value, count, path):
+    result, found = re.subn(pattern, lambda m: m[1] + value + m[2], text, flags=re.MULTILINE)
+    if found != count:
+        raise ValueError(f'{path}: expected {count} font settings, found {found}; no files changed')
+    return result
+
+
+def render(root, font, home=None):
+    """Validate every target before writing; preserve comments and other settings."""
+    family = font['family']
+    rules = [
+        ('ghostty/.config/ghostty/config', r'^(font-family\s*=\s*")[^"]*("\s*)$', family, 1),
+        ('herdr-app/.config/herdr-app/settings.json', r'^(\s*"(?:font|ui_font)":\s*")[^"]*(")', family, 2),
+        ('zed/.config/zed/settings.json', r'^(\s*"(?:ui_font_family|buffer_font_family|font_family)":\s*")[^"]*(")', family, 3),
+        ('hammerspoon/.hammerspoon/init.lua', r"^(\s*textFont\s*=\s*')[^']*(')", family, 1),
+        ('sketchybar/.config/sketchybar/sketchybarrc', r'((?:label|icon)\.font=")[^":]+:(?:Medium|Regular)(:1[12]\.0")', family + ':' + font['bar_style'], 3),
+    ]
+    result = {}
+    for path, pattern, value, count in rules:
+        source = root / path
+        result[source] = replace(source.read_text(), pattern, value, count, path)
+        if home is None:
+            continue
+        target = home / Path(*Path(path).parts[1:])
+        if not target.exists() or target.resolve() == source.resolve():
+            continue
+        if target.is_symlink():
+            raise ValueError(f'{target}: points outside this checkout; leaving it untouched')
+        if path.startswith('herdr-app/'):
+            # Herdr writes its own settings. Merge font fields into local state.
+            content = target.read_text()
+            settings = json.loads(content)
+            if settings.get('font') == family and settings.get('ui_font') == family:
+                result[target] = content
+            else:
+                settings.update(font=family, ui_font=family)
+                result[target] = json.dumps(settings, indent=2) + '\n'
+        else:
+            result[target] = replace(target.read_text(), pattern, value, count, target)
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('font', nargs='?', help='font ID (omit to list choices)')
+    parser.add_argument('--check', action='store_true', help='check for drift without changing files')
+    parser.add_argument('--dry-run', action='store_true', help='preview without changing files')
+    parser.add_argument('--source-only', action='store_true', help='update/check only checkout configs')
+    args = parser.parse_args()
+    try:
+        catalog_path = ROOT / CATALOG
+        catalog = json.loads(catalog_path.read_text())
+        if args.font is None and not args.check and not args.dry_run:
+            for key, font in catalog['fonts'].items():
+                marker = '*' if key == catalog['selected'] else ' '
+                print(f'{marker} {key:16} {font["family"]}')
+            return 0
+        key = args.font or catalog['selected']
+        if key not in catalog['fonts']:
+            raise ValueError('Unknown font. Run mono-font to list choices.')
+        font = catalog['fonts'][key]
+        rendered = render(ROOT, font, None if args.source_only else Path.home())
+        changed = [path for path, content in rendered.items() if path.read_text() != content]
+        for path in changed:
+            label = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+            print(('Would update: ' if args.dry_run or args.check else 'Update: ') + str(label))
+        if args.check:
+            return int(bool(changed))
+        if not args.dry_run:
+            for path in changed:
+                path.write_text(rendered[path])
+            if catalog['selected'] != key:
+                catalog['selected'] = key
+                catalog_path.write_text(json.dumps(catalog, indent=2) + '\n')
+        print(f'{"Preview" if args.dry_run else "Selected"}: {font["family"]}')
+        print(f'Install if needed: brew install --cask {font["cask"]}')
+        print('Stowed configs follow these edits. Reload Ghostty, Hammerspoon and SketchyBar; restart other apps if needed.')
+        print('If the font was installed while Herdr was running, fully quit and reopen Herdr so it can discover the new family.')
+        return 0
+    except (OSError, ValueError, KeyError) as error:
+        print(f'mono-font: {error}', file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

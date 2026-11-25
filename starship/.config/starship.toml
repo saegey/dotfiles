@@ -13,6 +13,8 @@ success_symbol = '[❯](bold green)'
 error_symbol = '[❯](bold red)'
 
 [directory]
+format = '[ $path]($style)[$read_only]($read_only_style) '
+read_only = ' '
 style = 'bold cyan'
 truncation_length = 3
 truncate_to_repo = true
@@ -31,7 +33,7 @@ format = '[@$hostname]($style) '
 
 [git_branch]
 style = 'bold purple'
-symbol = '⎇ '
+symbol = ' '
 format = '[$symbol$branch]($style) '
 
 [git_status]
@@ -49,13 +51,13 @@ deleted = '✘${count}'
 
 [cmd_duration]
 min_time = 2_000
-format = 'took [$duration](bold yellow) '
+format = '[ $duration](bold yellow) '
 
 # AWS_PROFILE (shown only when set, e.g. by a repo's mise.toml). Terraform
 # blocks with an explicit profile ignore it; `awho` asks AWS directly.
 [aws]
 format = '[$symbol$profile]($style) '
-symbol = '☁ '
+symbol = ' '
 style = 'bold yellow'
 
 [aws.profile_aliases]

@@ -52,6 +52,7 @@ alias gp='git push'
 alias gco='git checkout'
 alias gf='git fetch'
 alias gpl='git pull'
+alias ghdash='gh dash --config "$HOME/.config/gh-dash/review-gui.yml"'
 alias v='zed .'
 # The role AWS actually resolves for a profile (pass --profile NAME); the prompt
 # only shows $AWS_PROFILE, which explicit profiles in Terraform ignore.
@@ -70,6 +71,8 @@ shortcuts() {
   print -r -- '  gc/gp         git commit / push'
   print -r -- '  gco           git checkout <branch>'
   print -r -- '  gf/gpl        git fetch / pull'
+  print -r -- '  ghdash        GH Dash with PR review actions (Herdr app)'
+  print -r -- '  mono-font     list fonts; mono-font <id> switches app configs'
   print -r -- '  awho          AWS role in use (--profile NAME to check one)'
   if [[ "$OSTYPE" == darwin* ]]; then
     print -r -- '  chrome-tailscale  Chrome profile using SOCKS proxy at 127.0.0.1:1055'
