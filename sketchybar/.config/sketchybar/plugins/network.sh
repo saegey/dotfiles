@@ -10,6 +10,7 @@ if [[ -z "$interface" ]]; then
 fi
 
 label=Offline
+icon='󰖪'
 color="$RED"
 if [[ -n "$interface" ]]; then
   port=$(networksetup -listallhardwareports 2>/dev/null | awk -v device="$interface" '
@@ -18,15 +19,15 @@ if [[ -n "$interface" ]]; then
   ' || true)
   color="$GREEN"
   case "$port" in
-    Wi-Fi|AirPort) label=Wi-Fi ;;
-    *Ethernet*) label=LAN ;;
+    Wi-Fi|AirPort) label=Wi-Fi; icon='' ;;
+    *Ethernet*) label=LAN; icon='󰈀' ;;
     *)
       case "$interface" in
-        utun*|ppp*|ipsec*) label=VPN ;;
-        *) label="$interface" ;;
+        utun*|ppp*|ipsec*) label=VPN; icon='󰖂' ;;
+        *) label="$interface"; icon='󰛳' ;;
       esac
       ;;
   esac
 fi
 
-sketchybar --set network icon.color="$color" label="$label"
+sketchybar --set network icon="$icon" icon.color="$color" label="$label"

@@ -4,4 +4,4 @@
 (^|/)jsconfig\.json$
 (^|/)__pycache__(/|$)
 \.py[cod]$
-(^|/)mods(/|$)
+^mods$

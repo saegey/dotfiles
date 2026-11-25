@@ -11,8 +11,14 @@ settings=$(osascript -e 'set s to get volume settings' \
 IFS='|' read -r level muted <<< "$settings"
 color="$GREEN"
 label="$level%"
+icon=''
 if [[ "$muted" == true ]]; then
   color="$MUTED"
   label=Muted
+  icon='󰝟'
+elif (( level == 0 )); then
+  icon=''
+elif (( level < 50 )); then
+  icon=''
 fi
-sketchybar --set volume icon.color="$color" label="$label"
+sketchybar --set volume icon="$icon" icon.color="$color" label="$label"
