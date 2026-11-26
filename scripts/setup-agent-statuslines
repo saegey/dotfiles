@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Preview or install matching Claude/Codex CLI status lines without replacing local settings."""
+import argparse
+from datetime import datetime
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import sys
+import tomllib
+
+
+ROOT = Path(__file__).resolve().parents[1]
+ITEMS = ['model-with-reasoning', 'current-dir', 'context-remaining', 'context-used', 'five-hour-limit']
+CLAUDE_STATUS = {'type': 'command', 'command': 'python3 "$HOME/.claude/statusline-command.py"'}
+
+
+def codex_settings(text):
+    tomllib.loads(text)
+    section = re.search(r'^\[tui\][^\n]*\n(?P<body>.*?)(?=^[ \t]*\[|\Z)', text, re.M | re.S)
+    body = section['body'] if section else ''
+    for key, value in {'status_line': json.dumps(ITEMS), 'status_line_use_colors': 'true'}.items():
+        pattern = r'^[ \t]*' + key + r'[ \t]*=[ \t]*(?:\[[^\]]*\]|true|false)[^\n]*'
+        if re.search(pattern, body, re.M):
+            body = re.sub(pattern, lambda _: f'{key} = {value}', body, flags=re.M)
+        else:
+            body = f'{key} = {value}\n' + body
+    result = (text[:section.start('body')] + body + text[section.end('body'):] if section
+              else text.rstrip() + '\n\n[tui]\n' + body)
+    parsed = tomllib.loads(result)
+    if parsed['tui']['status_line'] != ITEMS or parsed['tui']['status_line_use_colors'] is not True:
+        raise ValueError('Could not update Codex status line')
+    return result
+
+
+def render(home, codex_home):
+    result = {}
+    codex = codex_home / 'config.toml'
+    result[codex] = codex_settings(codex.read_text() if codex.exists() else '')
+    for settings in {ROOT / 'claude/.claude/settings.json', home / '.claude/settings.json'}:
+        data = json.loads(settings.read_text()) if settings.exists() else {}
+        if not isinstance(data, dict):
+            raise ValueError(f'{settings}: expected a JSON object')
+        status = {**(data.get('statusLine') or {}), **CLAUDE_STATUS}
+        if data.get('statusLine') != status:
+            data['statusLine'] = status
+            result[settings] = json.dumps(data, indent=2, ensure_ascii=False) + '\n'
+    script = ROOT / 'claude/.claude/statusline-command.py'
+    dest = home / '.claude/statusline-command.py'
+    if dest.resolve() != script.resolve():
+        result[dest] = script.read_text()
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true', help='save settings (default: preview)')
+    args = parser.parse_args()
+    try:
+        rendered = render(Path.home(), Path(os.environ.get('CODEX_HOME', str(Path.home() / '.codex'))).expanduser())
+        changed = {p: s for p, s in rendered.items() if not p.exists() or p.read_text() != s}
+        for path in changed:
+            if path.is_symlink() and not path.resolve().is_relative_to(ROOT):
+                raise ValueError(f'{path}: symlink points outside this checkout')
+            print(('Update: ' if args.apply else 'Would update: ') + str(path))
+        if args.apply:
+            stamp = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+            for path in changed:
+                if path.exists() and not path.is_relative_to(ROOT):
+                    backup = path.with_name(path.name + '.before-statusline-' + stamp)
+                    shutil.copy2(path, backup)
+                    print(f'Backup: {backup}')
+            for path, content in changed.items():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+        print('Layout: model + reasoning | directory | context left | context used | 5h left')
+        print('Restart Codex to load saved settings; Claude refreshes its status line on the next update.')
+        if not args.apply:
+            print('Preview only; rerun with --apply to save.')
+        return 0
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        print(f'setup-agent-statuslines: {error}', file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
