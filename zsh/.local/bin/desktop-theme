@@ -8,9 +8,11 @@ from pathlib import Path
 import re
 import shutil
 import signal
+import plistlib
 import struct
 import subprocess
 import sys
+import tomllib
 import zlib
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -44,7 +46,25 @@ def palette(root, key, seen=()):
     path = root / 'themes/palettes' / (key + '.json')
     data = json.loads(path.read_text())
     base = palette(root, data['extends'], (*seen, key)) if 'extends' in data else {}
-    colors = {**base.get('colors', {}), **data.get('colors', {})}
+    derived = {}
+    if 'base16' in data:
+        scheme = data['base16']
+        expected = {f'base{i:02X}' for i in range(16)}
+        if not isinstance(scheme, dict) or set(scheme) != expected:
+            raise ValueError(f'{path}: base16 requires exactly base00 through base0F')
+        if any(not isinstance(v, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', v) for v in scheme.values()):
+            raise ValueError(f'{path}: base16 colors must be #rrggbb')
+        roles = {
+            'background': 'base00', 'panel': 'base01', 'surface': 'base01',
+            'border': 'base02', 'muted': 'base03', 'foreground': 'base05',
+            'accent': 'base0D', 'red': 'base08', 'orange': 'base09',
+            'yellow': 'base0A', 'green': 'base0B', 'cyan': 'base0C',
+            'blue': 'base0D', 'magenta': 'base0E', 'black': 'base00',
+            'bright_black': 'base03', 'white': 'base06', 'bright_white': 'base07',
+            'selection': 'base02', 'cursor': 'base05',
+        }
+        derived = {role: scheme[slot] for role, slot in roles.items()}
+    colors = {**base.get('colors', {}), **derived, **data.get('colors', {})}
     if set(colors) != COLORS:
         raise ValueError(f'{path}: missing colors {COLORS - set(colors)}; unknown colors {set(colors) - COLORS}')
     for name, value in colors.items():
@@ -91,6 +111,24 @@ def as_bytes(content):
 
 def assets(app, c):
     """Generate native theme files; custom palettes use the same path as presets."""
+    if app == 'codex':
+        settings = [{'settings': {
+            'background': c['background'], 'foreground': c['foreground'],
+            'caret': c['cursor'], 'selection': c['selection'],
+        }}]
+        for scope, role in {
+            'comment': 'muted', 'string': 'green', 'constant.numeric': 'magenta',
+            'constant.language': 'magenta', 'keyword': 'blue', 'storage': 'blue',
+            'entity.name.function': 'cyan', 'support.function': 'cyan',
+            'entity.name.type': 'yellow', 'support.type': 'yellow',
+            'variable.parameter': 'orange', 'invalid': 'red',
+            'markup.heading': 'accent', 'markup.inserted': 'green',
+            'markup.deleted': 'red', 'markup.changed': 'yellow',
+        }.items():
+            settings.append({'scope': scope, 'settings': {'foreground': c[role]}})
+        data = {'name': 'Dotfiles Desktop', 'settings': settings}
+        return {'codex/.codex/themes/dotfiles-desktop.tmTheme':
+                plistlib.dumps(data, sort_keys=False).decode()}
     if app == 'chrome':
         roles = {
             'frame': 'panel', 'frame_inactive': 'background', 'toolbar': 'background',
@@ -220,9 +258,44 @@ def home_path(home, relative):
     return home / Path(*Path(relative).parts[1:])
 
 
-def render(root, theme, targets, home=None):
+def codex_config(text):
+    """Update only tui.theme, retaining machine-local settings and comments."""
+    tomllib.loads(text)
+    section = re.search(r'^\[tui\][^\n]*\n(?P<body>.*?)(?=^\s*\[|\Z)', text,
+                        re.MULTILINE | re.DOTALL)
+    if section:
+        body = section['body']
+        pattern = r'^(\s*theme\s*=\s*)(?:"[^"\n]*"|\x27[^\x27\n]*\x27)([^\n]*)$'
+        if re.search(pattern, body, re.MULTILINE):
+            body = re.sub(pattern, lambda m: m[1] + '"dotfiles-desktop"' + m[2], body,
+                          flags=re.MULTILINE)
+        else:
+            body = 'theme = "dotfiles-desktop"\n' + body
+        result = text[:section.start('body')] + body + text[section.end('body'):]
+    else:
+        result = text.rstrip() + '\n\n[tui]\ntheme = "dotfiles-desktop"\n'
+    if tomllib.loads(result).get('tui', {}).get('theme') != 'dotfiles-desktop':
+        raise ValueError('Could not update Codex tui.theme')
+    return result
+
+
+def render(root, theme, targets, home=None, codex_home=None):
     result = {}
     for app in targets:
+        if app == 'codex':
+            generated = assets(app, theme['colors'])
+            result.update({root / path: value for path, value in generated.items()})
+            if home is not None:
+                directory = codex_home if codex_home is not None else home / '.codex'
+                config = directory / 'config.toml'
+                if config.exists():
+                    dest = directory / 'themes/dotfiles-desktop.tmTheme'
+                    for path in (config, dest, dest.parent):
+                        if path.is_symlink() and not path.resolve().is_relative_to(root):
+                            raise ValueError(f'{path}: symlink points outside this checkout')
+                    result[config] = codex_config(config.read_text())
+                    result[dest] = next(iter(generated.values()))
+            continue
         if app == 'chrome':
             result.update({root / path: value for path, value in assets(app, theme['colors']).items()})
             continue
@@ -381,7 +454,8 @@ def main():
         if key is None:
             raise ValueError('Choose a theme first, e.g. desktop-theme mocha --dry-run')
         theme = palette(ROOT, key)
-        rendered = render(ROOT, theme, catalog['targets'], None if args.source_only else Path.home())
+        codex_home = Path(os.environ['CODEX_HOME']).expanduser() if os.environ.get('CODEX_HOME') else None
+        rendered = render(ROOT, theme, catalog['targets'], None if args.source_only else Path.home(), codex_home)
         changed = {p: value for p, value in rendered.items() if not p.exists() or p.read_bytes() != as_bytes(value)}
         for path in changed:
             label = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
@@ -398,6 +472,8 @@ def main():
         print('Reload Dinky (Option-Shift-R) and Hammerspoon.')
         print('Zed watches settings; reopen GH Dash and Hunk, and reload Herdr TUI config.')
         print('Starship follows terminal ANSI colors. Kiri and other unlisted apps are left alone.')
+        if 'codex' in catalog['targets']:
+            print('Codex CLI syntax colors follow the shared palette. Restart Codex, or select dotfiles-desktop with /theme in a running session.')
         if 'chrome' in catalog['targets']:
             print(f'Chrome theme exported to {ROOT / "browser/themes/chrome"}. Load/reapply this folder at chrome://extensions (Developer mode → Load unpacked).')
         print('Slack import (paste manually; channel background stays Slack dark):')

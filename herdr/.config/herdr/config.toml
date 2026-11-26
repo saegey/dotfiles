@@ -17,7 +17,7 @@ tab_bar_right = [
 ]
 
 [ui.sidebar.spaces]
-rows = [["state_icon", { token = "$review", fg = "#ebcb8b", bold = true }, "workspace", "$dev_stack", "git_status"], ["$linear_title"]]
+rows = [["state_icon", { token = "$review", fg = "#dbbc7f", bold = true }, "workspace", "$dev_stack", "git_status"], ["$linear_title"]]
 
 [theme]
 name = "catppuccin"
@@ -98,20 +98,20 @@ command = "dotfiles.worktree-visor.open"
 
 # BEGIN desktop-theme
 [theme.custom]
-accent = "#88c0d0"
-panel_bg = "#2e3440"
-surface0 = "#3b4252"
-surface1 = "#434c5e"
-surface_dim = "#2e3440"
-overlay0 = "#4c566a"
-overlay1 = "#e5e9f0"
-text = "#d8dee9"
-subtext0 = "#e5e9f0"
-mauve = "#88c0d0"
-green = "#a3be8c"
-yellow = "#ebcb8b"
-red = "#bf616a"
-blue = "#81a1c1"
-teal = "#8fbcbb"
-peach = "#d08770"
+accent = "#a7c080"
+panel_bg = "#2e383c"
+surface0 = "#2e383c"
+surface1 = "#414b50"
+surface_dim = "#272e33"
+overlay0 = "#859289"
+overlay1 = "#edeada"
+text = "#d3c6aa"
+subtext0 = "#edeada"
+mauve = "#a7c080"
+green = "#a7c080"
+yellow = "#dbbc7f"
+red = "#e67e80"
+blue = "#7fbbb3"
+teal = "#83c092"
+peach = "#e69875"
 # END desktop-theme

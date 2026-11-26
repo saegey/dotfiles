@@ -129,7 +129,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /Users/saegey/.claude/statusline-command.sh"
+    "command": "python3 \"$HOME/.claude/statusline-command.py\""
   },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,

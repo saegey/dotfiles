@@ -7,88 +7,88 @@
     "colors": {
       "frame": [
         46,
-        52,
-        64
+        56,
+        60
       ],
       "frame_inactive": [
+        39,
         46,
-        52,
-        64
+        51
       ],
       "toolbar": [
+        39,
         46,
-        52,
-        64
+        51
       ],
       "background_tab": [
         46,
-        52,
-        64
+        56,
+        60
       ],
       "background_tab_inactive": [
         46,
-        52,
-        64
+        56,
+        60
       ],
       "tab_text": [
-        216,
-        222,
-        233
+        211,
+        198,
+        170
       ],
       "tab_background_text": [
-        229,
-        233,
-        240
+        237,
+        234,
+        218
       ],
       "tab_background_text_inactive": [
-        229,
-        233,
-        240
+        237,
+        234,
+        218
       ],
       "toolbar_text": [
-        216,
-        222,
-        233
+        211,
+        198,
+        170
       ],
       "toolbar_button_icon": [
-        216,
-        222,
-        233
+        211,
+        198,
+        170
       ],
       "bookmark_text": [
-        216,
-        222,
-        233
+        211,
+        198,
+        170
       ],
       "ntp_background": [
+        39,
         46,
-        52,
-        64
+        51
       ],
       "ntp_text": [
-        216,
-        222,
-        233
+        211,
+        198,
+        170
       ],
       "ntp_link": [
-        136,
+        167,
         192,
-        208
+        128
       ],
       "button_background": [
-        59,
-        66,
-        82
+        46,
+        56,
+        60
       ],
       "omnibox_background": [
-        59,
-        66,
-        82
+        46,
+        56,
+        60
       ],
       "omnibox_text": [
-        216,
-        222,
-        233
+        211,
+        198,
+        170
       ]
     },
     "images": {

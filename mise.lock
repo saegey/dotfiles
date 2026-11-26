@@ -3,8 +3,8 @@
 lockfile_version = 3
 
 [[tools."npm:@groovenet/cli"]]
-version = "3.14.0"
-aube = { path = ".mise/locks/npm-groovenet-cli/3.14.0~61f479e2", digest = "sha256:f5bea6aef18d3ff2c60be7cba230057ae0d9f142f86367be69a0d17609dbd5ba" }
+version = "4.0.0"
+aube = { path = ".mise/locks/npm-groovenet-cli/4.0.0~61f479e2", digest = "sha256:96550226d9b6395b0c1dd5cba9035f8a885b0885027132ad2e8e3b7283290c74" }
 backend = "npm:@groovenet/cli"
 specifiers = ["latest"]
 
@@ -12,7 +12,7 @@ specifiers = ["latest"]
 allow_low_downloads = "true"
 
 [[tools."npm:@groovenet/player"]]
-version = "0.1.13"
-aube = { path = ".mise/locks/npm-groovenet-player/0.1.13", digest = "sha256:8fdd82fcba0eb7997cf126574ed7d70e2fe50cc49672dae1446df0471003ca3e" }
+version = "0.2.0"
+aube = { path = ".mise/locks/npm-groovenet-player/0.2.0", digest = "sha256:fbddb297e507c44c9d9ff1c3877b3ba758bfdb2cd941add1d72f397805f590be" }
 backend = "npm:@groovenet/player"
 specifiers = ["latest"]

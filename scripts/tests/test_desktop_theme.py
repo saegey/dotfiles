@@ -1,4 +1,5 @@
 import json
+import plistlib
 from pathlib import Path
 import runpy
 import re
@@ -13,6 +14,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 THEME = runpy.run_path(str(ROOT / 'zsh/.local/bin/desktop-theme'))
 TARGETS = json.loads((ROOT / 'themes/catalog.json').read_text())['targets']
+PRESETS = tuple(path.stem for path in sorted((ROOT / 'themes/palettes').glob('*.json')))
 
 
 def copy_configs(root):
@@ -24,8 +26,72 @@ def copy_configs(root):
 
 
 class DesktopThemeTests(unittest.TestCase):
+    def test_base16_mapping_overrides_inheritance_and_validation(self):
+        for key in ('everforest', 'gruvbox-material', 'kanagawa'):
+            raw = json.loads((ROOT / 'themes/palettes' / (key + '.json')).read_text())
+            colors = THEME['palette'](ROOT, key)['colors']
+            self.assertEqual(set(colors), THEME['COLORS'])
+            self.assertEqual(colors['background'], raw['base16']['base00'])
+            self.assertEqual(colors['foreground'], raw['base16']['base05'])
+            self.assertEqual(colors['red'], raw['base16']['base08'])
+            self.assertEqual(colors['selection'], raw['base16']['base02'])
+            self.assertEqual(colors['accent'], raw['colors'].get('accent', raw['base16']['base0D']))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / 'themes', root / 'themes')
+            path = root / 'themes/palettes/custom.json'
+            path.write_text(json.dumps({'extends': 'everforest', 'colors': {'accent': '#123456'}}))
+            colors = THEME['palette'](root, 'custom')['colors']
+            self.assertEqual(colors['accent'], '#123456')
+            self.assertEqual(colors['background'], '#272e33')
+            data = json.loads((root / 'themes/palettes/everforest.json').read_text())
+            del data['base16']['base0F']
+            path.write_text(json.dumps(data))
+            with self.assertRaisesRegex(ValueError, 'exactly base00 through base0F'):
+                THEME['palette'](root, 'custom')
+            data['base16']['base0F'] = 'bad'
+            path.write_text(json.dumps(data))
+            with self.assertRaisesRegex(ValueError, '#rrggbb'):
+                THEME['palette'](root, 'custom')
+
+    def test_codex_preserves_local_settings_and_uses_shared_colors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            custom_home = home / 'custom-codex'
+            custom_home.mkdir()
+            config = custom_home / 'config.toml'
+            original = ('model = "my-model"\n# local preferences\n[tui]\n'
+                        'theme = "nord" # keep this comment\nstatus_line = ["model"]\n'
+                        '[tui.other]\nenabled = true\n')
+            config.write_text(original)
+            for key in PRESETS:
+                theme = THEME['palette'](ROOT, key)
+                result = THEME['render'](ROOT, theme, ['codex'], home, custom_home)
+                data = tomllib.loads(result[config])
+                expected = tomllib.loads(original)
+                expected['tui']['theme'] = 'dotfiles-desktop'
+                self.assertEqual(data, expected)
+                self.assertIn('# keep this comment', result[config])
+                self.assertEqual(THEME['codex_config'](result[config]), result[config])
+                asset = custom_home / 'themes/dotfiles-desktop.tmTheme'
+                parsed = plistlib.loads(result[asset].encode())
+                self.assertEqual(parsed['settings'][0]['settings']['background'], theme['colors']['background'])
+                scopes = {v['scope']: v['settings'] for v in parsed['settings'][1:]}
+                self.assertEqual(scopes['keyword']['foreground'], theme['colors']['blue'])
+                self.assertEqual(scopes['string']['foreground'], theme['colors']['green'])
+            self.assertEqual(config.read_text(), original)  # render/dry run never writes
+
+    def test_codex_adds_missing_tui_and_skips_uninstalled_cli(self):
+        for original in ('model = "test"\n', '[tui]\nstatus_line = []\n'):
+            result = THEME['codex_config'](original)
+            self.assertEqual(tomllib.loads(result)['tui']['theme'], 'dotfiles-desktop')
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            result = THEME['render'](ROOT, THEME['palette'](ROOT, 'nord'), ['codex'], home)
+            self.assertFalse(any(p.is_relative_to(home) for p in result))
+
     def test_chrome_export_tracks_palette_without_scripts_or_permissions(self):
-        for key in ('mocha', 'frappe', 'nord', 'solarized-dark'):
+        for key in PRESETS:
             theme = THEME['palette'](ROOT, key)
             content = THEME['assets']('chrome', theme['colors'])['browser/themes/chrome/manifest.json']
             manifest = json.loads(content)
@@ -70,7 +136,7 @@ class DesktopThemeTests(unittest.TestCase):
             root = Path(directory)
             copy_configs(root)
             reference = None
-            for key in ('mocha', 'frappe', 'nord', 'solarized-dark', 'mocha'):
+            for key in (*PRESETS, 'mocha'):
                 theme = THEME['palette'](root, key)
                 rendered = THEME['render'](root, theme, TARGETS)
                 THEME['write_files'](rendered)

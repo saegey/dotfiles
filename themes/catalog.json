@@ -1,5 +1,5 @@
 {
-  "selected": "nord",
+  "selected": "everforest",
   "targets": [
     "ghostty",
     "herdr-app",
@@ -11,6 +11,7 @@
     "gh-dash",
     "hunk",
     "starship",
-    "chrome"
+    "chrome",
+    "codex"
   ]
 }

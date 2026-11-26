@@ -34,7 +34,8 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 ## Shared desktop themes
 
 `desktop-theme` works like `mono-font`, with Catppuccin Mocha, Catppuccin
-Frappé, Nord, and Solarized Dark palettes. Nord is currently selected; the
+Frappé, Nord, Solarized Dark, Everforest Dark Hard, Gruvbox Material Dark Medium,
+and Kanagawa palettes. Everforest is currently selected; the
 catalog and generated app configs record that selection together.
 
 ```sh
@@ -43,6 +44,9 @@ desktop-theme nord --dry-run             # preview changes
 desktop-theme nord                       # apply Nord
 desktop-theme solarized-dark
 desktop-theme frappe
+desktop-theme everforest                 # green accent
+desktop-theme gruvbox-material           # orange accent
+desktop-theme kanagawa                   # blue accent
 desktop-theme mocha                      # return to Mocha
 desktop-theme --check                    # check selected palette for drift
 desktop-theme --slack                    # print selected palette for Slack import
@@ -57,6 +61,14 @@ overlay, GH Dash, Hunk, and Starship. Ghzinga, Micro, btop, TTT, AeroSpace,
 and Kiri are outside this list. Zed's icon theme stays independent.
 Chrome receives a theme export in `browser/themes/chrome`, with a manual
 load/reapply step in Chrome; see [browser appearance](browser/README.md).
+Codex CLI receives a generated syntax theme in `codex/.codex/themes/`.
+When a local Codex config exists, `desktop-theme` installs it under
+`$CODEX_HOME/themes` (default `~/.codex/themes`) and updates only `tui.theme`,
+preserving other local settings. Restart Codex after a palette change, or use
+`/theme` and select `dotfiles-desktop` in a running session. The terminal's
+background and ordinary UI colors follow Ghostty/Herdr; the generated theme
+controls code and diff syntax highlighting. `--source-only` only exports the
+theme in this checkout. The Codex desktop app is separate from this integration.
 For Slack, `desktop-theme --slack` prints four import colors: navigation,
 selected items, presence, and notifications. Normal theme-switch output also
 includes the import string, ready to copy. Paste them into Slack's
@@ -122,6 +134,16 @@ anything changes. Custom palette JSON is data, with no shell commands or code.
 Palette references: [Catppuccin](https://catppuccin.com/palette/),
 [Nord](https://www.nordtheme.com/docs/colors-and-palettes/), and
 [Solarized](https://ethanschoonover.com/solarized/).
+
+Everforest, Gruvbox Material, and Kanagawa use Base16 definitions from
+[Tinted Theming](https://github.com/tinted-theming/schemes). A palette can provide
+a `base16` object containing exactly `base00` through `base0F`, each as `#rrggbb`.
+The switcher maps these to shared desktop roles; optional `colors` overrides
+take precedence, including when inheriting with `extends`. The default accent
+is `base0D`; Everforest uses its green and Gruvbox Material its orange. Kanagawa
+uses its foreground for bright white because its Base16 `base07` is a muted grey.
+These definitions work with every existing target, including the Codex syntax
+theme and Chrome export. Applying them does not fetch anything from the network.
 
 ## Shared monospace font
 
@@ -461,6 +483,25 @@ mise upgrade codex claude
 Claude's background updater is disabled in `claude/.claude/settings.json` so
 mise owns its version. Use mise for updates and avoid additional npm, pnpm,
 Homebrew, or standalone installations of these CLIs.
+
+Install the shared CLI footer with:
+
+```sh
+./scripts/setup-agent-statuslines          # preview
+./scripts/setup-agent-statuslines --apply  # save, backing up local files
+```
+
+Both show model plus reasoning effort, directory, context remaining/used, and
+the five-hour allowance remaining. There is no branch or duplicate model label.
+Claude omits unavailable session fields and uses terminal ANSI colors, so its
+footer follows `desktop-theme`. The installer merges settings and installs
+`claude/.claude/statusline-command.py`; existing hooks and unrelated preferences
+are preserved. Codex uses `$CODEX_HOME` when set. Restart Codex to load saved
+settings, or customize its footer interactively with `/statusline`. In Claude,
+`/statusline <description>` generates a replacement script for a different layout.
+
+References: [Codex status line](https://learn.chatgpt.com/docs/developer-commands?surface=cli#configure-footer-items-with-statusline),
+[Claude status line](https://code.claude.com/docs/en/statusline).
 
 ## Groovenet CLI
 
