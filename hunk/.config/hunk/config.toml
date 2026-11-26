@@ -1,7 +1,6 @@
-# Hunk currently accepts a single configured theme, so this uses the same
-# dark Catppuccin flavor as Ghostty's primary theme.
+# Follow the terminal palette selected by desktop-theme.
 mode = "auto"
-theme = "catppuccin-frappe"
+theme = "terminal"
 line_numbers = true
 wrap_lines = false
 hunk_headers = true

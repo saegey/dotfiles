@@ -1,0 +1,116 @@
+{
+  "manifest_version": 3,
+  "name": "Dotfiles Desktop",
+  "version": "1.1.0",
+  "description": "Generated from the shared desktop-theme palette.",
+  "theme": {
+    "colors": {
+      "frame": [
+        46,
+        52,
+        64
+      ],
+      "frame_inactive": [
+        46,
+        52,
+        64
+      ],
+      "toolbar": [
+        46,
+        52,
+        64
+      ],
+      "background_tab": [
+        46,
+        52,
+        64
+      ],
+      "background_tab_inactive": [
+        46,
+        52,
+        64
+      ],
+      "tab_text": [
+        216,
+        222,
+        233
+      ],
+      "tab_background_text": [
+        229,
+        233,
+        240
+      ],
+      "tab_background_text_inactive": [
+        229,
+        233,
+        240
+      ],
+      "toolbar_text": [
+        216,
+        222,
+        233
+      ],
+      "toolbar_button_icon": [
+        216,
+        222,
+        233
+      ],
+      "bookmark_text": [
+        216,
+        222,
+        233
+      ],
+      "ntp_background": [
+        46,
+        52,
+        64
+      ],
+      "ntp_text": [
+        216,
+        222,
+        233
+      ],
+      "ntp_link": [
+        136,
+        192,
+        208
+      ],
+      "button_background": [
+        59,
+        66,
+        82
+      ],
+      "omnibox_background": [
+        59,
+        66,
+        82
+      ],
+      "omnibox_text": [
+        216,
+        222,
+        233
+      ]
+    },
+    "images": {
+      "theme_frame": "frame.png",
+      "theme_frame_inactive": "frame-inactive.png"
+    },
+    "tints": {
+      "frame": [
+        -1,
+        -1,
+        -1
+      ],
+      "frame_inactive": [
+        -1,
+        -1,
+        -1
+      ],
+      "background_tab": [
+        -1,
+        -1,
+        -1
+      ]
+    }
+  }
+}

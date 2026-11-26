@@ -3,6 +3,7 @@
 start-at-login = false
 workspaces = 5
 default-layout = 'tiles'
+lone-window-width = 0.67
 
 # Dedicated spaces prefer the desk monitor, then the laptop when undocked.
 [workspace-to-display]
@@ -11,7 +12,7 @@ default-layout = 'tiles'
 3 = ['LG HDR 4K', 'built-in', 'main']
 4 = ['LG HDR 4K', 'built-in', 'main']
 
-# A lone window fills the area; the next opens beside it on either display.
+# A lone window is centered at 67% width; two windows split the area equally.
 [workspace.1]
 layout = 'master'
 
@@ -43,8 +44,8 @@ display-changed = ['exec-and-forget sketchybar --trigger dinky_workspace_change 
 [borders]
 enabled = true
 width = 5
-active-color = '#cba6f7'
-inactive-color = '#45475a'
+active-color = '#88c0d0'
+inactive-color = '#434c5e'
 
 [[rules]]
 app-id = 'com.mitchellh.ghostty'

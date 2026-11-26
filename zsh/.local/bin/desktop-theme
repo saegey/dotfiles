@@ -1,0 +1,412 @@
+#!/usr/bin/env python3
+"""Switch themes for the explicitly enabled desktop apps in this Stow checkout."""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import signal
+import struct
+import subprocess
+import sys
+import zlib
+
+ROOT = Path(__file__).resolve().parents[3]
+CATALOG = Path('themes/catalog.json')
+COLORS = set('background panel surface border muted foreground accent red green yellow blue magenta cyan orange black bright_black white bright_white selection cursor'.split())
+CONFIGS = {
+    'ghostty': 'ghostty/.config/ghostty/config',
+    'herdr-app': 'herdr-app/.config/herdr-app/settings.json',
+    'herdr': 'herdr/.config/herdr/config.toml',
+    'zed': 'zed/.config/zed/settings.json',
+    'dinky': 'dinky/.config/dinky/dinky.toml',
+    'sketchybar': 'sketchybar/.config/sketchybar/plugins/env.sh',
+    'hammerspoon': 'hammerspoon/.hammerspoon/init.lua',
+    'gh-dash': 'gh-dash/.config/gh-dash/config.yml',
+    'hunk': 'hunk/.config/hunk/config.toml',
+    'starship': 'starship/.config/starship.toml',
+}
+BEGIN = '# BEGIN desktop-theme'
+END = '# END desktop-theme'
+
+
+def dump(value):
+    return json.dumps(value, indent=2) + '\n'
+
+
+def palette(root, key, seen=()):
+    if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', key):
+        raise ValueError('Theme IDs must use lowercase letters, numbers and hyphens')
+    if key in seen:
+        raise ValueError('Theme inheritance cycle: ' + ' -> '.join((*seen, key)))
+    path = root / 'themes/palettes' / (key + '.json')
+    data = json.loads(path.read_text())
+    base = palette(root, data['extends'], (*seen, key)) if 'extends' in data else {}
+    colors = {**base.get('colors', {}), **data.get('colors', {})}
+    if set(colors) != COLORS:
+        raise ValueError(f'{path}: missing colors {COLORS - set(colors)}; unknown colors {set(colors) - COLORS}')
+    for name, value in colors.items():
+        if not isinstance(value, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', value):
+            raise ValueError(f'{path}: {name} must be a #rrggbb color')
+    return {**base, **data, 'colors': colors}
+
+
+def sub(text, pattern, value, count=1):
+    result, found = re.subn(pattern, lambda m: value(m) if callable(value) else value, text, flags=re.MULTILINE)
+    if found != count:
+        raise ValueError(f'Expected {count} matching settings, found {found}: {pattern}')
+    return result
+
+
+def setting(text, key, value):
+    return sub(text, r'^' + re.escape(key) + r'\s*=.*$', f'{key} = {value}')
+
+
+def block(text, content):
+    text = re.sub(r'\n?' + re.escape(BEGIN) + r'\n.*?' + re.escape(END) + r'\n?', '', text, flags=re.DOTALL)
+    return text.rstrip() + '\n\n' + BEGIN + '\n' + content.rstrip() + '\n' + END + '\n'
+
+
+def ansi(c):
+    names = 'black red green yellow blue magenta cyan white bright_black red green yellow blue magenta cyan bright_white'.split()
+    return [c[name] for name in names]
+
+
+def frame_png(color):
+    """A solid frame image makes the theme supply a frame asset as well as colors."""
+    rgb = bytes(int(color[i:i+2], 16) for i in (1, 3, 5))
+    def chunk(kind, data):
+        return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data))
+    return (b'\x89PNG\r\n\x1a\n'
+            + chunk(b'IHDR', struct.pack('!IIBBBBB', 64, 128, 8, 2, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress((b'\0' + rgb * 64) * 128))
+            + chunk(b'IEND', b''))
+
+
+def as_bytes(content):
+    return content.encode() if isinstance(content, str) else content
+
+
+def assets(app, c):
+    """Generate native theme files; custom palettes use the same path as presets."""
+    if app == 'chrome':
+        roles = {
+            'frame': 'panel', 'frame_inactive': 'background', 'toolbar': 'background',
+            'background_tab': 'panel', 'background_tab_inactive': 'panel',
+            'tab_text': 'foreground', 'tab_background_text': 'white',
+            'tab_background_text_inactive': 'white',
+            'toolbar_text': 'foreground', 'toolbar_button_icon': 'foreground',
+            'bookmark_text': 'foreground', 'ntp_background': 'background',
+            'ntp_text': 'foreground', 'ntp_link': 'accent',
+            'button_background': 'surface', 'omnibox_background': 'surface',
+            'omnibox_text': 'foreground',
+        }
+        data = {
+            'manifest_version': 3, 'name': 'Dotfiles Desktop', 'version': '1.1.0',
+            'description': 'Generated from the shared desktop-theme palette.',
+            'theme': {
+                'colors': {k: [int(c[v][i:i+2], 16) for i in (1, 3, 5)] for k, v in roles.items()},
+                'images': {'theme_frame': 'frame.png', 'theme_frame_inactive': 'frame-inactive.png'},
+                'tints': {'frame': [-1, -1, -1], 'frame_inactive': [-1, -1, -1], 'background_tab': [-1, -1, -1]},
+            },
+        }
+        return {'browser/themes/chrome/manifest.json': dump(data),
+                'browser/themes/chrome/frame.png': frame_png(c['panel']),
+                'browser/themes/chrome/frame-inactive.png': frame_png(c['background'])}
+    if app == 'ghostty':
+        data = {k: c[v] for k, v in {'background': 'background', 'foreground': 'foreground', 'cursor-color': 'cursor', 'cursor-text': 'background', 'selection-background': 'selection', 'selection-foreground': 'foreground'}.items()}
+        text = '# Generated by desktop-theme; edit themes/palettes instead.\n'
+        text += ''.join(f'{k} = {v}\n' for k, v in data.items())
+        text += ''.join(f'palette = {i}={color}\n' for i, color in enumerate(ansi(c)))
+        return {'ghostty/.config/ghostty/themes/dotfiles-desktop': text}
+    if app == 'herdr-app':
+        colors = {'accent': c['accent'], 'chrome': c['panel'], 'canvas': c['panel'],
+                  'surface': c['surface'], 'border': c['border'], 'muted': c['white'],
+                  'dim': c['muted'], 'working': c['yellow'], 'blocked': c['red'],
+                  'done': c['cyan'], 'idle': c['green'], 'selected': c['selection']}
+        data = {k: c[k] for k in ('background', 'foreground', 'selection', 'cursor')}
+        data.update(ansi=ansi(c), colors=colors)
+        return {'herdr-app/.config/herdr-app/themes/dotfiles-desktop.json': dump(data)}
+    if app == 'zed':
+        style = {k: c[v] for k, v in {
+            'background': 'background', 'surface.background': 'panel', 'elevated_surface.background': 'surface',
+            'border': 'border', 'border.focused': 'accent', 'text': 'foreground', 'text.muted': 'muted',
+            'text.accent': 'accent', 'icon': 'foreground', 'icon.muted': 'muted',
+            'editor.background': 'background', 'editor.foreground': 'foreground', 'editor.gutter.background': 'background',
+            'editor.line_number': 'muted', 'editor.active_line_number': 'accent', 'editor.active_line.background': 'surface',
+            'panel.background': 'panel', 'toolbar.background': 'panel', 'tab_bar.background': 'panel',
+            'tab.active_background': 'background', 'tab.inactive_background': 'panel', 'status_bar.background': 'panel',
+            'title_bar.background': 'panel', 'title_bar.inactive_background': 'panel', 'terminal.background': 'background',
+            'terminal.foreground': 'foreground', 'terminal.bright_foreground': 'white',
+            'error': 'red', 'warning': 'yellow', 'success': 'green', 'info': 'blue',
+            'created': 'green', 'deleted': 'red', 'modified': 'yellow',
+        }.items()}
+        for i, name in enumerate('black red green yellow blue magenta cyan white'.split()):
+            style['terminal.ansi.' + name] = ansi(c)[i]
+            style['terminal.ansi.bright_' + name] = ansi(c)[i + 8]
+        style['players'] = [{'cursor': c['cursor'], 'background': c['accent'], 'selection': c['selection'] + '80'}]
+        style['syntax'] = {k: {'color': c[v]} for k, v in {
+            'comment': 'muted', 'string': 'green', 'keyword': 'accent', 'number': 'orange',
+            'boolean': 'orange', 'function': 'blue', 'type': 'yellow', 'operator': 'cyan',
+            'variable': 'foreground', 'punctuation': 'white', 'property': 'blue', 'tag': 'red',
+        }.items()}
+        data = {'$schema': 'https://zed.dev/schema/themes/v0.2.0.json', 'name': 'Dotfiles Desktop',
+                'author': 'dotfiles', 'themes': [{'name': 'Dotfiles Desktop', 'appearance': 'dark', 'style': style}]}
+        return {'zed/.config/zed/themes/dotfiles-desktop.json': dump(data)}
+    return {}
+
+
+def transform(app, text, c):
+    if app == 'ghostty':
+        return setting(text, 'theme', 'dotfiles-desktop')
+    if app == 'herdr-app':
+        data = json.loads(text)
+        data.update(theme='dotfiles-desktop', appearance='dark')
+        return text if json.loads(text) == data else dump(data)
+    if app == 'zed':
+        # Match the top-level theme only; preserve the independent icon_theme.
+        return sub(text, r'^(  "theme":\s*)(?:\{[^{}]*\}|"[^"]*")', lambda m: m[1] + '"Dotfiles Desktop"')
+    if app == 'dinky':
+        for key, color in (('active-color', c['accent']), ('inactive-color', c['border'])):
+            text = setting(text, key, "'" + color + "'")
+        return text
+    if app == 'sketchybar':
+        for key, token in {'BASE': 'background', 'PANEL': 'panel', 'TEXT': 'foreground', 'MUTED': 'muted',
+                           'SURFACE': 'border', 'MAUVE': 'accent', 'LAVENDER': 'blue', 'GREEN': 'green', 'RED': 'red'}.items():
+            text = sub(text, '^' + key + '=0x[0-9a-fA-F]{8}$', key + '=0x' + ('cc' if key == 'PANEL' else 'ff') + c[token][1:])
+        return text
+    if app == 'hammerspoon':
+        for field, token, alpha in (('fillColor', 'background', '0.98'), ('strokeColor', 'accent', '1'), ('textColor', 'foreground', '1')):
+            r, g, b = (int(c[token][i:i+2], 16) for i in (1, 3, 5))
+            text = sub(text, r'^(  ' + field + r' = )\{[^\n]+$',
+                       lambda m: m[1] + f'{{ red = {r} / 255, green = {g} / 255, blue = {b} / 255, alpha = {alpha} }}, -- desktop-theme')
+        return text
+    if app == 'gh-dash':
+        colors = '\n'.join([
+            '    colors:', '        text:', f'            primary: "{c["foreground"]}"',
+            f'            secondary: "{c["accent"]}"', f'            inverted: "{c["background"]}"',
+            f'            faint: "{c["white"]}"', f'            warning: "{c["yellow"]}"',
+            f'            success: "{c["green"]}"', f'            error: "{c["red"]}"',
+            '        background:', f'            selected: "{c["surface"]}"', '        border:',
+            f'            primary: "{c["accent"]}"', f'            secondary: "{c["border"]}"',
+            f'            faint: "{c["surface"]}"',
+        ])
+        return sub(text, r'^    colors:\n(?:[ \t]+[^\n]*\n|\n)*?(?=    ui:)', colors + '\n')
+    if app == 'hunk':
+        # Hunk's terminal mode follows both preset and custom palettes.
+        return setting(text, 'theme', '"terminal"')
+    if app == 'herdr':
+        tokens = {'accent': 'accent', 'panel_bg': 'panel', 'surface0': 'surface', 'surface1': 'border',
+                  'surface_dim': 'background', 'overlay0': 'muted', 'overlay1': 'white', 'text': 'foreground',
+                  'subtext0': 'white', 'mauve': 'accent', 'green': 'green', 'yellow': 'yellow',
+                  'red': 'red', 'blue': 'blue', 'teal': 'cyan', 'peach': 'orange'}
+        # A dedicated managed table avoids replacing keys and app bindings.
+        clean = re.sub(re.escape(BEGIN) + r'\n.*?' + re.escape(END), '', text, flags=re.DOTALL)
+        if '[theme.custom' in clean:
+            raise ValueError('Existing unmanaged [theme.custom] overrides; merge them before using desktop-theme')
+        # Existing config has one auto_switch; keep the base theme and override its colors.
+        text = setting(text, 'auto_switch', 'false')
+        text = sub(text, r'(token = "\$review", fg = ")[^"]+("|$)', lambda m: m[1] + c['yellow'] + m[2])
+        return block(text, '[theme.custom]\n' + ''.join(f'{k} = "{c[v]}"\n' for k, v in tokens.items()))
+    if app == 'starship':
+        # Named ANSI colors follow the palette in either standalone Ghostty or Herdr.
+        return text
+    raise ValueError('Unknown target: ' + app)
+
+
+def home_path(home, relative):
+    return home / Path(*Path(relative).parts[1:])
+
+
+def render(root, theme, targets, home=None):
+    result = {}
+    for app in targets:
+        if app == 'chrome':
+            result.update({root / path: value for path, value in assets(app, theme['colors']).items()})
+            continue
+        if app not in CONFIGS:
+            raise ValueError('Unknown target: ' + app)
+        rel = CONFIGS[app]
+        source = root / rel
+        try:
+            result[source] = transform(app, source.read_text(), theme['colors'])
+            generated = assets(app, theme['colors'])
+            result.update({root / path: value for path, value in generated.items()})
+            if home is None:
+                continue
+            local = home_path(home, rel)
+            if not local.exists():
+                continue
+            if local.resolve() != source.resolve():
+                if local.is_symlink():
+                    raise ValueError(f'{local}: symlink points outside this checkout')
+                result[local] = transform(app, local.read_text(), theme['colors'])
+            for path, value in generated.items():
+                dest = home_path(home, path)
+                src = root / path
+                if dest.resolve() == src.resolve():
+                    continue
+                if dest.is_symlink() or (dest.parent.is_symlink() and not dest.parent.resolve().is_relative_to(root)):
+                    raise ValueError(f'{dest}: symlink points outside this checkout')
+                result[dest] = value
+            if app == 'ghostty':
+                # macOS loads its native config after XDG; newer versions also
+                # prefer config.ghostty over config. Keep existing copies in sync.
+                for relative in (
+                    '.config/ghostty/config.ghostty',
+                    'Library/Application Support/com.mitchellh.ghostty/config',
+                    'Library/Application Support/com.mitchellh.ghostty/config.ghostty',
+                ):
+                    dest = home / relative
+                    if not dest.exists() or dest.resolve() == source.resolve():
+                        continue
+                    if dest.is_symlink() and not dest.resolve().is_relative_to(root):
+                        raise ValueError(f'{dest}: symlink points outside this checkout')
+                    content = dest.read_text()
+                    if re.search(r'^theme\s*=', content, re.MULTILINE):
+                        content = setting(content, 'theme', 'dotfiles-desktop')
+                    else:
+                        content = content.rstrip() + '\ntheme = dotfiles-desktop\n'
+                    result[dest] = content
+        except (OSError, ValueError) as error:
+            raise ValueError(f'{app}: {error}') from error
+    return result
+
+
+def reload_apps(targets):
+    """Apply saved themes to running apps without raising or restarting them."""
+    if 'sketchybar' in targets and shutil.which('sketchybar'):
+        try:
+            result = subprocess.run(['sketchybar', '--reload'], capture_output=True, text=True, timeout=10)
+            if result.returncode:
+                print('SketchyBar reload unavailable: ' + (result.stderr or result.stdout).strip(), file=sys.stderr)
+            else:
+                print('Reloaded SketchyBar.')
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(f'SketchyBar reload unavailable: {error}', file=sys.stderr)
+    if 'herdr-app' in targets and shutil.which('herdr-app'):
+        try:
+            result = subprocess.run(['herdr-app', 'do', 'app.theme', '--name', 'dotfiles-desktop'],
+                                    capture_output=True, text=True, timeout=10)
+            if result.returncode:
+                print('Herdr live apply unavailable: ' + (result.stderr or result.stdout).strip(), file=sys.stderr)
+            else:
+                print('Applied theme to Herdr.')
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(f'Herdr live apply unavailable: {error}', file=sys.stderr)
+    if 'ghostty' in targets and shutil.which('pgrep'):
+        try:
+            result = subprocess.run(['pgrep', '-x', 'ghostty'], capture_output=True, text=True, timeout=5)
+            if result.returncode not in (0, 1):
+                print('Could not detect Ghostty; reload with Cmd-Shift-comma.', file=sys.stderr)
+            for pid in result.stdout.split():
+                # Ghostty installs SIGUSR2 specifically for configuration reload.
+                # Exact process-name matching excludes helpers and Herdr/libghostty.
+                try:
+                    os.kill(int(pid), signal.SIGUSR2)
+                    print(f'Requested Ghostty config reload (PID {pid}).')
+                except ProcessLookupError:
+                    pass
+        except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+            print(f'Ghostty reload unavailable: {error}; use Cmd-Shift-comma.', file=sys.stderr)
+
+
+def write_files(rendered):
+    """Roll back earlier writes if a later file cannot be written."""
+    before = {p: p.read_bytes() if p.exists() else None for p in rendered}
+    written = []
+    try:
+        for path, content in rendered.items():
+            if before[path] == as_bytes(content):
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
+            written.append(path)
+            path.write_bytes(as_bytes(content))
+    except OSError:
+        for path in reversed(written):
+            if before[path] is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(before[path])
+        raise
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('theme', nargs='?', help='theme ID; omit to list')
+    parser.add_argument('--dry-run', action='store_true', help='preview file changes')
+    parser.add_argument('--check', action='store_true', help='check the selected theme for drift')
+    parser.add_argument('--source-only', action='store_true', help='only handle checkout files')
+    parser.add_argument('--no-reload', action='store_true', help='write files without applying to running apps')
+    parser.add_argument('--slack', action='store_true', help='print Slack import colors only; do not apply a desktop theme')
+    parser.add_argument('--create', metavar='ID', help='create a custom palette without applying it')
+    parser.add_argument('--from', dest='base', default='mocha', help='base for --create (default mocha)')
+    args = parser.parse_args()
+    try:
+        catalog_path = ROOT / CATALOG
+        catalog = json.loads(catalog_path.read_text())
+        if args.slack:
+            if args.create or args.check or args.dry_run:
+                raise ValueError('--slack cannot be combined with --create, --check or --dry-run')
+            key = args.theme or catalog['selected']
+            if key is None:
+                raise ValueError('Choose a palette, e.g. desktop-theme mocha --slack')
+            colors = palette(ROOT, key)['colors']
+            # Slack's current four roles: navigation, selected items, presence,
+            # notifications. Slack may adapt these to preserve contrast.
+            print(','.join(colors[k].upper() for k in ('background', 'accent', 'green', 'red')))
+            return 0
+        if args.create:
+            if args.theme or args.check or args.dry_run:
+                raise ValueError('--create cannot be combined with a theme, --check or --dry-run')
+            if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', args.create):
+                raise ValueError('Invalid custom theme ID')
+            palette(ROOT, args.base)
+            path = ROOT / 'themes/palettes' / (args.create + '.json')
+            with path.open('x') as f:
+                f.write(dump({'name': args.create.replace('-', ' ').title(), 'extends': args.base, 'colors': {}}))
+            print(f'Created {path}\nAdd color overrides, then run: desktop-theme {args.create}')
+            return 0
+        if args.theme is None and not args.check and not args.dry_run:
+            for path in sorted((ROOT / 'themes/palettes').glob('*.json')):
+                data = palette(ROOT, path.stem)
+                print(f'{"*" if path.stem == catalog["selected"] else " "} {path.stem:20} {data["name"]}')
+            if catalog['selected'] is None:
+                print('Current: existing per-app themes (no shared theme applied yet)')
+            print('Targets: ' + ', '.join(catalog['targets']))
+            return 0
+        key = args.theme or catalog['selected']
+        if key is None:
+            raise ValueError('Choose a theme first, e.g. desktop-theme mocha --dry-run')
+        theme = palette(ROOT, key)
+        rendered = render(ROOT, theme, catalog['targets'], None if args.source_only else Path.home())
+        changed = {p: value for p, value in rendered.items() if not p.exists() or p.read_bytes() != as_bytes(value)}
+        for path in changed:
+            label = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+            print(f'{"Would update" if args.dry_run or args.check else "Update"}: {label}')
+        if args.check:
+            return int(bool(changed))
+        if not args.dry_run:
+            catalog['selected'] = key
+            write_files({**changed, catalog_path: dump(catalog)})
+            if not args.source_only and not args.no_reload:
+                reload_apps(catalog['targets'])
+        print(f'{"Preview" if args.dry_run else "Selected"}: {theme["name"]}')
+        print('Herdr, Ghostty, and SketchyBar apply automatically unless --no-reload or --source-only is used.')
+        print('Reload Dinky (Option-Shift-R) and Hammerspoon.')
+        print('Zed watches settings; reopen GH Dash and Hunk, and reload Herdr TUI config.')
+        print('Starship follows terminal ANSI colors. Kiri and other unlisted apps are left alone.')
+        if 'chrome' in catalog['targets']:
+            print(f'Chrome theme exported to {ROOT / "browser/themes/chrome"}. Load/reapply this folder at chrome://extensions (Developer mode → Load unpacked).')
+        print('Slack import (paste manually; channel background stays Slack dark):')
+        print(','.join(theme['colors'][k].upper() for k in ('background', 'accent', 'green', 'red')))
+        return 0
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(f'desktop-theme: {error}', file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

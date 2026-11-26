@@ -1,0 +1,16 @@
+{
+  "selected": "nord",
+  "targets": [
+    "ghostty",
+    "herdr-app",
+    "herdr",
+    "zed",
+    "dinky",
+    "sketchybar",
+    "hammerspoon",
+    "gh-dash",
+    "hunk",
+    "starship",
+    "chrome"
+  ]
+}
