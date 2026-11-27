@@ -118,7 +118,7 @@
                 "pane": {
                   "header": {
                     "content": {
-                      "mod": "pane"
+                      "mod": "dark-pane"
                     },
                     "reveal": "always",
                     "height": 30,
@@ -203,5 +203,9 @@
   "traffic_lights": [
     12,
     16
-  ]
+  ],
+  "theme": {
+    "light": "rose-pine-dawn-terminals",
+    "dark": "rose-pine-moon-terminals"
+  }
 }

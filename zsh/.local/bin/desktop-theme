@@ -425,9 +425,11 @@ def transform(app, text, c):
             text = setting(text, key, "'" + color + "'")
         return text
     if app == 'sketchybar':
-        for key, token in {'BASE': 'background', 'PANEL': 'panel', 'TEXT': 'foreground', 'MUTED': 'muted',
-                           'SURFACE': 'border', 'MAUVE': 'accent', 'LAVENDER': 'blue', 'GREEN': 'green', 'RED': 'red'}.items():
-            text = sub(text, '^' + key + '=0x[0-9a-fA-F]{8}$', key + '=0x' + ('cc' if key == 'PANEL' else 'ff') + c[token][1:])
+        # Keep the bar monochrome regardless of the selected desktop palette.
+        for key, color in {'BASE': 'cc000000', 'PANEL': 'cc000000', 'TEXT': 'ffffffff',
+                           'MUTED': '99ffffff', 'SURFACE': '33ffffff', 'MAUVE': 'ffffffff',
+                           'LAVENDER': 'ffffffff', 'GREEN': 'ffffffff', 'RED': 'ffffffff'}.items():
+            text = sub(text, '^' + key + '=0x[0-9a-fA-F]{8}$', key + '=0x' + color)
         return text
     if app == 'hammerspoon':
         for field, token, alpha in (('fillColor', 'background', '0.98'), ('strokeColor', 'accent', '1'), ('textColor', 'foreground', '1')):
