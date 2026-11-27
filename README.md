@@ -34,15 +34,19 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 ## Shared desktop themes
 
 `desktop-theme` works like `mono-font`, with Catppuccin Mocha, Catppuccin
-Frappé, Nord, Solarized Dark, Everforest Dark Hard, Gruvbox Material Dark Medium,
-and Kanagawa palettes. Everforest is currently selected; the
-catalog and generated app configs record that selection together.
+Frappé, Nord, Solarized Dark/Light, Everforest Dark Hard, Gruvbox Material Dark
+Medium, Kanagawa, and Rosé Pine/Moon/Dawn palettes. The catalog and generated app configs record
+the selected palette together; run `desktop-theme` to see the current selection.
 
 ```sh
 desktop-theme                           # list palettes and enabled apps
 desktop-theme nord --dry-run             # preview changes
 desktop-theme nord                       # apply Nord
 desktop-theme solarized-dark
+desktop-theme solarized-light
+desktop-theme rose-pine
+desktop-theme rose-pine-moon
+desktop-theme rose-pine-dawn              # light variant
 desktop-theme frappe
 desktop-theme everforest                 # green accent
 desktop-theme gruvbox-material           # orange accent
@@ -61,6 +65,12 @@ overlay, GH Dash, Hunk, and Starship. Ghzinga, Micro, btop, TTT, AeroSpace,
 and Kiri are outside this list. Zed's icon theme stays independent.
 Chrome receives a theme export in `browser/themes/chrome`, with a manual
 load/reapply step in Chrome; see [browser appearance](browser/README.md).
+GitHub receives `browser/github-theme.user.css` for Stylus, including page,
+code, and diff colors. Import it once and use the installer's Live reload with
+its tab open to follow palette changes, or reimport after changing themes.
+Gmail receives `browser/gmail-theme.user.css` through the same workflow for
+its inbox, navigation, and compose UI; received email bodies retain a light
+reading surface. See [browser appearance](browser/README.md) for installation.
 Codex CLI receives a generated syntax theme in `codex/.codex/themes/`.
 When a local Codex config exists, `desktop-theme` installs it under
 `$CODEX_HOME/themes` (default `~/.codex/themes`) and updates only `tui.theme`,
@@ -144,6 +154,18 @@ is `base0D`; Everforest uses its green and Gruvbox Material its orange. Kanagawa
 uses its foreground for bright white because its Base16 `base07` is a muted grey.
 These definitions work with every existing target, including the Codex syntax
 theme and Chrome export. Applying them does not fetch anything from the network.
+
+Solarized Light shares Solarized Dark's accent colors with a cream background
+and dark text. Herdr app and the generated Zed theme automatically use light
+appearance for light palettes; switching back restores dark appearance. Terminal
+white color roles are adapted for readable text on the light background.
+
+The three [Rosé Pine variants](https://rosepinetheme.com/en/palette/) use the
+official palettes with rose accents and highlight-medium selection backgrounds.
+Rosé Pine and Moon are dark; Dawn uses light appearance. Terminal colors follow
+the upstream roles (love/red, pine/green, foam/blue, rose/cyan, iris/magenta,
+gold/yellow); the shared orange role uses gold. Dawn uses dark neutral text
+for terminal white roles so status lines stay readable on the light background.
 
 ## Shared monospace font
 
@@ -469,7 +491,29 @@ defaults write com.apple.finder CreateDesktop -bool true
 killall Finder
 ```
 
+## Matcha email trial
+
+The email client is the fully qualified Homebrew cask
+`floatpane/matcha/matcha`; plain `brew install matcha` installs an unrelated RSS
+tool. Launch it with `matcha` and add Gmail from its account settings using
+OAuth2 or a Google app password. Enter credentials locally in Matcha; account
+configuration and tokens are not managed by Stow.
+
+`desktop-theme` exports `matcha/.config/matcha/themes/dotfiles-desktop.json` and
+installs it when `~/.config/matcha` exists. Select **Dotfiles Desktop** in
+**Settings → Theme** once; restart Matcha after changing the desktop palette.
+The terminal supplies the background. The switcher only updates this theme
+file, leaving account settings and encrypted configuration untouched.
+
+Official [installation](https://github.com/floatpane/matcha/blob/master/docs/docs/installation.md)
+and [Gmail setup](https://github.com/floatpane/matcha/blob/master/docs/docs/setup-guides/gmail.md).
+
 ## Coding CLIs
+
+Manually maintained agent skills live in [`skills/`](skills/README.md), split
+into shared, Codex, and Claude folders. Install links for both agents with
+`./scripts/setup-agent-skills --apply` (omit `--apply` to preview). This includes
+Matcha's official `send-email` skill, using locally configured email accounts.
 
 Codex and Claude Code use native binaries managed by the global mise config
 in `tools/.config/mise/config.toml`. After linking the `tools` package, install
@@ -1072,6 +1116,16 @@ for the default account and a separate alias such as `github-saegey`
 (`HostName github.com`, `User git`) for personal repositories. Repositories
 whose remotes use that alias need the corresponding local host entry.
 
+An `IdentityFile` ending in `.pub` is valid when the matching private key is
+held by an SSH agent; public keys normally have mode `0644`. If SSH instead
+warns that this file is an unprotected private key, check the effective
+`IdentityAgent` with `ssh -G git@github.com` and verify that its socket is live.
+A stale forwarded socket such as `~/.ssh/agent.sock` can cause this failure.
+Local GitHub commands can select `~/.1password/agent.sock` before any wildcard
+agent rule using `Match originalhost github.com exec "test -z \"$SSH_CONNECTION\""`,
+followed by `IdentityAgent ~/.1password/agent.sock` and a `Host *` reset.
+This leaves remote SSH sessions using their existing forwarded-agent policy.
+
 Supacode's live settings file (`~/.supacode/settings.json`) is deliberately local and is never symlinked or committed. It stores repository roots, per-repository scripts, pinned worktrees, and other machine-specific state.
 
 `supacode/settings.shared.json` is the explicitly allowlisted set of shared global preferences. Apply it after installing Supacode (or after cloning these dotfiles):
@@ -1088,32 +1142,42 @@ To update the committed preferences from this machine, run the following and rev
 
 ## Docker runtimes
 
-- OrbStack remains the default Docker context when it is already selected.
-- Colima is installed, but it does not start automatically.
-- Use `colima-start` to start Colima and switch Docker to the `colima` context.
-- `colima-start` defaults to `--cpu 4 --memory 8 --disk 100` unless you pass your own values.
-- Override the defaults with `COLIMA_CPU`, `COLIMA_MEMORY`, or `COLIMA_DISK` in `~/.zshrc.local`.
-- Use `colima-stop` to stop Colima and switch Docker back to `orbstack` when that context exists.
-  If another context is selected, it stays selected.
-- Kiri is included for trials alongside OrbStack and Colima. Install with
-  `brew install --cask libracoder/kiri/kiri`, then open Kiri once to create its
-  `kiri` context. Choose localhost names for setup without system DNS changes.
-- Use `docker-orbstack`, `docker-colima`, `docker-kiri`, or `docker-use <context>`
-  to select the default for subsequent Docker commands, Compose, lazydocker,
-  and the dev-stack status helpers. These commands select a context; they do
-  not start or stop engines. Start OrbStack/Kiri from their apps, or use
-  `colima-start` for Colima. Run `docker context show` to see the selection.
-- For a single command without changing the default, use `dorb ps`, `dcol ps`,
-  or `dkiri ps`. Arguments pass through, for example `dkiri compose up -d`.
-- `docker-use` rejects switches while `DOCKER_HOST` or `DOCKER_CONTEXT` is set;
-  unset those overrides first. Explicit `--context` shortcuts take precedence.
-- Each engine has separate containers, images, and named volumes. Switching
-  does not migrate data or stop running workloads. Running the same Compose
-  stack in two engines can conflict on published host ports; stop the first
-  stack before bringing up the second. Bind mounts still use host files.
-- Leave Kiri's build setting on Docker's context-following builder
-  (`kiri build-with docker`), rather than pinning all builds to Kiri. Tools
-  using `/var/run/docker.sock` directly need their own runtime configuration.
+Kiri is the primary local container runtime. Install it with
+`brew install --cask libracoder/kiri/kiri`, then run `kiri setup --use` to enable
+its login agent and select the `kiri` Docker context. The Brewfile no longer
+installs OrbStack.
+
+- Docker, Compose, lazydocker, and the dev-stack helpers follow the selected
+  context. Confirm with `docker context show`; select Kiri with `docker-kiri`
+  or `docker-use kiri`. `dkiri` always targets Kiri for a single command.
+- Keep builds context-aware with `kiri build-with docker`, and select the
+  Kiri builder with `docker buildx use kiri` if an old builder
+  is pinned to another engine.
+- Kiri's socket is `~/.kiri/run/docker.sock`. For tools that use the standard
+  `/var/run/docker.sock`, preview `./scripts/setup-kiri-socket`, then run
+  `./scripts/setup-kiri-socket --apply` as your regular user and enter your
+  administrator password. It installs the symlink and a LaunchDaemon that
+  restores it after reboot. Alternatively configure that tool's `DOCKER_HOST`
+  explicitly. Do not export a global
+  `DOCKER_HOST` if you want context switching to keep working.
+- Containers can use `<name>.kiri.localhost` without system DNS changes. Replace
+  old `.orb.local` URLs in project-specific local settings when needed.
+- Colima remains an optional fallback and does not start automatically.
+  `colima-start` defaults to `--cpu 4 --memory 8 --disk 100` unless overridden
+  by arguments or `COLIMA_CPU`, `COLIMA_MEMORY`, and `COLIMA_DISK` in
+  `~/.zshrc.local`. `colima-stop` returns to Kiri only when Colima was selected.
+  `docker-colima` and `dcol` select it globally or for a single command.
+- `docker-use` rejects switches while `DOCKER_HOST` or `DOCKER_CONTEXT` is set.
+- Each engine has separate containers, images, and volumes. Moving a context
+  does not migrate data. The workstation migration intentionally discards old
+  OrbStack development containers and volumes; recreate needed stacks from
+  their Compose files and seed fresh databases.
+- OrbStack remains installed but stopped on this workstation, with its
+  remaining images and build cache retained. Login startup and automatic
+  Docker context takeover are disabled.
+- `scripts/kiri-cleanup` prunes unused Kiri images, stopped containers, networks,
+  and build cache. `--if-below GB` limits it to low-space situations; `--volumes`
+  additionally asks before deleting unused persistent data.
 - Reload shell helpers with `source ~/.zshrc`, or open a new terminal.
 
 ## Notes

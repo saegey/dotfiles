@@ -44,8 +44,8 @@ display-changed = ['exec-and-forget sketchybar --trigger dinky_workspace_change 
 [borders]
 enabled = true
 width = 3
-active-color = '#a7c080'
-inactive-color = '#414b50'
+active-color = '#ea9a97'
+inactive-color = '#56526e'
 
 [[rules]]
 app-id = 'com.mitchellh.ghostty'
@@ -82,9 +82,9 @@ run = 'move-window-to-workspace 4'
 app-id = 'com.apple.systempreferences'
 run = 'layout floating'
 
-# Manage containers with lazydocker; OrbStack's utility UI must not reserve a tile.
+# Manage containers with lazydocker; Kiri's utility UI must not reserve a tile.
 [[rules]]
-app-id = 'dev.kdrag0n.MacVirt'
+app-id = 'dev.kiri.app'
 run = 'layout floating'
 
 # Tuna's transient launcher windows should never reserve a tile.

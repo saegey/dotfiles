@@ -16,9 +16,5 @@ alias pip='pip3'
 # Created by `pipx` on 2025-07-11 16:51:11
 export PATH="$PATH:/Users/saegey/.local/bin"
 
-# Added by OrbStack: command-line tools and integration
-# This won't be added again if you remove it.
-[[ -r ~/.orbstack/shell/init.zsh ]] && source ~/.orbstack/shell/init.zsh
-
 # Added by Kiri: its docker and kiri commands (kiri setup --uninstall removes this)
 case ":$PATH:" in *":$HOME/.kiri/bin:"*) ;; *) export PATH="$PATH:$HOME/.kiri/bin" ;; esac

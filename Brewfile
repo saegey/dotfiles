@@ -4,6 +4,7 @@ cask_args appdir: '/Applications'
 # taps
 tap 'cloudflare/cloudflare', trusted: true
 tap 'felixkratz/formulae', trusted: true
+tap 'floatpane/matcha', trusted: true
 tap 'henrygd/beszel', trusted: true
 tap 'mikker/tap', trusted: true
 tap 'modem-dev/tap', trusted: true
@@ -100,8 +101,8 @@ cask 'font-0xproto-nerd-font'
 cask 'hammerspoon'
 cask 'iterm2'
 cask 'karabiner-elements'
-cask 'orbstack'
 cask 'libracoder/kiri/kiri'
+cask 'floatpane/matcha/matcha'
 cask 'openlogi'
 cask 'secretive'
 cask 'supacode'

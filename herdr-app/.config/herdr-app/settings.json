@@ -5,6 +5,7 @@
   },
   "font": "Maple Mono NF",
   "font_size": 13.0,
+  "font_weight": 400,
   "font_ligatures": false,
   "terminal_line_height": 1.0,
   "terminal_cell_width": 1.0,
@@ -12,6 +13,6 @@
   "ui_font": "Maple Mono NF",
   "minimum_contrast": 1.0,
   "option_as_alt": "on",
-  "theme": "dotfiles-desktop",
-  "appearance": "dark"
+  "appearance": "dark",
+  "theme": "dotfiles-desktop"
 }

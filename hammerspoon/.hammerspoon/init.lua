@@ -168,10 +168,10 @@ local shortcutVisor = require('shortcut-visor')
 local shortcutsCanvas
 local shortcutsEscapeHotkey
 local shortcutsStyle = {
-  fillColor = { red = 39 / 255, green = 46 / 255, blue = 51 / 255, alpha = 0.98 }, -- desktop-theme
-  strokeColor = { red = 167 / 255, green = 192 / 255, blue = 128 / 255, alpha = 1 }, -- desktop-theme
+  fillColor = { red = 35 / 255, green = 33 / 255, blue = 54 / 255, alpha = 0.98 }, -- desktop-theme
+  strokeColor = { red = 234 / 255, green = 154 / 255, blue = 151 / 255, alpha = 1 }, -- desktop-theme
   strokeWidth = 2,
-  textColor = { red = 211 / 255, green = 198 / 255, blue = 170 / 255, alpha = 1 }, -- desktop-theme
+  textColor = { red = 224 / 255, green = 222 / 255, blue = 244 / 255, alpha = 1 }, -- desktop-theme
   textFont = 'Maple Mono NF',
   textSize = 14,
   radius = 18,
