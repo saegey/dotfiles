@@ -12,7 +12,7 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 | `ghostty/` | `~/.config/ghostty/config` | Ghostty terminal |
 | `aerospace/` | `~/.config/aerospace/aerospace.toml` | Keyboard-driven tiling on macOS |
 | `dinky/` | `~/.config/dinky/dinky.toml` | Optional Dinky trial with native macOS Spaces |
-| `sketchybar/` | `~/.config/sketchybar/` | Catppuccin bar with Dinky workspaces and system status |
+| `sketchybar/` | `~/.config/sketchybar/` | Monochrome bar with Dinky workspaces and system status |
 | `hammerspoon/` | `~/.hammerspoon/` | AeroSpace helpers, shortcut popup, and rounded screen corners |
 | `karabiner/` | `~/.config/karabiner/karabiner.json` | Caps Lock as Hyper when held, Escape when tapped |
 | `smb-archive/` | macOS LaunchAgent and `~/.local/bin/townhaus-archive-mount` | Reconnect the Townhaus SMB archive when Beelink is reachable |
@@ -60,7 +60,7 @@ desktop-theme mocha --slack              # print Mocha without changing the desk
 The `zsh` Stow package installs the command in `~/.local/bin`. You can also
 run `./zsh/.local/bin/desktop-theme` directly. Edit `themes/catalog.json` to
 enable or disable targets. The initial list covers standalone Ghostty,
-Herdr app, Herdr TUI, Zed, Dinky borders, SketchyBar, Hammerspoon's shortcut
+Herdr TUI, Zed, Dinky borders, SketchyBar, Hammerspoon's shortcut
 overlay, GH Dash, Hunk, and Starship. Ghzinga, Micro, btop, TTT, AeroSpace,
 and Kiri are outside this list. Zed's icon theme stays independent.
 Chrome receives a theme export in `browser/themes/chrome`, with a manual
@@ -426,7 +426,10 @@ brew install --cask font-jetbrains-mono
 brew services start sketchybar
 ```
 
-The Catppuccin Mocha bar uses JetBrains Mono and shows clickable Dinky workspaces
+The monochrome bar keeps black backgrounds at 80% opacity and white text and
+icons across all desktop themes. Inactive items and borders use translucent
+white. `desktop-theme` preserves this palette when switching themes.
+The bar uses Maple Mono NF and shows clickable Dinky workspaces
 1–5, the active app, Now Playing, network and Tailscale status, audio output,
 Homebrew updates, volume, and a clock. Battery status appears only when the Mac
 has a battery. Click volume to toggle mute, or the clock to open Calendar.
@@ -1210,8 +1213,18 @@ setup rather than rerunning the copy-based GUI installers, which can replace
 links. Changes made in GUI Settings may also replace a settings link; check
 `./bootstrap.sh --packages herdr-app` afterward and reconcile with the checkout.
 
-The theme follows system appearance; terminals use JetBrains Mono for both UI and terminals at 13px (100% zoom) with
-Option acting as Alt. Cmd-[ toggles the sidebar; Ctrl-Option-1..9 selects spaces;
+The theme follows macOS appearance: Rosé Pine Dawn terminals in light mode and
+Rosé Pine Moon terminals in dark mode. Both themes keep the sidebar, tabs and
+other chrome dark. `settings.json` leaves `appearance` unset; `main-music` also
+sets the theme pair so an older saved theme pick cannot mask the setting.
+Herdr GUI is excluded from `themes/catalog.json` targets so `desktop-theme`
+does not replace this automatic pair. On another computer, sync this checkout
+and Stow `herdr-app` on the computer running the GUI; the remote terminal host's
+appearance does not select the theme. macOS System Settings → Appearance
+controls switching (choose Auto for automatic switching).
+
+Terminals and UI use Maple Mono NF at 13px with Option acting as Alt.
+Cmd-[ toggles the sidebar; Ctrl-Option-1..9 selects spaces;
 Ctrl-Option-J/K visits agents; Cmd-K (or Ctrl-Option-Shift-K) opens the picker;
 Cmd-N opens sisimomo's Project Picker to focus or create a space for a Git repo
 (Settings in the picker controls its scan folder and depth);

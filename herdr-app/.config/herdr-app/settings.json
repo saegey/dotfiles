@@ -13,6 +13,8 @@
   "ui_font": "Maple Mono NF",
   "minimum_contrast": 1.0,
   "option_as_alt": "on",
-  "appearance": "dark",
-  "theme": "dotfiles-desktop"
+  "theme": {
+    "light": "rose-pine-dawn-terminals",
+    "dark": "rose-pine-moon-terminals"
+  }
 }

@@ -26,6 +26,16 @@ def copy_configs(root):
 
 
 class DesktopThemeTests(unittest.TestCase):
+    def test_sketchybar_stays_monochrome_across_all_palettes(self):
+        source = (ROOT / THEME['CONFIGS']['sketchybar']).read_text()
+        # Start with a colored config to also cover migration on other machines.
+        colored = source.replace('0xffffffff', '0xffea9a97').replace('0xcc000000', '0xcc2a273f')
+        for key in PRESETS:
+            result = THEME['transform']('sketchybar', colored, THEME['palette'](ROOT, key)['colors'])
+            self.assertEqual(result, source)
+            self.assertIn('PANEL=0xcc000000', result)
+            self.assertIn('TEXT=0xffffffff', result)
+
     def test_matcha_installs_theme_without_reading_or_modifying_account_config(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
@@ -256,7 +266,7 @@ class DesktopThemeTests(unittest.TestCase):
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps({'theme': 'graphite', 'zoom': 1.2, 'font': 'My Font', 'sounds': {'enabled': False}}))
             theme = THEME['palette'](ROOT, 'nord')
-            rendered = THEME['render'](ROOT, theme, TARGETS, home)
+            rendered = THEME['render'](ROOT, theme, ['herdr-app'], home)
             data = json.loads(rendered[path])
             self.assertEqual(data['theme'], 'dotfiles-desktop')
             self.assertEqual(data['zoom'], 1.2)
@@ -305,7 +315,7 @@ class DesktopThemeTests(unittest.TestCase):
             path.parent.mkdir(parents=True)
             path.symlink_to(external)
             with self.assertRaisesRegex(ValueError, 'outside this checkout'):
-                THEME['render'](ROOT, THEME['palette'](ROOT, 'mocha'), TARGETS, home)
+                THEME['render'](ROOT, THEME['palette'](ROOT, 'mocha'), ['herdr-app'], home)
 
 
 if __name__ == '__main__':
