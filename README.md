@@ -1121,10 +1121,11 @@ held by an SSH agent; public keys normally have mode `0644`. If SSH instead
 warns that this file is an unprotected private key, check the effective
 `IdentityAgent` with `ssh -G git@github.com` and verify that its socket is live.
 A stale forwarded socket such as `~/.ssh/agent.sock` can cause this failure.
-Local GitHub commands can select `~/.1password/agent.sock` before any wildcard
-agent rule using `Match originalhost github.com exec "test -z \"$SSH_CONNECTION\""`,
-followed by `IdentityAgent ~/.1password/agent.sock` and a `Host *` reset.
-This leaves remote SSH sessions using their existing forwarded-agent policy.
+For the Mac mini and persistent Herdr panes, see the
+[GitHub agent forwarding setup](ssh/README.md), including a Mermaid diagram,
+the laptop's 1Password socket, and the Mini's forwarded-agent preference
+with a local 1Password fallback. Persistent panes can lack `SSH_CONNECTION`,
+so that variable alone cannot reliably select between local and forwarded agents.
 
 Supacode's live settings file (`~/.supacode/settings.json`) is deliberately local and is never symlinked or committed. It stores repository roots, per-repository scripts, pinned worktrees, and other machine-specific state.
 
