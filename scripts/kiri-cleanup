@@ -4,9 +4,9 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: orbstack-cleanup [--if-below GB] [--volumes]
+Usage: kiri-cleanup [--if-below GB] [--volumes]
 
-Prune unused OrbStack Docker images and build cache.
+Prune unused Kiri Docker images and build cache.
 
 Options:
   --if-below GB  Run only when the startup disk has less than GB available.
@@ -14,9 +14,9 @@ Options:
   -h, --help     Show this help.
 
 Examples:
-  ~/.dotfiles/scripts/orbstack-cleanup
-  ~/.dotfiles/scripts/orbstack-cleanup --if-below 20
-  ~/.dotfiles/scripts/orbstack-cleanup --if-below 20 --volumes
+  ~/.dotfiles/scripts/kiri-cleanup
+  ~/.dotfiles/scripts/kiri-cleanup --if-below 20
+  ~/.dotfiles/scripts/kiri-cleanup --if-below 20 --volumes
 USAGE
 }
 
@@ -54,8 +54,8 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! docker context inspect orbstack >/dev/null 2>&1; then
-  echo "error: Docker context 'orbstack' not found" >&2
+if ! docker context inspect kiri >/dev/null 2>&1; then
+  echo "error: Docker context 'kiri' not found" >&2
   exit 1
 fi
 
@@ -73,22 +73,22 @@ if [[ -n "$threshold_gb" ]] && ! awk -v available="$available_gb" -v limit="$thr
 fi
 
 # Explicit context prevents cleanup from affecting Colima or another Docker runtime.
-docker --context orbstack system df
+docker --context kiri system df
 
-echo "Pruning unused OrbStack images, stopped containers, networks, and build cache..."
-docker --context orbstack system prune --all --force
+echo "Pruning unused Kiri images, stopped containers, networks, and build cache..."
+docker --context kiri system prune --all --force
 
 if ((include_volumes)); then
   echo
   echo "Unused volumes may contain persistent application or database data."
-  read -r -p "Prune unused named and anonymous OrbStack volumes? Type 'yes' to continue: " answer
+  read -r -p "Prune unused named and anonymous Kiri volumes? Type 'yes' to continue: " answer
   if [[ "$answer" == "yes" ]]; then
-    docker --context orbstack volume prune --all --force
+    docker --context kiri volume prune --all --force
   else
     echo "Skipping volume cleanup."
   fi
 fi
 
 echo
-docker --context orbstack system df
+docker --context kiri system df
 echo "Available on / after cleanup: $(df -h / | awk 'NR == 2 {print $4}')"

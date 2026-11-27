@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""Preview or link dotfiles skills into Codex and Claude Code."""
+import argparse
+from datetime import datetime
+import filecmp
+import os
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def identical(source, dest):
+    if not dest.is_dir() or dest.is_symlink():
+        return False
+    comparison = filecmp.dircmp(source, dest, ignore=['.DS_Store', '__pycache__'])
+    return (not comparison.left_only and not comparison.right_only
+            and not comparison.common_funny
+            and all(filecmp.cmp(source / name, dest / name, shallow=False)
+                    for name in comparison.common_files)
+            and all(identical(source / name, dest / name)
+                    for name in comparison.common_dirs))
+
+
+def plan(home, codex_home, claude_home):
+    changes = []
+    for agent, target in [('codex', codex_home), ('claude', claude_home)]:
+        seen = set()
+        for group in ['shared', agent]:
+            folder = ROOT / 'skills' / group
+            if not folder.exists():
+                continue
+            for source in sorted(folder.iterdir()):
+                if not (source / 'SKILL.md').is_file():
+                    continue
+                if source.name in seen:
+                    raise ValueError(f'Duplicate {agent} skill: {source.name}')
+                seen.add(source.name)
+                dest = target / 'skills' / source.name
+                if dest.is_symlink() and dest.resolve() == source.resolve():
+                    continue
+                exists = dest.exists() or dest.is_symlink()
+                if exists and not identical(source, dest):
+                    raise ValueError(f'{dest}: differs from dotfiles; reconcile it before linking')
+                changes.append((agent, source, dest, exists))
+    return changes
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true', help='install links (default: preview)')
+    args = parser.parse_args()
+    home = Path.home()
+    codex_home = Path(os.environ.get('CODEX_HOME', str(home / '.codex'))).expanduser()
+    claude_home = Path(os.environ.get('CLAUDE_CONFIG_DIR', str(home / '.claude'))).expanduser()
+    try:
+        changes = plan(home, codex_home, claude_home)
+        stamp = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+        for agent, source, dest, exists in changes:
+            print(f'{"Link" if args.apply else "Would link"}: {dest} -> {source}')
+            if args.apply:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                if exists:
+                    backup = home / '.local/state/dotfiles/skill-backups' / stamp / agent / dest.name
+                    backup.parent.mkdir(parents=True, exist_ok=True)
+                    dest.rename(backup)
+                    print(f'Backup: {backup}')
+                dest.symlink_to(source, target_is_directory=True)
+        if not changes:
+            print('All skill links are current.')
+        elif not args.apply:
+            print('Preview only; rerun with --apply to install links.')
+        return 0
+    except (OSError, ValueError) as error:
+        print(f'setup-agent-skills: {error}', file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

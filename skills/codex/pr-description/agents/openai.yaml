@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Description"
+  short_description: "Compare against origin/main and draft the repo PR template."
+  default_prompt: "Draft a pull request description from the current branch diff against origin/main using the repository template."

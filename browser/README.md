@@ -35,6 +35,51 @@ References: [Chrome themes](https://developer.chrome.com/docs/extensions/develop
 [Vivaldi themes](https://help.vivaldi.com/desktop/appearance-customization/browser-themes/),
 [Firefox theme API](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/theme/update).
 
+## GitHub website colors
+
+`desktop-theme <id>` also generates `browser/github-theme.user.css` for Stylus.
+It maps the shared palette onto GitHub's Primer color variables: page and panel
+backgrounds, borders, text, links, buttons, syntax highlighting, and diff colors.
+Additions and deletions retain separate tinted backgrounds. Light palettes use
+light appearance. This style only applies to github.com and can be installed
+alongside the existing monospace style below.
+
+In Stylus, open **Manage**, then drag `github-theme.user.css` from Finder onto
+that page and click **Install style**. Refresh a GitHub tab to check the result.
+For changes to follow `desktop-theme`, enable **Live reload** in the installer
+and keep that installer tab open. Current Chromium versions support watching
+the individually dropped file, without enabling access to every file URL.
+When the installer is closed, reimport the file after switching palettes.
+Stylus stores an imported copy; regenerating the file alone does not change it.
+See [Stylus local-file/live reload instructions](https://github.com/openstyles/stylus/wiki/Writing-UserCSS#live-reload-on-the-fly-previewing).
+
+Remove `github` from `themes/catalog.json` to stop generating this export;
+disable the style in Stylus to restore GitHub's own colors. GitHub may add
+components or change its CSS tokens, so check a repository, an issue, and a diff
+after installing. This does not change your GitHub account appearance setting.
+Token references: [Primer theme reference](https://primer.style/product/getting-started/react/theme-reference/).
+
+## Gmail website colors
+
+`desktop-theme <id>` generates `browser/gmail-theme.user.css` for Stylus.
+Install it from **Stylus → Manage** by dragging the file onto that page, then
+click **Install style**. As with the GitHub export, enable **Live reload** and
+leave its installer tab open to follow palette changes; otherwise reimport.
+
+The style is limited to mail.google.com. It colors Gmail's navigation, search,
+inbox rows, menus, reading-pane chrome, and compose UI, preserving unread weight
+and a distinct selected-row state. It supports both light and dark palettes.
+Received message bodies stay on a light surface with dark default text;
+sender-defined colors, links, images, and layouts remain intact. This keeps
+rich newsletters and receipts readable without image inversion. Compose
+formatting is inherited normally, rather than overriding every child element.
+
+The export changes no Gmail settings or message data. Disable the style in
+Stylus to restore Gmail's own appearance; remove `gmail` from
+`themes/catalog.json` to stop exporting it. Gmail changes its generated class
+names over time, so check an inbox, an opened message, and a compose window
+after installing. Chat and other embedded Google apps are outside this style.
+
 ## Browser monospace font
 
 `mono-font.user.css` applies Maple Mono to code on github.com and linear.app,

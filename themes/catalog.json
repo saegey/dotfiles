@@ -1,5 +1,5 @@
 {
-  "selected": "everforest",
+  "selected": "rose-pine-moon",
   "targets": [
     "ghostty",
     "herdr-app",
@@ -12,6 +12,9 @@
     "hunk",
     "starship",
     "chrome",
-    "codex"
+    "codex",
+    "github",
+    "gmail",
+    "matcha"
   ]
 }

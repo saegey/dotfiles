@@ -1,0 +1,11 @@
+{
+  "name": "Solarized Light",
+  "source": "https://ethanschoonover.com/solarized/",
+  "extends": "solarized-dark",
+  "colors": {
+    "background": "#fdf6e3", "panel": "#fdf6e3", "surface": "#eee8d5",
+    "border": "#93a1a1", "muted": "#839496", "foreground": "#657b83",
+    "bright_black": "#93a1a1", "white": "#586e75", "bright_white": "#073642",
+    "selection": "#eee8d5", "cursor": "#586e75"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Rosé Pine Moon",
+  "source": "https://rosepinetheme.com/en/palette/",
+  "extends": "rose-pine",
+  "colors": {
+    "background": "#232136", "panel": "#2a273f", "surface": "#393552",
+    "border": "#56526e", "accent": "#ea9a97", "green": "#3e8fb0",
+    "cyan": "#ea9a97", "black": "#393552", "selection": "#44415a"
+  }
+}

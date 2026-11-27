@@ -24,50 +24,60 @@ alias la='ls -alh'
 alias lt='ls -alrth'
 
 docker-use() {
-	local context="$1"
+  local context="$1"
 
-	if [[ -z "$context" ]]; then
-		echo "usage: docker-use <orbstack|colima|default>" >&2
-		return 1
-	fi
+  if [[ -z "$context" ]]; then
+    echo "usage: docker-use <kiri|colima|default>" >&2
+    return 1
+  fi
 
-	docker context use "$context"
+  if [[ -n "${DOCKER_HOST:-}" || -n "${DOCKER_CONTEXT:-}" ]]; then
+    echo 'DOCKER_HOST or DOCKER_CONTEXT overrides the saved context. Unset it before switching.' >&2
+    return 1
+  fi
+
+  command docker context use "$context"
 }
 
 colima-start() {
-	local has_cpu=0
-	local has_memory=0
-	local has_disk=0
-	local arg
+  local has_cpu=0
+  local has_memory=0
+  local has_disk=0
+  local arg
 
-	for arg in "$@"; do
-		case "$arg" in
-			--cpu|--cpu=*) has_cpu=1 ;;
-			--memory|--memory=*) has_memory=1 ;;
-			--disk|--disk=*) has_disk=1 ;;
-		esac
-	done
+  for arg in "$@"; do
+    case "$arg" in
+      --cpu|--cpu=*) has_cpu=1 ;;
+      --memory|--memory=*) has_memory=1 ;;
+      --disk|--disk=*) has_disk=1 ;;
+    esac
+  done
 
-	local -a args
-	args=("$@")
+  local -a args
+  args=("$@")
 
-	(( has_cpu )) || args+=(--cpu "${COLIMA_CPU:-4}")
-	(( has_memory )) || args+=(--memory "${COLIMA_MEMORY:-8}")
-	(( has_disk )) || args+=(--disk "${COLIMA_DISK:-100}")
+  (( has_cpu )) || args+=(--cpu "${COLIMA_CPU:-4}")
+  (( has_memory )) || args+=(--memory "${COLIMA_MEMORY:-8}")
+  (( has_disk )) || args+=(--disk "${COLIMA_DISK:-100}")
 
-	command colima start "${args[@]}" || return $?
-	docker context use colima >/dev/null 2>&1 || true
-	docker context show
+  command colima start "${args[@]}" || return $?
+  docker-use colima
 }
 
 colima-stop() {
-	command colima stop "$@" || return $?
-	docker context inspect orbstack >/dev/null 2>&1 && docker context use orbstack >/dev/null 2>&1
-	docker context show
+  command colima stop "$@" || return $?
+  if [[ "$(command docker context show)" == colima ]]; then
+    command docker context inspect kiri >/dev/null 2>&1 && docker-use kiri
+  fi
+  command docker context show
 }
 
-alias docker-orbstack='docker-use orbstack'
 alias docker-colima='docker-use colima'
+alias docker-kiri='docker-use kiri'
+
+# Explicit contexts apply to this command only, including Compose subcommands.
+alias dcol='docker --context colima'
+alias dkiri='docker --context kiri'
 
 if [[ -r /etc/os-release ]]; then
   export LINUX_DISTRO=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')

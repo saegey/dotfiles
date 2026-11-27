@@ -1,0 +1,13 @@
+{
+  "name": "Rosé Pine Dawn",
+  "source": "https://rosepinetheme.com/en/palette/",
+  "colors": {
+    "background": "#faf4ed", "panel": "#fffaf3", "surface": "#f2e9e1",
+    "border": "#cecacd", "muted": "#9893a5", "foreground": "#464261",
+    "accent": "#d7827e", "red": "#b4637a", "green": "#286983",
+    "yellow": "#ea9d34", "blue": "#56949f", "magenta": "#907aa9",
+    "cyan": "#d7827e", "orange": "#ea9d34", "black": "#464261",
+    "bright_black": "#9893a5", "white": "#797593", "bright_white": "#464261",
+    "selection": "#dfdad9", "cursor": "#464261"
+  }
+}

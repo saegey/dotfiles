@@ -82,8 +82,8 @@ shortcuts() {
   print -r -- 'Helpers:'
   print -r -- '  tfplan [args] page a Terraform plan with color and retained output'
   print -r -- '  gmove <name>  move the last unpushed main commit to a new branch'
-  print -r -- '  docker-use <context>  switch Docker runtime (orbstack, colima, kiri)'
-  print -r -- '  dorb/dcol/dkiri <args>  Docker command on one runtime without switching'
+  print -r -- '  docker-use <context>  switch Docker runtime (kiri, colima)'
+  print -r -- '  dcol/dkiri <args>  Docker command on one runtime without switching'
   print -r -- '  colima-start  start Colima and select it; colima-stop stops it'
   print -r -- ''
   print -r -- 'Also: git aliases lists Git-config aliases; alias lists shell aliases.'
@@ -149,7 +149,7 @@ docker-use() {
   local context="$1"
 
   if [[ -z "$context" ]]; then
-    echo "usage: docker-use <orbstack|colima|kiri|default>" >&2
+    echo "usage: docker-use <kiri|colima|default>" >&2
     return 1
   fi
 
@@ -189,17 +189,15 @@ colima-start() {
 colima-stop() {
   command colima stop "$@" || return $?
   if [[ "$(command docker context show)" == colima ]]; then
-    command docker context inspect orbstack >/dev/null 2>&1 && docker-use orbstack
+    command docker context inspect kiri >/dev/null 2>&1 && docker-use kiri
   fi
   command docker context show
 }
 
-alias docker-orbstack='docker-use orbstack'
 alias docker-colima='docker-use colima'
 alias docker-kiri='docker-use kiri'
 
 # Explicit contexts apply to this command only, including Compose subcommands.
-alias dorb='docker --context orbstack'
 alias dcol='docker --context colima'
 alias dkiri='docker --context kiri'
 

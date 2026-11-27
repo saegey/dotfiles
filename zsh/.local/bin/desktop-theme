@@ -94,6 +94,203 @@ def ansi(c):
     return [c[name] for name in names]
 
 
+def luminance(color):
+    channels = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
+    linear = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in channels]
+    return sum(v * weight for v, weight in zip(linear, (0.2126, 0.7152, 0.0722)))
+
+
+def appearance(c):
+    """Use light app chrome when the palette background is lighter than its text."""
+    return 'light' if luminance(c['background']) > luminance(c['foreground']) else 'dark'
+
+
+def github_style(c):
+    """Override Primer color tokens without changing GitHub layout or fonts."""
+    def blend(color, amount):
+        return '#' + ''.join(f'{round(int(c["background"][i:i+2], 16) * (1 - amount) + int(color[i:i+2], 16) * amount):02x}' for i in (1, 3, 5))
+    def readable(color):
+        def contrast(text):
+            a, b = sorted((luminance(text), luminance(color)))
+            return (b + 0.05) / (a + 0.05)
+        return max((c['background'], c['foreground']), key=contrast)
+
+    tokens = {}
+    for role, names in {
+        'background': 'bgColor-default bgColor-inset color-canvas-default color-canvas-inset',
+        'panel': 'bgColor-muted color-canvas-subtle overlay-bgColor header-bgColor color-header-bg',
+        'surface': 'bgColor-neutral-muted control-bgColor-rest button-default-bgColor-rest color-btn-bg',
+        'selection': 'control-bgColor-hover control-bgColor-active button-default-bgColor-hover button-default-bgColor-active color-btn-hover-bg color-btn-active-bg',
+        'foreground': 'fgColor-default color-fg-default button-default-fgColor-rest color-btn-text color-header-text color-header-logo',
+        'white': 'fgColor-muted color-fg-muted color-fg-subtle',
+        'muted': 'fgColor-disabled',
+        'border': 'borderColor-default borderColor-muted control-borderColor-rest button-default-borderColor-rest button-default-borderColor-hover button-default-borderColor-active color-border-default color-border-muted color-btn-border',
+        'accent': 'fgColor-link fgColor-accent borderColor-accent-emphasis focus-outlineColor color-accent-fg color-accent-emphasis color-border-accent',
+        'green': 'fgColor-success borderColor-success-emphasis bgColor-success-emphasis button-primary-bgColor-rest color-success-fg color-success-emphasis color-btn-primary-bg',
+        'red': 'fgColor-danger borderColor-danger-emphasis bgColor-danger-emphasis color-danger-fg color-danger-emphasis',
+        'yellow': 'fgColor-attention borderColor-attention-emphasis color-attention-fg',
+        'magenta': 'fgColor-done color-done-fg',
+    }.items():
+        tokens.update({name: c[role] for name in names.split()})
+    tokens.update({
+        'bgColor-emphasis': c['foreground'], 'fgColor-onEmphasis': c['background'],
+        'color-fg-on-emphasis': c['background'],
+        'button-primary-fgColor-rest': readable(c['green']),
+        'color-btn-primary-text': readable(c['green']),
+        'button-primary-bgColor-hover': c['green'], 'button-primary-bgColor-active': c['green'],
+        'button-primary-borderColor-rest': c['green'],
+    })
+    for kind, role in {'accent': 'accent', 'success': 'green', 'danger': 'red', 'attention': 'yellow', 'done': 'magenta'}.items():
+        tokens['bgColor-' + kind + '-muted'] = blend(c[role], 0.15)
+        tokens['color-' + kind + '-subtle'] = blend(c[role], 0.15)
+    for kind, role in {'addition': 'green', 'deletion': 'red'}.items():
+        for area, amount in {'line': 0.15, 'num': 0.25, 'word': 0.35}.items():
+            value = blend(c[role], amount)
+            tokens[f'diffBlob-{kind}-bgColor-{area}'] = value
+            tokens[f'color-diff-blob-{kind}-{area}-bg'] = value
+        for area, legacy in (('text', 'fg'), ('num', 'num-text')):
+            tokens[f'diffBlob-{kind}-fgColor-{area}'] = c['foreground']
+            tokens[f'color-diff-blob-{kind}-{legacy}'] = c['foreground']
+    for name, role in {
+        'comment': 'muted', 'constant': 'orange', 'entity': 'cyan', 'entity-tag': 'green',
+        'storage-modifier-import': 'foreground', 'keyword': 'blue', 'string': 'green',
+        'variable': 'orange', 'brackethighlighter-unmatched': 'red',
+        'brackethighlighter-angle': 'white', 'invalid-illegal-text': 'red',
+        'string-regexp': 'cyan', 'markup-heading': 'accent', 'markup-list': 'yellow',
+        'markup-bold': 'foreground', 'markup-italic': 'foreground',
+        'markup-inserted-text': 'foreground', 'markup-deleted-text': 'foreground',
+        'markup-changed-text': 'foreground',
+    }.items():
+        tokens['color-prettylights-syntax-' + name] = c[role]
+    for kind, role in {'inserted': 'green', 'deleted': 'red', 'changed': 'yellow'}.items():
+        tokens['color-prettylights-syntax-markup-' + kind + '-bg'] = blend(c[role], 0.15)
+    text = ('/* ==UserStyle==\n@name         Dotfiles Desktop — GitHub\n'
+            '@namespace    saegey.dotfiles\n@version      1.0.0\n'
+            '@description  GitHub colors from desktop-theme; install alongside mono-font.user.css.\n'
+            '==/UserStyle== */\n\n/* Generated by desktop-theme; edit themes/palettes instead. */\n'
+            '@-moz-document domain("github.com") {\n'
+            '  html:root, html:root [data-color-mode], html:root .markdown-body {\n')
+    text += f'    color-scheme: {appearance(c)} !important;\n'
+    text += ''.join(f'    --{name}: {value} !important;\n' for name, value in tokens.items())
+    text += ('  }\n\n  body {\n'
+             f'    background-color: {c["background"]} !important;\n'
+             f'    color: {c["foreground"]} !important;\n'
+             '  }\n\n  ::selection {\n'
+             f'    background-color: {c["selection"]} !important;\n'
+             f'    color: {c["foreground"]} !important;\n'
+             '  }\n}\n')
+    return text
+
+
+def gmail_style(c):
+    """Theme Gmail's UI while keeping sender-authored HTML on a readable surface."""
+    def contrast(text):
+        low, high = sorted((luminance(text), luminance(c['accent'])))
+        return (high + 0.05) / (low + 0.05)
+    on_accent = max((c['background'], c['foreground']), key=contrast)
+    text = ('/* ==UserStyle==\n@name         Dotfiles Desktop — Gmail\n'
+            '@namespace    saegey.dotfiles\n@version      1.0.0\n'
+            '@description  Gmail interface colors from desktop-theme.\n'
+            '==/UserStyle== */\n\n/* Generated by desktop-theme; edit themes/palettes instead. */\n'
+            '@-moz-document domain("mail.google.com") {\n  :root {\n')
+    for role in ('background', 'panel', 'surface', 'border', 'foreground', 'muted', 'accent', 'selection'):
+        text += f'    --dt-{role}: {c[role]} !important;\n'
+    text += f'    --dt-on-accent: {on_accent} !important;\n'
+    text += f'    color-scheme: {appearance(c)} !important;\n  }}\n'
+    text += '''
+  /* Page, navigation and reading-pane chrome. */
+  body, .bkK, .aAU, .aeJ {
+    background-color: var(--dt-background) !important;
+    color: var(--dt-foreground) !important;
+  }
+  [role="banner"], [role="navigation"], .bkL, .G-atb {
+    background-color: var(--dt-panel) !important;
+    color: var(--dt-foreground) !important;
+  }
+  [role="banner"] svg, [role="navigation"] svg, .G-atb svg {
+    color: var(--dt-foreground) !important;
+  }
+  .TO .n0, .TO .bsU, .hP, .gD, .gF {
+    color: var(--dt-foreground) !important;
+  }
+  .TO:hover, .TO.nZ, .TO.ol {
+    background-color: var(--dt-selection) !important;
+  }
+  .TO.nZ .n0, .TO.ol .n0 {
+    color: var(--dt-accent) !important;
+  }
+  form[role="search"], form[role="search"] input {
+    background-color: var(--dt-surface) !important;
+    color: var(--dt-foreground) !important;
+  }
+  form[role="search"]:focus-within {
+    outline: 1px solid var(--dt-accent) !important;
+  }
+
+  /* Message rows: retain unread weight and a separate selected state. */
+  .zA.yO {
+    background-color: var(--dt-background) !important;
+    color: var(--dt-foreground) !important;
+  }
+  .zA.zE {
+    background-color: var(--dt-surface) !important;
+    color: var(--dt-foreground) !important;
+    font-weight: 700 !important;
+  }
+  .zA > td {
+    border-bottom: 1px solid var(--dt-border) !important;
+  }
+  .zA .yW, .zA .y6, .zA .xW {
+    color: var(--dt-foreground) !important;
+  }
+  .zA .y2 {
+    color: var(--dt-muted) !important;
+  }
+  .zA:hover, .zA.x7, .zA[aria-selected="true"] {
+    background-color: var(--dt-selection) !important;
+  }
+  .zA.x7, .zA[aria-selected="true"] {
+    box-shadow: inset 3px 0 var(--dt-accent) !important;
+  }
+
+  /* Compose shell and editor; no changes to rich-text descendants. */
+  .AD, .AD .aoI, .AD .aDh, .AD .aaZ, .AD .Am, .AD .aoT {
+    background-color: var(--dt-background) !important;
+    color: var(--dt-foreground) !important;
+    border-color: var(--dt-border) !important;
+    caret-color: var(--dt-foreground) !important;
+  }
+  .AD .Hp, .AD .aYF {
+    background-color: var(--dt-panel) !important;
+    color: var(--dt-foreground) !important;
+  }
+  .AD input, .AD textarea {
+    background-color: var(--dt-background) !important;
+    color: var(--dt-foreground) !important;
+    border-color: var(--dt-border) !important;
+    caret-color: var(--dt-foreground) !important;
+  }
+  .z0 > .L3, .gU .v7.T-I {
+    background-color: var(--dt-accent) !important;
+    color: var(--dt-on-accent) !important;
+  }
+  .Kj-JD, .J-M {
+    background-color: var(--dt-panel) !important;
+    color: var(--dt-foreground) !important;
+    border-color: var(--dt-border) !important;
+  }
+
+  /* Keep sender-defined text, links, images and backgrounds intact. */
+  .a3s {
+    background-color: #ffffff !important;
+    color: #202124 !important;
+    color-scheme: light !important;
+  }
+}
+'''
+    return text
+
+
 def frame_png(color):
     """A solid frame image makes the theme supply a frame asset as well as colors."""
     rgb = bytes(int(color[i:i+2], 16) for i in (1, 3, 5))
@@ -111,6 +308,23 @@ def as_bytes(content):
 
 def assets(app, c):
     """Generate native theme files; custom palettes use the same path as presets."""
+    if app == 'matcha':
+        data = {'name': 'Dotfiles Desktop'}
+        data.update({key: c[role] for key, role in {
+            'accent': 'accent', 'accent_dark': 'border', 'secondary': 'muted',
+            'subtle_text': 'white', 'muted_text': 'white', 'dim_text': 'foreground',
+            'danger': 'red', 'warning': 'orange', 'tip': 'yellow',
+            'link': 'blue', 'directory': 'accent',
+        }.items()})
+        def contrast(text):
+            low, high = sorted((luminance(text), luminance(c['accent'])))
+            return (high + 0.05) / (low + 0.05)
+        data['accent_text'] = data['contrast'] = max((c['background'], c['foreground']), key=contrast)
+        return {'matcha/.config/matcha/themes/dotfiles-desktop.json': dump(data)}
+    if app == 'github':
+        return {'browser/github-theme.user.css': github_style(c)}
+    if app == 'gmail':
+        return {'browser/gmail-theme.user.css': gmail_style(c)}
     if app == 'codex':
         settings = [{'settings': {
             'background': c['background'], 'foreground': c['foreground'],
@@ -191,7 +405,7 @@ def assets(app, c):
             'variable': 'foreground', 'punctuation': 'white', 'property': 'blue', 'tag': 'red',
         }.items()}
         data = {'$schema': 'https://zed.dev/schema/themes/v0.2.0.json', 'name': 'Dotfiles Desktop',
-                'author': 'dotfiles', 'themes': [{'name': 'Dotfiles Desktop', 'appearance': 'dark', 'style': style}]}
+                'author': 'dotfiles', 'themes': [{'name': 'Dotfiles Desktop', 'appearance': appearance(c), 'style': style}]}
         return {'zed/.config/zed/themes/dotfiles-desktop.json': dump(data)}
     return {}
 
@@ -201,7 +415,7 @@ def transform(app, text, c):
         return setting(text, 'theme', 'dotfiles-desktop')
     if app == 'herdr-app':
         data = json.loads(text)
-        data.update(theme='dotfiles-desktop', appearance='dark')
+        data.update(theme='dotfiles-desktop', appearance=appearance(c))
         return text if json.loads(text) == data else dump(data)
     if app == 'zed':
         # Match the top-level theme only; preserve the independent icon_theme.
@@ -282,6 +496,18 @@ def codex_config(text):
 def render(root, theme, targets, home=None, codex_home=None):
     result = {}
     for app in targets:
+        if app == 'matcha':
+            generated = assets(app, theme['colors'])
+            result.update({root / path: value for path, value in generated.items()})
+            if home is not None and (home / '.config/matcha').is_dir():
+                for relative, content in generated.items():
+                    dest = home_path(home, relative)
+                    if dest.resolve() == (root / relative).resolve():
+                        continue
+                    if dest.is_symlink() or (dest.parent.is_symlink() and not dest.parent.resolve().is_relative_to(root)):
+                        raise ValueError(f'{dest}: symlink points outside this checkout')
+                    result[dest] = content
+            continue
         if app == 'codex':
             generated = assets(app, theme['colors'])
             result.update({root / path: value for path, value in generated.items()})
@@ -296,7 +522,7 @@ def render(root, theme, targets, home=None, codex_home=None):
                     result[config] = codex_config(config.read_text())
                     result[dest] = next(iter(generated.values()))
             continue
-        if app == 'chrome':
+        if app in ('chrome', 'github', 'gmail'):
             result.update({root / path: value for path, value in assets(app, theme['colors']).items()})
             continue
         if app not in CONFIGS:
@@ -474,8 +700,13 @@ def main():
         print('Starship follows terminal ANSI colors. Kiri and other unlisted apps are left alone.')
         if 'codex' in catalog['targets']:
             print('Codex CLI syntax colors follow the shared palette. Restart Codex, or select dotfiles-desktop with /theme in a running session.')
+        if 'matcha' in catalog['targets']:
+            print('Matcha: select Dotfiles Desktop in Settings → Theme once; restart Matcha after subsequent palette changes.')
         if 'chrome' in catalog['targets']:
             print(f'Chrome theme exported to {ROOT / "browser/themes/chrome"}. Load/reapply this folder at chrome://extensions (Developer mode → Load unpacked).')
+        for site, label in (('github', 'GitHub'), ('gmail', 'Gmail')):
+            if site in catalog['targets']:
+                print(f'{label} Stylus style exported to {ROOT / ("browser/" + site + "-theme.user.css")}. Import in Stylus; use installer Live reload for subsequent palette changes, or reimport the file.')
         print('Slack import (paste manually; channel background stays Slack dark):')
         print(','.join(theme['colors'][k].upper() for k in ('background', 'accent', 'green', 'red')))
         return 0
