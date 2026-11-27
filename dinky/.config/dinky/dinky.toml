@@ -44,8 +44,8 @@ display-changed = ['exec-and-forget sketchybar --trigger dinky_workspace_change 
 [borders]
 enabled = true
 width = 3
-active-color = '#ea9a97'
-inactive-color = '#56526e'
+active-color = '#d7827e'
+inactive-color = '#cecacd'
 
 [[rules]]
 app-id = 'com.mitchellh.ghostty'
