@@ -3,6 +3,7 @@
   "targets": [
     "ghostty",
     "herdr",
+    "herdr-app",
     "zed",
     "dinky",
     "sketchybar",
@@ -15,5 +16,9 @@
     "github",
     "gmail",
     "matcha"
-  ]
+  ],
+  "terminal_themes": {
+    "light": "rose-pine-dawn",
+    "dark": "rose-pine-moon"
+  }
 }

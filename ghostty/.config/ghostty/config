@@ -7,7 +7,7 @@ font-thicken = true
 font-thicken-strength = 70
 
 # Theme
-theme = dotfiles-desktop
+theme = light:dotfiles-desktop-light,dark:dotfiles-desktop-dark
 background-opacity = 0.96
 background-blur-radius = 20
 

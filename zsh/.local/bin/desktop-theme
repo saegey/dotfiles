@@ -410,12 +410,17 @@ def assets(app, c):
     return {}
 
 
-def transform(app, text, c):
+def transform(app, text, c, terminal_colors=None):
     if app == 'ghostty':
-        return setting(text, 'theme', 'dotfiles-desktop')
+        return setting(text, 'theme', 'light:dotfiles-desktop-light,dark:dotfiles-desktop-dark'
+                       if terminal_colors else 'dotfiles-desktop')
     if app == 'herdr-app':
         data = json.loads(text)
-        data.update(theme='dotfiles-desktop', appearance=appearance(c))
+        if terminal_colors:
+            data['theme'] = {mode: 'dotfiles-desktop-' + mode for mode in terminal_colors}
+            data.pop('appearance', None)
+        else:
+            data.update(theme='dotfiles-desktop', appearance=appearance(c))
         return text if json.loads(text) == data else dump(data)
     if app == 'zed':
         # Match the top-level theme only; preserve the independent icon_theme.
@@ -461,8 +466,13 @@ def transform(app, text, c):
         if '[theme.custom' in clean:
             raise ValueError('Existing unmanaged [theme.custom] overrides; merge them before using desktop-theme')
         # Existing config has one auto_switch; keep the base theme and override its colors.
-        text = setting(text, 'auto_switch', 'false')
+        text = setting(text, 'auto_switch', 'true' if terminal_colors else 'false')
         text = sub(text, r'(token = "\$review", fg = ")[^"]+("|$)', lambda m: m[1] + c['yellow'] + m[2])
+        if terminal_colors:
+            content = ''.join('[theme.custom.' + mode + ']\n' +
+                              ''.join(f'{k} = "{colors[v]}"\n' for k, v in tokens.items())
+                              for mode, colors in terminal_colors.items())
+            return block(text, content)
         return block(text, '[theme.custom]\n' + ''.join(f'{k} = "{c[v]}"\n' for k, v in tokens.items()))
     if app == 'starship':
         # Named ANSI colors follow the palette in either standalone Ghostty or Herdr.
@@ -474,7 +484,7 @@ def home_path(home, relative):
     return home / Path(*Path(relative).parts[1:])
 
 
-def codex_config(text):
+def codex_config(text, theme_name="dotfiles-desktop"):
     """Update only tui.theme, retaining machine-local settings and comments."""
     tomllib.loads(text)
     section = re.search(r'^\[tui\][^\n]*\n(?P<body>.*?)(?=^\s*\[|\Z)', text,
@@ -483,19 +493,27 @@ def codex_config(text):
         body = section['body']
         pattern = r'^(\s*theme\s*=\s*)(?:"[^"\n]*"|\x27[^\x27\n]*\x27)([^\n]*)$'
         if re.search(pattern, body, re.MULTILINE):
-            body = re.sub(pattern, lambda m: m[1] + '"dotfiles-desktop"' + m[2], body,
+            body = re.sub(pattern, lambda m: m[1] + json.dumps(theme_name) + m[2], body,
                           flags=re.MULTILINE)
         else:
-            body = 'theme = "dotfiles-desktop"\n' + body
+            body = 'theme = ' + json.dumps(theme_name) + '\n' + body
         result = text[:section.start('body')] + body + text[section.end('body'):]
     else:
-        result = text.rstrip() + '\n\n[tui]\ntheme = "dotfiles-desktop"\n'
-    if tomllib.loads(result).get('tui', {}).get('theme') != 'dotfiles-desktop':
+        result = text.rstrip() + '\n\n[tui]\ntheme = ' + json.dumps(theme_name) + '\n'
+    if tomllib.loads(result).get('tui', {}).get('theme') != theme_name:
         raise ValueError('Could not update Codex tui.theme')
     return result
 
 
-def render(root, theme, targets, home=None, codex_home=None):
+def render(root, theme, targets, home=None, codex_home=None, terminal_themes=None):
+    terminal_colors = None
+    if terminal_themes is not None:
+        if set(terminal_themes) != {'light', 'dark'}:
+            raise ValueError('terminal_themes requires light and dark palette IDs')
+        terminal_colors = {mode: palette(root, key)['colors'] for mode, key in terminal_themes.items()}
+        for mode, colors in terminal_colors.items():
+            if appearance(colors) != mode:
+                raise ValueError(f'terminal_themes.{mode} must use a {mode} palette')
     result = {}
     for app in targets:
         if app == 'matcha':
@@ -521,7 +539,7 @@ def render(root, theme, targets, home=None, codex_home=None):
                     for path in (config, dest, dest.parent):
                         if path.is_symlink() and not path.resolve().is_relative_to(root):
                             raise ValueError(f'{path}: symlink points outside this checkout')
-                    result[config] = codex_config(config.read_text())
+                    result[config] = codex_config(config.read_text(), 'ansi' if terminal_colors else 'dotfiles-desktop')
                     result[dest] = next(iter(generated.values()))
             continue
         if app in ('chrome', 'github', 'gmail'):
@@ -532,8 +550,14 @@ def render(root, theme, targets, home=None, codex_home=None):
         rel = CONFIGS[app]
         source = root / rel
         try:
-            result[source] = transform(app, source.read_text(), theme['colors'])
+            result[source] = transform(app, source.read_text(), theme['colors'], terminal_colors)
             generated = assets(app, theme['colors'])
+            if app in ('ghostty', 'herdr-app') and terminal_colors:
+                for mode, colors in terminal_colors.items():
+                    for path, value in assets(app, colors).items():
+                        variant = (path.removesuffix('.json') + '-' + mode + '.json'
+                                   if app == 'herdr-app' else path + '-' + mode)
+                        generated[variant] = value
             result.update({root / path: value for path, value in generated.items()})
             if home is None:
                 continue
@@ -543,7 +567,7 @@ def render(root, theme, targets, home=None, codex_home=None):
             if local.resolve() != source.resolve():
                 if local.is_symlink():
                     raise ValueError(f'{local}: symlink points outside this checkout')
-                result[local] = transform(app, local.read_text(), theme['colors'])
+                result[local] = transform(app, local.read_text(), theme['colors'], terminal_colors)
             for path, value in generated.items():
                 dest = home_path(home, path)
                 src = root / path
@@ -567,16 +591,17 @@ def render(root, theme, targets, home=None, codex_home=None):
                         raise ValueError(f'{dest}: symlink points outside this checkout')
                     content = dest.read_text()
                     if re.search(r'^theme\s*=', content, re.MULTILINE):
-                        content = setting(content, 'theme', 'dotfiles-desktop')
+                        content = transform('ghostty', content, theme['colors'], terminal_colors)
                     else:
-                        content = content.rstrip() + '\ntheme = dotfiles-desktop\n'
+                        content = transform('ghostty', content.rstrip() + '\ntheme = dotfiles-desktop\n',
+                                            theme['colors'], terminal_colors)
                     result[dest] = content
         except (OSError, ValueError) as error:
             raise ValueError(f'{app}: {error}') from error
     return result
 
 
-def reload_apps(targets):
+def reload_apps(targets, terminal_themes=None):
     """Apply saved themes to running apps without raising or restarting them."""
     if 'sketchybar' in targets and shutil.which('sketchybar'):
         try:
@@ -587,7 +612,7 @@ def reload_apps(targets):
                 print('Reloaded SketchyBar.')
         except (OSError, subprocess.TimeoutExpired) as error:
             print(f'SketchyBar reload unavailable: {error}', file=sys.stderr)
-    if 'herdr-app' in targets and shutil.which('herdr-app'):
+    if 'herdr-app' in targets and not terminal_themes and shutil.which('herdr-app'):
         try:
             result = subprocess.run(['herdr-app', 'do', 'app.theme', '--name', 'dotfiles-desktop'],
                                     capture_output=True, text=True, timeout=10)
@@ -683,7 +708,8 @@ def main():
             raise ValueError('Choose a theme first, e.g. desktop-theme mocha --dry-run')
         theme = palette(ROOT, key)
         codex_home = Path(os.environ['CODEX_HOME']).expanduser() if os.environ.get('CODEX_HOME') else None
-        rendered = render(ROOT, theme, catalog['targets'], None if args.source_only else Path.home(), codex_home)
+        rendered = render(ROOT, theme, catalog['targets'], None if args.source_only else Path.home(), codex_home,
+                          catalog.get('terminal_themes'))
         changed = {p: value for p, value in rendered.items() if not p.exists() or p.read_bytes() != as_bytes(value)}
         for path in changed:
             label = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
@@ -694,14 +720,17 @@ def main():
             catalog['selected'] = key
             write_files({**changed, catalog_path: dump(catalog)})
             if not args.source_only and not args.no_reload:
-                reload_apps(catalog['targets'])
+                reload_apps(catalog['targets'], catalog.get('terminal_themes'))
         print(f'{"Preview" if args.dry_run else "Selected"}: {theme["name"]}')
         print('Herdr, Ghostty, and SketchyBar apply automatically unless --no-reload or --source-only is used.')
         print('Reload Dinky (Option-Shift-R) and Hammerspoon.')
         print('Zed watches settings; reopen GH Dash and Hunk, and reload Herdr TUI config.')
         print('Starship follows terminal ANSI colors. Kiri and other unlisted apps are left alone.')
         if 'codex' in catalog['targets']:
-            print('Codex CLI syntax colors follow the shared palette. Restart Codex, or select dotfiles-desktop with /theme in a running session.')
+            if catalog.get('terminal_themes'):
+                print('Codex CLI uses terminal ANSI syntax colors. Select ansi with /theme in running sessions; restart/resume if the input background stays stale after a mode switch.')
+            else:
+                print('Codex CLI syntax colors follow the shared palette. Restart Codex, or select dotfiles-desktop with /theme in a running session.')
         if 'matcha' in catalog['targets']:
             print('Matcha: select Dotfiles Desktop in Settings → Theme once; restart Matcha after subsequent palette changes.')
         if 'chrome' in catalog['targets']:

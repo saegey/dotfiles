@@ -21,7 +21,7 @@ rows = [["state_icon", { token = "$review", fg = "#f6c177", bold = true }, "work
 
 [theme]
 name = "catppuccin"
-auto_switch = false
+auto_switch = true
 
 [keys]
 # Direct (no-prefix) chords, matching Ghostty/Safari-style muscle memory.
@@ -97,7 +97,24 @@ description = "Worktree ticket, PR, Actions and app links"
 command = "dotfiles.worktree-visor.open"
 
 # BEGIN desktop-theme
-[theme.custom]
+[theme.custom.light]
+accent = "#d7827e"
+panel_bg = "#fffaf3"
+surface0 = "#f2e9e1"
+surface1 = "#cecacd"
+surface_dim = "#faf4ed"
+overlay0 = "#9893a5"
+overlay1 = "#797593"
+text = "#464261"
+subtext0 = "#797593"
+mauve = "#d7827e"
+green = "#286983"
+yellow = "#ea9d34"
+red = "#b4637a"
+blue = "#56949f"
+teal = "#d7827e"
+peach = "#ea9d34"
+[theme.custom.dark]
 accent = "#ea9a97"
 panel_bg = "#2a273f"
 surface0 = "#393552"

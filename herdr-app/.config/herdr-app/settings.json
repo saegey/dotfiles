@@ -11,10 +11,10 @@
   "terminal_cell_width": 1.0,
   "terminal_scroll_speed": 1.0,
   "ui_font": "Maple Mono NF",
-  "minimum_contrast": 1.0,
+  "minimum_contrast": 4.5,
   "option_as_alt": "on",
   "theme": {
-    "light": "rose-pine-dawn-terminals",
-    "dark": "rose-pine-moon-terminals"
+    "light": "dotfiles-desktop-light",
+    "dark": "dotfiles-desktop-dark"
   }
 }

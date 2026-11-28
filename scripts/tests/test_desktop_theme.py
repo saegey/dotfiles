@@ -26,6 +26,62 @@ def copy_configs(root):
 
 
 class DesktopThemeTests(unittest.TestCase):
+    def test_herdr_desktop_pair_follows_system_without_forcing_appearance(self):
+        pair = {'light': 'rose-pine-dawn', 'dark': 'rose-pine-moon'}
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            local = home / '.config/herdr-app/settings.json'
+            local.parent.mkdir(parents=True)
+            local.write_text(json.dumps({'theme': 'old', 'appearance': 'dark', 'zoom': 1.2}))
+            result = THEME['render'](ROOT, THEME['palette'](ROOT, 'nord'), ['herdr-app'], home,
+                                     terminal_themes=pair)
+            settings = json.loads(result[local])
+            self.assertNotIn('appearance', settings)
+            self.assertEqual(settings['zoom'], 1.2)
+            self.assertEqual(settings['theme'], {'light': 'dotfiles-desktop-light', 'dark': 'dotfiles-desktop-dark'})
+            for mode, key in pair.items():
+                colors = THEME['palette'](ROOT, key)['colors']
+                theme = json.loads(result[home / ('.config/herdr-app/themes/dotfiles-desktop-' + mode + '.json')])
+                self.assertEqual(theme['background'], colors['background'])
+                self.assertEqual(theme['colors']['chrome'], colors['panel'])
+            with patch('shutil.which', return_value='/bin/tool'), patch('subprocess.run') as run:
+                THEME['reload_apps'](['herdr-app'], pair)
+                run.assert_not_called()  # settings hot reload; manual theme selection overrides the pair
+
+    def test_terminal_pair_tracks_appearance_and_preserves_local_overrides(self):
+        pair = {'light': 'rose-pine-dawn', 'dark': 'rose-pine-moon'}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'repo'
+            root.mkdir()
+            copy_configs(root)
+            home = Path(directory) / 'home'
+            local = home / '.config/ghostty/config'
+            local.parent.mkdir(parents=True)
+            local.write_text('theme = old\nfont-size = 18\n')
+            native = home / 'Library/Application Support/com.mitchellh.ghostty/config.ghostty'
+            native.parent.mkdir(parents=True)
+            native.write_text('font-family = Local Font\n')
+            theme = THEME['palette'](root, 'nord')
+            result = THEME['render'](root, theme, ['ghostty', 'herdr'], home,
+                                     terminal_themes=pair)
+            self.assertIn('light:dotfiles-desktop-light,dark:dotfiles-desktop-dark', result[local])
+            self.assertIn('font-size = 18', result[local])
+            self.assertIn('light:dotfiles-desktop-light,dark:dotfiles-desktop-dark', result[native])
+            self.assertIn('font-family = Local Font', result[native])
+            herdr = tomllib.loads(result[root / THEME['CONFIGS']['herdr']])
+            self.assertTrue(herdr['theme']['auto_switch'])
+            self.assertEqual(set(herdr['theme']['custom']), {'light', 'dark'})
+            for mode, key in pair.items():
+                colors = THEME['palette'](root, key)['colors']
+                self.assertEqual(herdr['theme']['custom'][mode]['text'], colors['foreground'])
+                asset = home / ('.config/ghostty/themes/dotfiles-desktop-' + mode)
+                self.assertIn('background = ' + colors['background'], result[asset])
+            THEME['write_files'](result)
+            self.assertEqual(result, THEME['render'](root, theme, ['ghostty', 'herdr'], home,
+                                                   terminal_themes=pair))
+            with self.assertRaisesRegex(ValueError, 'must use a light palette'):
+                THEME['render'](root, theme, ['ghostty'], terminal_themes={'light': 'nord', 'dark': 'nord'})
+
     def test_sketchybar_stays_monochrome_across_all_palettes(self):
         source = (ROOT / THEME['CONFIGS']['sketchybar']).read_text()
         # Start with a colored config to also cover migration on other machines.
@@ -178,6 +234,24 @@ class DesktopThemeTests(unittest.TestCase):
                 self.assertEqual(scopes['keyword']['foreground'], theme['colors']['blue'])
                 self.assertEqual(scopes['string']['foreground'], theme['colors']['green'])
             self.assertEqual(config.read_text(), original)  # render/dry run never writes
+
+    def test_codex_uses_terminal_colors_with_an_automatic_theme_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            config = home / '.codex/config.toml'
+            config.parent.mkdir()
+            original = ('model = "test-model"\n[tui]\ntheme = "dotfiles-desktop" # syntax\n'
+                        'status_line = ["model"]\n')
+            config.write_text(original)
+            theme = THEME['palette'](ROOT, 'rose-pine-moon')
+            result = THEME['render'](ROOT, theme, ['codex'], home,
+                                     terminal_themes={'light': 'rose-pine-dawn', 'dark': 'rose-pine-moon'})
+            expected = tomllib.loads(original)
+            expected['tui']['theme'] = 'ansi'
+            self.assertEqual(tomllib.loads(result[config]), expected)
+            self.assertIn('# syntax', result[config])
+            self.assertEqual(THEME['codex_config'](result[config], 'ansi'), result[config])
+            self.assertEqual(config.read_text(), original)
 
     def test_codex_adds_missing_tui_and_skips_uninstalled_cli(self):
         for original in ('model = "test"\n', '[tui]\nstatus_line = []\n'):
