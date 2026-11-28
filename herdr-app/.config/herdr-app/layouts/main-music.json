@@ -124,7 +124,7 @@
                     "height": 30,
                     "position": "top"
                   },
-                  "background": "background",
+                  "background": "terminal_surface",
                   "border": {
                     "width": 1,
                     "color": "border"
@@ -205,7 +205,9 @@
     16
   ],
   "theme": {
-    "light": "rose-pine-dawn-terminals",
-    "dark": "rose-pine-moon-terminals"
-  }
+    "light": "dotfiles-desktop-light",
+    "dark": "dotfiles-desktop-dark"
+  },
+  "window_blur": true,
+  "terminal_opacity": 0
 }

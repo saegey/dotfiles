@@ -2,8 +2,12 @@
 
 ## Chrome theme
 
-Every `desktop-theme <id>` also exports the selected palette as a Chrome theme
-in `browser/themes/chrome/`. Custom palettes use the same export. This changes
+`desktop-theme` exports a Chrome theme in `browser/themes/chrome/`.
+With an active `terminal_themes` pair, this folder contains its dark palette;
+`browser/themes/chrome-light/` and `browser/themes/chrome-dark/` contain the
+individual appearances. `desktop-theme --terminal-preset NAME` regenerates all
+three from the selected pair. Without a pair, the main folder uses the selected
+shared desktop palette. Custom palettes use the same export. This changes
 browser chrome (frame, toolbar, tabs, address field and new-tab colors), not
 the content of websites.
 The export includes solid active/inactive frame PNGs, explicit background-tab
@@ -15,7 +19,8 @@ To try it in your chosen Chrome profile:
 
 1. Open `chrome://extensions` and enable **Developer mode**.
 2. Click **Load unpacked** and select this checkout's `browser/themes/chrome`
-   directory, which contains `manifest.json`.
+   directory (dark), or `browser/themes/chrome-light` / `chrome-dark` for a
+   specific appearance. Each folder contains `manifest.json`.
 3. Accept any theme confirmation Chrome shows.
 
 The export is a theme-only extension: no scripts or permissions. It is an
@@ -25,6 +30,8 @@ After changing the desktop palette, reapply the folder through **Load unpacked**
 profile. You can return to Chrome's default from **Settings → Appearance →
 Reset to default**. Remove `chrome` from `themes/catalog.json` to stop exports.
 
+Chrome custom themes do not automatically switch between these exports when
+macOS appearance changes. Reapply the light or dark folder manually.
 This is an export with manual application, not a live Chrome integration.
 Vivaldi supports editable themes, ZIP imports and schedules, but its documented
 interface does not provide an external command to apply arbitrary palette
