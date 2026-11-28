@@ -71,14 +71,21 @@ its tab open to follow palette changes, or reimport after changing themes.
 Gmail receives `browser/gmail-theme.user.css` through the same workflow for
 its inbox, navigation, and compose UI; received email bodies retain a light
 reading surface. See [browser appearance](browser/README.md) for installation.
-Codex CLI receives a generated syntax theme in `codex/.codex/themes/`.
-When a local Codex config exists, `desktop-theme` installs it under
-`$CODEX_HOME/themes` (default `~/.codex/themes`) and updates only `tui.theme`,
-preserving other local settings. Restart Codex after a palette change, or use
-`/theme` and select `dotfiles-desktop` in a running session. The terminal's
-background and ordinary UI colors follow Ghostty/Herdr; the generated theme
-controls code and diff syntax highlighting. `--source-only` only exports the
-theme in this checkout. The Codex desktop app is separate from this integration.
+Codex CLI uses its built-in `ansi` syntax theme while `terminal_themes` is
+configured, so code colors use the terminal's active Moon/Dawn ANSI palette.
+For running sessions, use `/theme` and select `ansi` once. Codex can still cache
+input and message backgrounds across a live terminal appearance change; if those
+stay unreadable, exit Codex and resume the conversation with `codex resume`.
+This is a Codex rendering limitation, separate from Herdr's theme settings.
+Herdr's `minimum_contrast` is set to `4.5` to keep text readable against stale
+backgrounds without restarting Codex. This can adjust low-contrast text colors
+in all Herdr terminals; it does not refresh Codex's cached backgrounds.
+Without `terminal_themes`, `desktop-theme` selects its generated
+`dotfiles-desktop` syntax theme instead. The generated `.tmTheme` export is
+retained in `codex/.codex/themes/` and installed under `$CODEX_HOME/themes`
+(default `~/.codex/themes`) for existing local configs. Other local settings are
+preserved. `--source-only` only exports the theme in this checkout. The Codex
+desktop app is separate from this integration.
 For Slack, `desktop-theme --slack` prints four import colors: navigation,
 selected items, presence, and notifications. Normal theme-switch output also
 includes the import string, ready to copy. Paste them into Slack's
@@ -92,7 +99,17 @@ one palette, updates the other apps' color settings, and puts Hunk in
 `terminal` theme mode. Starship's existing named ANSI colors follow the
 terminal palette without needing separate color settings. These are shared
 palette adaptations, rather than exact copies of every app's upstream port.
-All presets currently use dark appearance; this does not change macOS appearance.
+Ghostty, Herdr TUI, and the Herdr desktop app follow the system light/dark appearance using Rosé Pine
+Dawn (light) and Moon (dark). `terminal_themes` in `themes/catalog.json` selects
+this pair independently of the shared palette used by the other apps. Remove
+that field to return the terminals to the single selected desktop palette.
+Herdr follows the host terminal's appearance notifications. Reload Ghostty
+with Command-Shift-comma and choose `reload config` in Herdr after setup.
+Herdr's theme picker saves a per-layout choice that overrides settings.json.
+For an existing layout with an older manual selection, set both halves once:
+`herdr-app do app.theme --name dotfiles-desktop-light` followed by
+`herdr-app do app.theme --name dotfiles-desktop-dark`.
+This does not change macOS appearance.
 
 Fonts, bindings, opacity, sizes, app assignments, and other settings are
 preserved. Source configs and existing local copies are updated; generated
