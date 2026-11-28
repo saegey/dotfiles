@@ -1,5 +1,5 @@
 {
-  "selected": "rose-pine-moon",
+  "selected": "solarized-dark",
   "targets": [
     "ghostty",
     "herdr",
@@ -18,7 +18,21 @@
     "matcha"
   ],
   "terminal_themes": {
-    "light": "rose-pine-dawn",
-    "dark": "rose-pine-moon"
+    "light": "solarized-light",
+    "dark": "solarized-dark"
+  },
+  "terminal_presets": {
+    "rose-pine": {
+      "light": "rose-pine-dawn",
+      "dark": "rose-pine-moon"
+    },
+    "catppuccin": {
+      "light": "latte",
+      "dark": "mocha"
+    },
+    "solarized": {
+      "light": "solarized-light",
+      "dark": "solarized-dark"
+    }
   }
 }

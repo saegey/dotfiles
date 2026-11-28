@@ -378,6 +378,12 @@ def assets(app, c):
                   'surface': c['surface'], 'border': c['border'], 'muted': c['white'],
                   'dim': c['muted'], 'working': c['yellow'], 'blocked': c['red'],
                   'done': c['cyan'], 'idle': c['green'], 'selected': c['selection']}
+        # Use one tinted canvas across panes and gutters, with solid sidebar
+        # chrome. Transparent pane fills avoid stacking multiple tint layers.
+        # Herdr also reads background RGB for terminal contrast and OSC replies.
+        # Preserve the palette RGB even when its drawing alpha is zero.
+        colors.update(background=c['background'] + '00', terminal_surface=c['background'] + '00',
+                      chrome=c['panel'], canvas=c['background'] + 'e6')
         data = {k: c[k] for k in ('background', 'foreground', 'selection', 'cursor')}
         data.update(ansi=ansi(c), colors=colors)
         return {'herdr-app/.config/herdr-app/themes/dotfiles-desktop.json': dump(data)}
@@ -543,15 +549,23 @@ def render(root, theme, targets, home=None, codex_home=None, terminal_themes=Non
                     result[dest] = next(iter(generated.values()))
             continue
         if app in ('chrome', 'github', 'gmail'):
-            result.update({root / path: value for path, value in assets(app, theme['colors']).items()})
+            colors = terminal_colors['dark'] if app == 'chrome' and terminal_colors else theme['colors']
+            result.update({root / path: value for path, value in assets(app, colors).items()})
+            if app == 'chrome' and terminal_colors:
+                for mode, colors in terminal_colors.items():
+                    for path, value in assets(app, colors).items():
+                        variant = path.replace('browser/themes/chrome/', 'browser/themes/chrome-' + mode + '/')
+                        result[root / variant] = value
             continue
         if app not in CONFIGS:
             raise ValueError('Unknown target: ' + app)
         rel = CONFIGS[app]
         source = root / rel
         try:
-            result[source] = transform(app, source.read_text(), theme['colors'], terminal_colors)
-            generated = assets(app, theme['colors'])
+            # Focus borders and shortcut chrome share the terminal preset's accent.
+            colors = terminal_colors['dark'] if terminal_colors and app in ('dinky', 'hammerspoon') else theme['colors']
+            result[source] = transform(app, source.read_text(), colors, terminal_colors)
+            generated = assets(app, colors)
             if app in ('ghostty', 'herdr-app') and terminal_colors:
                 for mode, colors in terminal_colors.items():
                     for path, value in assets(app, colors).items():
@@ -567,7 +581,7 @@ def render(root, theme, targets, home=None, codex_home=None, terminal_themes=Non
             if local.resolve() != source.resolve():
                 if local.is_symlink():
                     raise ValueError(f'{local}: symlink points outside this checkout')
-                result[local] = transform(app, local.read_text(), theme['colors'], terminal_colors)
+                result[local] = transform(app, local.read_text(), colors, terminal_colors)
             for path, value in generated.items():
                 dest = home_path(home, path)
                 src = root / path
@@ -622,6 +636,15 @@ def reload_apps(targets, terminal_themes=None):
                 print('Applied theme to Herdr.')
         except (OSError, subprocess.TimeoutExpired) as error:
             print(f'Herdr live apply unavailable: {error}', file=sys.stderr)
+    if 'herdr' in targets and os.environ.get('HERDR_ENV') == '1' and shutil.which('herdr'):
+        try:
+            result = subprocess.run(['herdr', 'server', 'reload-config'], capture_output=True, text=True, timeout=10)
+            if result.returncode:
+                print('Herdr TUI reload unavailable: ' + (result.stderr or result.stdout).strip(), file=sys.stderr)
+            else:
+                print('Reloaded Herdr TUI config.')
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(f'Herdr TUI reload unavailable: {error}', file=sys.stderr)
     if 'ghostty' in targets and shutil.which('pgrep'):
         try:
             result = subprocess.run(['pgrep', '-x', 'ghostty'], capture_output=True, text=True, timeout=5)
@@ -661,7 +684,8 @@ def write_files(rendered):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('theme', nargs='?', help='theme ID; omit to list')
+    parser.add_argument('theme', nargs='?', help='palette ID or light/dark family (rose-pine, catppuccin, solarized); omit to list')
+    parser.add_argument('--terminal-preset', metavar='NAME', help='select a terminal light/dark pair; omit to list available pairs')
     parser.add_argument('--dry-run', action='store_true', help='preview file changes')
     parser.add_argument('--check', action='store_true', help='check the selected theme for drift')
     parser.add_argument('--source-only', action='store_true', help='only handle checkout files')
@@ -673,6 +697,13 @@ def main():
     try:
         catalog_path = ROOT / CATALOG
         catalog = json.loads(catalog_path.read_text())
+        if args.terminal_preset:
+            if args.theme or args.create or args.slack or args.check:
+                raise ValueError('--terminal-preset cannot be combined with a theme, --create, --slack or --check')
+            presets = catalog.get('terminal_presets', {})
+            if args.terminal_preset not in presets:
+                raise ValueError('Unknown terminal preset; choose: ' + ', '.join(presets))
+            catalog['terminal_themes'] = dict(presets[args.terminal_preset])
         if args.slack:
             if args.create or args.check or args.dry_run:
                 raise ValueError('--slack cannot be combined with --create, --check or --dry-run')
@@ -695,20 +726,31 @@ def main():
                 f.write(dump({'name': args.create.replace('-', ' ').title(), 'extends': args.base, 'colors': {}}))
             print(f'Created {path}\nAdd color overrides, then run: desktop-theme {args.create}')
             return 0
-        if args.theme is None and not args.check and not args.dry_run:
+        if args.theme is None and not args.terminal_preset and not args.check and not args.dry_run:
             for path in sorted((ROOT / 'themes/palettes').glob('*.json')):
                 data = palette(ROOT, path.stem)
                 print(f'{"*" if path.stem == catalog["selected"] else " "} {path.stem:20} {data["name"]}')
             if catalog['selected'] is None:
                 print('Current: existing per-app themes (no shared theme applied yet)')
             print('Targets: ' + ', '.join(catalog['targets']))
+            print('Terminal presets (desktop-theme --terminal-preset NAME):')
+            for name, pair in catalog.get('terminal_presets', {}).items():
+                mark = '*' if pair == catalog.get('terminal_themes') else ' '
+                print(f'{mark} {name:20} light: {pair["light"]}; dark: {pair["dark"]}')
             return 0
         key = args.theme or catalog['selected']
+        if args.theme in catalog.get('terminal_presets', {}):
+            pair = catalog['terminal_presets'][args.theme]
+            catalog['terminal_themes'] = dict(pair)
+            key = pair['dark']
         if key is None:
             raise ValueError('Choose a theme first, e.g. desktop-theme mocha --dry-run')
         theme = palette(ROOT, key)
         codex_home = Path(os.environ['CODEX_HOME']).expanduser() if os.environ.get('CODEX_HOME') else None
-        rendered = render(ROOT, theme, catalog['targets'], None if args.source_only else Path.home(), codex_home,
+        targets = catalog['targets']
+        if args.terminal_preset:
+            targets = [app for app in targets if app in ('ghostty', 'herdr', 'herdr-app', 'codex', 'dinky', 'hammerspoon', 'chrome')]
+        rendered = render(ROOT, theme, targets, None if args.source_only else Path.home(), codex_home,
                           catalog.get('terminal_themes'))
         changed = {p: value for p, value in rendered.items() if not p.exists() or p.read_bytes() != as_bytes(value)}
         for path in changed:
@@ -720,8 +762,19 @@ def main():
             catalog['selected'] = key
             write_files({**changed, catalog_path: dump(catalog)})
             if not args.source_only and not args.no_reload:
-                reload_apps(catalog['targets'], catalog.get('terminal_themes'))
+                reload_apps(targets, catalog.get('terminal_themes'))
         print(f'{"Preview" if args.dry_run else "Selected"}: {theme["name"]}')
+        if catalog.get('terminal_themes'):
+            pair = catalog['terminal_themes']
+            print(f'Terminal appearance: light: {pair["light"]}; dark: {pair["dark"]}')
+        if args.terminal_preset:
+            print('Ghostty and Herdr desktop reload unless --no-reload or --source-only is used.')
+            print('Dinky focus borders reload on save; reload Hammerspoon for shortcut overlay colors.')
+            if 'chrome' in targets:
+                print(f'Chrome: reapply {ROOT / "browser/themes/chrome-light"} or {ROOT / "browser/themes/chrome-dark"} via Load unpacked at chrome://extensions; custom themes do not switch automatically.')
+            print('Herdr TUI: reload config if running outside a Herdr-managed shell.')
+            print('Codex: use /theme → ansi in existing sessions; stale prompt backgrounds are a separate Codex issue.')
+            return 0
         print('Herdr, Ghostty, and SketchyBar apply automatically unless --no-reload or --source-only is used.')
         print('Reload Dinky (Option-Shift-R) and Hammerspoon.')
         print('Zed watches settings; reopen GH Dash and Hunk, and reload Herdr TUI config.')

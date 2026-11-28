@@ -1,0 +1,26 @@
+{
+  "name": "Catppuccin Latte",
+  "source": "https://catppuccin.com/palette/",
+  "colors": {
+    "background": "#eff1f5",
+    "panel": "#e6e9ef",
+    "surface": "#ccd0da",
+    "border": "#bcc0cc",
+    "muted": "#8c8fa1",
+    "foreground": "#4c4f69",
+    "accent": "#8839ef",
+    "red": "#d20f39",
+    "green": "#40a02b",
+    "yellow": "#df8e1d",
+    "blue": "#1e66f5",
+    "magenta": "#ea76cb",
+    "cyan": "#179299",
+    "orange": "#fe640b",
+    "black": "#bcc0cc",
+    "bright_black": "#acb0be",
+    "white": "#5c5f77",
+    "bright_white": "#6c6f85",
+    "selection": "#acb0be",
+    "cursor": "#dc8a78"
+  }
+}

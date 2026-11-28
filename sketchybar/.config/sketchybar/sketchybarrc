@@ -45,7 +45,8 @@ for panel in panel_left panel_right panel_external; do
 done
 
 sketchybar --add event dinky_workspace_change \
-  --add event dinky_focus_change
+  --add event dinky_focus_change \
+  --add event system_appearance_changed AppleInterfaceThemeChangedNotification
 
 # These are Dinky workspace numbers, not macOS's transient native Space IDs.
 for workspace in {1..5}; do
@@ -83,6 +84,13 @@ sketchybar --add item clock right \
   --set clock update_freq=30 label.color="$LAVENDER" padding_right=10 \
   script="$plugin_dir/clock.sh" click_script="open -a Calendar" \
   --subscribe clock system_woke
+
+sketchybar --add item appearance right \
+  --set appearance icon="" icon.drawing=on icon.color="$TEXT" \
+  icon.font="0xProto Nerd Font Mono:Regular:15.0" \
+  icon.padding_left=8 icon.padding_right=8 label.drawing=off \
+  update_freq=60 script="$plugin_dir/appearance.sh" \
+  --subscribe appearance mouse.clicked system_appearance_changed system_woke
 
 sketchybar --add item slack right \
   --set slack drawing=off updates=on update_freq=5 \

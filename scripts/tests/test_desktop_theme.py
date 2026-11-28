@@ -9,6 +9,7 @@ import unittest
 import tomllib
 from unittest.mock import patch
 import subprocess
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -26,6 +27,108 @@ def copy_configs(root):
 
 
 class DesktopThemeTests(unittest.TestCase):
+    def test_personal_layout_uses_generated_pair_without_duplicate_backgrounds(self):
+        layout = json.loads((ROOT / 'herdr-app/.config/herdr-app/layouts/main-music.json').read_text())
+        self.assertTrue(layout['window_blur'])
+        self.assertEqual(layout['terminal_opacity'], 0)
+        self.assertEqual(layout['theme'], {'light': 'dotfiles-desktop-light', 'dark': 'dotfiles-desktop-dark'})
+        def walk(node):
+            yield node
+            for child in node.get('children', []):
+                yield from walk(child)
+        frames = [node['content']['pane'] for node in walk(layout)
+                  if isinstance(node.get('content', {}).get('pane'), dict)]
+        self.assertTrue(frames)
+        self.assertTrue(all(frame['background'] == 'terminal_surface' for frame in frames))
+
+    def test_family_names_select_shared_palette_and_terminal_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            copy_configs(root)
+            script = root / 'zsh/.local/bin/desktop-theme'
+            script.parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / 'zsh/.local/bin/desktop-theme', script)
+            catalog = json.loads((root / 'themes/catalog.json').read_text())
+            for family, pair in catalog['terminal_presets'].items():
+                before = {p: p.read_bytes() for p in root.rglob('*') if p.is_file()}
+                preview = subprocess.run([sys.executable, str(script), family, '--source-only', '--dry-run'],
+                                         capture_output=True, text=True)
+                self.assertEqual(preview.returncode, 0, preview.stderr)
+                self.assertEqual(before, {p: p.read_bytes() for p in root.rglob('*') if p.is_file()})
+                applied = subprocess.run([sys.executable, str(script), family, '--source-only'],
+                                         capture_output=True, text=True)
+                self.assertEqual(applied.returncode, 0, applied.stderr)
+                saved = json.loads((root / 'themes/catalog.json').read_text())
+                self.assertEqual(saved['selected'], pair['dark'])
+                self.assertEqual(saved['terminal_themes'], pair)
+                check = subprocess.run([sys.executable, str(script), '--source-only', '--check'],
+                                       capture_output=True, text=True)
+                self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+
+    def test_terminal_preset_cli_switches_all_pairs_without_changing_other_apps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            copy_configs(root)
+            script = root / 'zsh/.local/bin/desktop-theme'
+            script.parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / 'zsh/.local/bin/desktop-theme', script)
+            catalog = json.loads((root / 'themes/catalog.json').read_text())
+            untouched = {root / rel: (root / rel).read_bytes()
+                         for app, rel in THEME['CONFIGS'].items()
+                         if app not in ('ghostty', 'herdr', 'herdr-app', 'dinky', 'hammerspoon')}
+            def cli(*args):
+                return subprocess.run([sys.executable, str(script), *args],
+                                      capture_output=True, text=True)
+            for name, pair in catalog['terminal_presets'].items():
+                before = {p: p.read_bytes() for p in root.rglob('*') if p.is_file()}
+                preview = cli('--terminal-preset', name, '--source-only', '--dry-run')
+                self.assertEqual(preview.returncode, 0, preview.stderr)
+                self.assertEqual(before, {p: p.read_bytes() for p in root.rglob('*') if p.is_file()})
+                applied = cli('--terminal-preset', name, '--source-only')
+                self.assertEqual(applied.returncode, 0, applied.stderr)
+                saved = json.loads((root / 'themes/catalog.json').read_text())
+                self.assertEqual(saved['terminal_themes'], pair)
+                self.assertEqual(saved['selected'], catalog['selected'])
+                for mode, key in pair.items():
+                    colors = THEME['palette'](root, key)['colors']
+                    self.assertEqual(THEME['appearance'](colors), mode)
+                    asset = root / ('ghostty/.config/ghostty/themes/dotfiles-desktop-' + mode)
+                    self.assertIn('background = ' + colors['background'], asset.read_text())
+                    app_asset = root / ('herdr-app/.config/herdr-app/themes/dotfiles-desktop-' + mode + '.json')
+                    self.assertEqual(json.loads(app_asset.read_text())['foreground'], colors['foreground'])
+                    # Herdr ignores alpha when using this RGB for terminal contrast.
+                    exported = json.loads(app_asset.read_text())['colors']['background']
+                    self.assertEqual(exported[:7], colors['background'])
+                    self.assertEqual(exported[7:], '00')
+                    self.assertEqual(THEME['appearance']({'background': exported[:7], 'foreground': colors['foreground']}), mode)
+                    custom = tomllib.loads((root / THEME['CONFIGS']['herdr']).read_text())['theme']['custom']
+                    self.assertEqual(custom[mode]['text'], colors['foreground'])
+                for mode, key in pair.items():
+                    manifest = json.loads((root / ('browser/themes/chrome-' + mode + '/manifest.json')).read_text())
+                    color = THEME['palette'](root, key)['colors']['background']
+                    expected = [int(color[i:i+2], 16) for i in (1, 3, 5)]
+                    self.assertEqual(manifest['theme']['colors']['toolbar'], expected)
+                    self.assertNotIn('permissions', manifest)
+                    for image in manifest['theme']['images'].values():
+                        asset = root / ('browser/themes/chrome-' + mode) / image
+                        self.assertTrue(asset.read_bytes().startswith(b'\x89PNG\r\n\x1a\n'))
+                self.assertEqual((root / 'browser/themes/chrome/manifest.json').read_text(),
+                                 (root / 'browser/themes/chrome-dark/manifest.json').read_text())
+                dark = THEME['palette'](root, pair['dark'])['colors']
+                borders = tomllib.loads((root / THEME['CONFIGS']['dinky']).read_text())['borders']
+                self.assertEqual(borders['active-color'], dark['accent'])
+                self.assertEqual(borders['inactive-color'], dark['border'])
+                overlay = (root / THEME['CONFIGS']['hammerspoon']).read_text()
+                channels = [int(dark['accent'][i:i+2], 16) for i in (1, 3, 5)]
+                self.assertIn('strokeColor = { red = %d / 255, green = %d / 255, blue = %d / 255' % tuple(channels), overlay)
+                self.assertEqual(untouched, {p: p.read_bytes() for p in untouched})
+                self.assertEqual(json.loads((root / THEME['CONFIGS']['herdr-app']).read_text())['minimum_contrast'], 4.5)
+                preview = cli('--terminal-preset', name, '--source-only', '--dry-run')
+                self.assertNotIn('Would update:', preview.stdout)
+            before = (root / 'themes/catalog.json').read_bytes()
+            self.assertNotEqual(cli('--terminal-preset', 'missing', '--source-only').returncode, 0)
+            self.assertEqual(before, (root / 'themes/catalog.json').read_bytes())
+
     def test_herdr_desktop_pair_follows_system_without_forcing_appearance(self):
         pair = {'light': 'rose-pine-dawn', 'dark': 'rose-pine-moon'}
         with tempfile.TemporaryDirectory() as directory:
@@ -44,6 +147,9 @@ class DesktopThemeTests(unittest.TestCase):
                 theme = json.loads(result[home / ('.config/herdr-app/themes/dotfiles-desktop-' + mode + '.json')])
                 self.assertEqual(theme['background'], colors['background'])
                 self.assertEqual(theme['colors']['chrome'], colors['panel'])
+                self.assertEqual(theme['colors']['background'], colors['background'] + '00')
+                self.assertEqual(theme['colors']['terminal_surface'], colors['background'] + '00')
+                self.assertEqual(theme['colors']['canvas'], colors['background'] + 'e6')
             with patch('shutil.which', return_value='/bin/tool'), patch('subprocess.run') as run:
                 THEME['reload_apps'](['herdr-app'], pair)
                 run.assert_not_called()  # settings hot reload; manual theme selection overrides the pair

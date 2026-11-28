@@ -33,13 +33,16 @@ Personal configuration files managed with [GNU Stow](https://www.gnu.org/softwar
 
 ## Shared desktop themes
 
-`desktop-theme` works like `mono-font`, with Catppuccin Mocha, Catppuccin
+`desktop-theme` works like `mono-font`, with Catppuccin Mocha, Catppuccin Latte, Catppuccin
 Frappé, Nord, Solarized Dark/Light, Everforest Dark Hard, Gruvbox Material Dark
 Medium, Kanagawa, and Rosé Pine/Moon/Dawn palettes. The catalog and generated app configs record
 the selected palette together; run `desktop-theme` to see the current selection.
 
 ```sh
 desktop-theme                           # list palettes and enabled apps
+desktop-theme rose-pine                  # shared Moon palette + Dawn/Moon pair
+desktop-theme catppuccin                 # shared Mocha palette + Latte/Mocha pair
+desktop-theme solarized                  # shared Solarized Dark + Light/Dark pair
 desktop-theme nord --dry-run             # preview changes
 desktop-theme nord                       # apply Nord
 desktop-theme solarized-dark
@@ -52,6 +55,10 @@ desktop-theme everforest                 # green accent
 desktop-theme gruvbox-material           # orange accent
 desktop-theme kanagawa                   # blue accent
 desktop-theme mocha                      # return to Mocha
+desktop-theme --terminal-preset rose-pine  # Dawn / Moon
+desktop-theme --terminal-preset catppuccin # Latte / Mocha
+desktop-theme --terminal-preset solarized  # Solarized Light / Dark
+desktop-theme --terminal-preset catppuccin --dry-run
 desktop-theme --check                    # check selected palette for drift
 desktop-theme --slack                    # print selected palette for Slack import
 desktop-theme mocha --slack              # print Mocha without changing the desktop
@@ -72,11 +79,17 @@ Gmail receives `browser/gmail-theme.user.css` through the same workflow for
 its inbox, navigation, and compose UI; received email bodies retain a light
 reading surface. See [browser appearance](browser/README.md) for installation.
 Codex CLI uses its built-in `ansi` syntax theme while `terminal_themes` is
-configured, so code colors use the terminal's active Moon/Dawn ANSI palette.
+configured, so code colors use the terminal's active ANSI palette.
 For running sessions, use `/theme` and select `ansi` once. Codex can still cache
 input and message backgrounds across a live terminal appearance change; if those
 stay unreadable, exit Codex and resume the conversation with `codex resume`.
 This is a Codex rendering limitation, separate from Herdr's theme settings.
+Herdr's personal `main-music` layout enables window blur. Generated themes use
+one 90% opaque canvas across the terminal area and its gutters, plus a solid
+sidebar. Ghostty remains at `background-opacity = 0.96`. The layout's
+`terminal_opacity = 0` and transparent `terminal_surface` avoid duplicate fills;
+text and explicit application backgrounds stay opaque. Herdr's native blur
+does not expose Ghostty's blur-radius control.
 Herdr's `minimum_contrast` is set to `4.5` to keep text readable against stale
 backgrounds without restarting Codex. This can adjust low-contrast text colors
 in all Herdr terminals; it does not refresh Codex's cached backgrounds.
@@ -99,10 +112,31 @@ one palette, updates the other apps' color settings, and puts Hunk in
 `terminal` theme mode. Starship's existing named ANSI colors follow the
 terminal palette without needing separate color settings. These are shared
 palette adaptations, rather than exact copies of every app's upstream port.
-Ghostty, Herdr TUI, and the Herdr desktop app follow the system light/dark appearance using Rosé Pine
-Dawn (light) and Moon (dark). `terminal_themes` in `themes/catalog.json` selects
-this pair independently of the shared palette used by the other apps. Remove
-that field to return the terminals to the single selected desktop palette.
+Ghostty, Herdr TUI, and the Herdr desktop app follow the system appearance.
+Choose a pair with `desktop-theme --terminal-preset NAME`:
+
+| Preset | Light | Dark |
+|--------|-------|------|
+| `rose-pine` | Rosé Pine Dawn | Rosé Pine Moon |
+| `catppuccin` | Catppuccin Latte | Catppuccin Mocha |
+| `solarized` | Solarized Light | Solarized Dark |
+
+Rosé Pine is the initial selection. The pairs live in `terminal_presets` in
+`themes/catalog.json`; `terminal_themes` records the active pair. Selecting a
+terminal preset also updates Dinky's focus border and Hammerspoon's shortcut
+overlay using the pair's dark accent, keeping the shared palette for other apps
+unchanged. Dinky reloads on save; reload Hammerspoon for overlay changes.
+Chrome exports also follow the preset: reapply `browser/themes/chrome-light` or
+`browser/themes/chrome-dark` in Chrome. These are manual exports; Chrome does
+not automatically switch custom themes with macOS appearance.
+Family commands (`desktop-theme rose-pine`, `catppuccin`, or `solarized`) select
+the pair and apply its dark palette to the other enabled apps. Individual
+`desktop-theme PALETTE` commands preserve the active terminal pair. Remove
+`terminal_themes` to return terminals to the single selected desktop palette.
+All pairs use the same generated theme names, so the existing Herdr layout
+selection continues to work when changing presets. Herdr's contrast adjustment
+and Codex's `ansi` syntax theme apply to every pair.
+
 Herdr follows the host terminal's appearance notifications. Reload Ghostty
 with Command-Shift-comma and choose `reload config` in Herdr after setup.
 Herdr's theme picker saves a per-layout choice that overrides settings.json.
@@ -450,6 +484,11 @@ The bar uses Maple Mono NF and shows clickable Dinky workspaces
 1–5, the active app, Now Playing, network and Tailscale status, audio output,
 Homebrew updates, volume, and a clock. Battery status appears only when the Mac
 has a battery. Click volume to toggle mute, or the clock to open Calendar.
+
+- **Sun/moon:** click to toggle macOS light/dark appearance. The icon shows the
+  current mode and follows changes made in System Settings too. Herdr and Ghostty
+  follow the OS using the selected theme pair. macOS may ask for permission for
+  SketchyBar/osascript to control System Events on the first click.
 
 - **NET:** active connection type (Wi-Fi, LAN, or VPN), or Offline when there is
   no default route. Refreshes every 10 seconds; click to open Network settings.
